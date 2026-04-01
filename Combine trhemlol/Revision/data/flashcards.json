@@ -1,0 +1,135 @@
+[
+    {
+        "id":  "card-alg-1",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "term":  "Decomposition",
+        "prompt":  "What is the practical aim of decomposition in software tasks?",
+        "answer":  "To split a complex requirement into smaller units that can be implemented and tested safely.",
+        "tags":  [
+                     "planning",
+                     "core"
+                 ]
+    },
+    {
+        "id":  "card-alg-2",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "term":  "Algorithm trace",
+        "prompt":  "Why run a dry trace before coding?",
+        "answer":  "It helps validate logic and edge cases early, reducing rework during implementation.",
+        "tags":  [
+                     "debugging"
+                 ]
+    },
+    {
+        "id":  "card-alg-3",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "term":  "Complexity",
+        "prompt":  "How does complexity influence algorithm choice?",
+        "answer":  "It compares growth in runtime or memory as input size rises, guiding scalable choices.",
+        "tags":  [
+                     "performance"
+                 ]
+    },
+    {
+        "id":  "card-prog-1",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "term":  "Type safety",
+        "prompt":  "What risk does strong typing reduce?",
+        "answer":  "Accidental misuse of data values that causes runtime bugs.",
+        "tags":  [
+                     "types"
+                 ]
+    },
+    {
+        "id":  "card-prog-2",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "term":  "Boundary tests",
+        "prompt":  "Give one reason boundary values matter in tests.",
+        "answer":  "Many defects appear at minimum, maximum, or transition points.",
+        "tags":  [
+                     "testing"
+                 ]
+    },
+    {
+        "id":  "card-prog-3",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "term":  "Loop invariant",
+        "prompt":  "What is a loop invariant?",
+        "answer":  "A condition that stays true before and after each loop iteration.",
+        "tags":  [
+                     "control-flow"
+                 ]
+    },
+    {
+        "id":  "card-design-1",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "term":  "User stories",
+        "prompt":  "Why include acceptance criteria in user stories?",
+        "answer":  "They define testable success conditions so everyone agrees on done.",
+        "tags":  [
+                     "requirements"
+                 ]
+    },
+    {
+        "id":  "card-design-2",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "term":  "Modularity",
+        "prompt":  "How does modular design support maintenance?",
+        "answer":  "Changes stay localized, reducing side effects and regression risk.",
+        "tags":  [
+                     "architecture"
+                 ]
+    },
+    {
+        "id":  "card-design-3",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "term":  "Branch strategy",
+        "prompt":  "What does a branch strategy improve?",
+        "answer":  "Coordination and release stability by structuring how changes are merged.",
+        "tags":  [
+                     "version-control"
+                 ]
+    },
+    {
+        "id":  "card-sec-1",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "term":  "Least privilege",
+        "prompt":  "What is the principle of least privilege?",
+        "answer":  "Grant only the minimum access needed for a role or process.",
+        "tags":  [
+                     "security"
+                 ]
+    },
+    {
+        "id":  "card-sec-2",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "term":  "Encryption",
+        "prompt":  "When should data encryption be considered?",
+        "answer":  "For sensitive data in transit and at rest, especially personal or confidential information.",
+        "tags":  [
+                     "data-protection"
+                 ]
+    },
+    {
+        "id":  "card-sec-3",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "term":  "Audit trail",
+        "prompt":  "Why maintain audit logs?",
+        "answer":  "To support incident investigation, accountability, and compliance.",
+        "tags":  [
+                     "compliance"
+                 ]
+    }
+]

@@ -1,0 +1,319 @@
+[
+    {
+        "id":  "exam-p1-open-1",
+        "paperId":  "paper1",
+        "topicIds":  [
+                         "1.2",
+                         "2.6"
+                     ],
+        "title":  "Queue Management Utility",
+        "scenario":  "A school reception needs a small utility that manages a queue of student support requests and highlights urgent items.",
+        "task":  "Write pseudocode for enqueue/dequeue operations, describe one suitable data structure, and explain two tests that validate correct behavior at boundaries.",
+        "answerType":  "open-ended",
+        "markSchemeHints":  [
+                                "Correct queue behavior with front/rear handling",
+                                "Clear reason for data structure choice",
+                                "Boundary tests such as empty queue and full queue",
+                                "Accurate terminology and traceable logic"
+                            ],
+        "recommendedMinutes":  35,
+        "rubric":  {
+                       "title":  "Queue and boundary-testing rubric",
+                       "criteria":  [
+                                        {
+                                            "id":  "queue-operations",
+                                            "label":  "Correct enqueue/dequeue logic",
+                                            "weight":  3,
+                                            "keywords":  [
+                                                             "enqueue",
+                                                             "dequeue",
+                                                             "front",
+                                                             "rear",
+                                                             "insert",
+                                                             "remove"
+                                                         ],
+                                            "synonyms":  [
+                                                             "add to queue",
+                                                             "remove from queue",
+                                                             "head",
+                                                             "tail",
+                                                             "add to back",
+                                                             "remove from front",
+                                                             "offer",
+                                                             "poll",
+                                                             "beginning of queue",
+                                                             "back of queue"
+                                                         ]
+                                        },
+                                        {
+                                            "id":  "data-structure",
+                                            "label":  "Suitable data structure with reason",
+                                            "weight":  2,
+                                            "keywords":  [
+                                                             "queue",
+                                                             "array",
+                                                             "linked list",
+                                                             "list",
+                                                             "circular"
+                                                         ],
+                                            "synonyms":  [
+                                                             "fifo",
+                                                             "first in first out",
+                                                             "dynamic array",
+                                                             "ordered list",
+                                                             "circular buffer"
+                                                         ]
+                                        },
+                                        {
+                                            "id":  "boundary-tests",
+                                            "label":  "At least two boundary tests",
+                                            "weight":  3,
+                                            "keywords":  [
+                                                             "empty queue",
+                                                             "full queue",
+                                                             "boundary",
+                                                             "edge case"
+                                                         ],
+                                            "synonyms":  [
+                                                             "minimum",
+                                                             "maximum",
+                                                             "limit",
+                                                             "overflow",
+                                                             "underflow",
+                                                             "when empty",
+                                                             "when full",
+                                                             "no items",
+                                                             "capacity",
+                                                             "initial state",
+                                                             "single element"
+                                                         ]
+                                        },
+                                        {
+                                            "id":  "traceability",
+                                            "label":  "Clear, traceable explanation",
+                                            "weight":  2,
+                                            "keywords":  [
+                                                             "step",
+                                                             "trace",
+                                                             "condition",
+                                                             "expected output",
+                                                             "pseudocode",
+                                                             "algorithm"
+                                                         ],
+                                            "synonyms":  [
+                                                             "logic",
+                                                             "flow",
+                                                             "validation",
+                                                             "walk through",
+                                                             "walkthrough",
+                                                             "explain how",
+                                                             "each step",
+                                                             "line by line"
+                                                         ]
+                                        }
+                                    ]
+                   }
+    },
+    {
+        "id":  "exam-p1-code-1",
+        "paperId":  "paper1",
+        "topicIds":  [
+                         "1.2",
+                         "2.6"
+                     ],
+        "title":  "Queue Processor Coding Drill",
+        "scenario":  "Implement a small function that processes queue operations and returns output values from dequeue calls.",
+        "task":  "Implement function processQueue(operations) where operations is an array of strings. \u0027ENQUEUE x\u0027 adds x to queue, \u0027DEQUEUE\u0027 removes front item and pushes it into output array. If dequeue is called on empty queue, push \u0027EMPTY\u0027. Return output array.",
+        "answerType":  "coding",
+        "markSchemeHints":  [
+                                "Correct FIFO behavior",
+                                "Handles empty queue on DEQUEUE",
+                                "Returns only dequeue outputs"
+                            ],
+        "recommendedMinutes":  25,
+        "codingTask":  {
+                           "language":  "javascript",
+                           "functionName":  "processQueue",
+                           "starterCode":  "function processQueue(operations) {\n  // TODO: implement\n  return [];\n}",
+                           "tests":  [
+                                         {
+                                             "id":  "code-1",
+                                             "description":  "Basic enqueue/dequeue order",
+                                             "args":  [
+                                                          [
+                                                              "ENQUEUE A",
+                                                              "ENQUEUE B",
+                                                              "DEQUEUE",
+                                                              "DEQUEUE"
+                                                          ]
+                                                      ],
+                                             "expected":  [
+                                                              "A",
+                                                              "B"
+                                                          ]
+                                         },
+                                         {
+                                             "id":  "code-2",
+                                             "description":  "Dequeue on empty queue",
+                                             "args":  [
+                                                          [
+                                                              "DEQUEUE",
+                                                              "ENQUEUE A",
+                                                              "DEQUEUE",
+                                                              "DEQUEUE"
+                                                          ]
+                                                      ],
+                                             "expected":  [
+                                                              "EMPTY",
+                                                              "A",
+                                                              "EMPTY"
+                                                          ]
+                                         },
+                                         {
+                                             "id":  "code-3",
+                                             "description":  "Ignores irrelevant output from enqueue",
+                                             "args":  [
+                                                          [
+                                                              "ENQUEUE X",
+                                                              "ENQUEUE Y"
+                                                          ]
+                                                      ],
+                                             "expected":  [
+
+                                                          ]
+                                         }
+                                     ]
+                       }
+    },
+    {
+        "id":  "exam-p2-open-1",
+        "paperId":  "paper2",
+        "topicIds":  [
+                         "5.4",
+                         "8.2"
+                     ],
+        "title":  "Community Events Platform",
+        "scenario":  "A local council wants a web app where residents create events and book spaces. The team has four developers and strict data protection obligations.",
+        "task":  "Propose a high-level modular design, define two user stories with acceptance criteria, and explain three security or legal controls needed before release.",
+        "answerType":  "open-ended",
+        "markSchemeHints":  [
+                                "Logical module boundaries and responsibilities",
+                                "User stories include role, need, and value",
+                                "Acceptance criteria are testable",
+                                "Security/legal controls are justified in context"
+                            ],
+        "recommendedMinutes":  40,
+        "rubric":  {
+                       "title":  "Design + compliance rubric",
+                       "criteria":  [
+                                        {
+                                            "id":  "modular-design",
+                                            "label":  "High-level modular design",
+                                            "weight":  3,
+                                            "keywords":  [
+                                                             "module",
+                                                             "component",
+                                                             "architecture",
+                                                             "service",
+                                                             "api",
+                                                             "frontend",
+                                                             "backend",
+                                                             "database"
+                                                         ],
+                                            "synonyms":  [
+                                                             "separation",
+                                                             "layer",
+                                                             "responsibility",
+                                                             "boundary",
+                                                             "microservice",
+                                                             "decoupled",
+                                                             "events module",
+                                                             "booking module",
+                                                             "user interface",
+                                                             "data layer"
+                                                         ]
+                                        },
+                                        {
+                                            "id":  "user-stories",
+                                            "label":  "Two user stories with value",
+                                            "weight":  2,
+                                            "keywords":  [
+                                                             "as a",
+                                                             "i want",
+                                                             "so that",
+                                                             "user story",
+                                                             "as an"
+                                                         ],
+                                            "synonyms":  [
+                                                             "stakeholder",
+                                                             "benefit",
+                                                             "i need",
+                                                             "in order to",
+                                                             "so i can",
+                                                             "resident",
+                                                             "organiser",
+                                                             "organizer",
+                                                             "council",
+                                                             "role"
+                                                         ]
+                                        },
+                                        {
+                                            "id":  "acceptance-criteria",
+                                            "label":  "Acceptance criteria are testable",
+                                            "weight":  2,
+                                            "keywords":  [
+                                                             "acceptance criteria",
+                                                             "given",
+                                                             "when",
+                                                             "then",
+                                                             "acceptance",
+                                                             "criteria"
+                                                         ],
+                                            "synonyms":  [
+                                                             "testable",
+                                                             "measurable",
+                                                             "done",
+                                                             "scenario",
+                                                             "must be able",
+                                                             "verify",
+                                                             "definition of done",
+                                                             "gherkin"
+                                                         ]
+                                        },
+                                        {
+                                            "id":  "security-legal-controls",
+                                            "label":  "Three justified security/legal controls",
+                                            "weight":  3,
+                                            "keywords":  [
+                                                             "encryption",
+                                                             "access control",
+                                                             "gdpr",
+                                                             "audit log",
+                                                             "lawful basis",
+                                                             "https",
+                                                             "authentication",
+                                                             "authorization"
+                                                         ],
+                                            "synonyms":  [
+                                                             "least privilege",
+                                                             "data protection",
+                                                             "compliance",
+                                                             "privacy",
+                                                             "tls",
+                                                             "ssl",
+                                                             "mfa",
+                                                             "2fa",
+                                                             "consent",
+                                                             "right to erasure",
+                                                             "data breach",
+                                                             "password policy",
+                                                             "rbac",
+                                                             "ico",
+                                                             "dpa",
+                                                             "legitimate interest"
+                                                         ]
+                                        }
+                                    ]
+                   }
+    }
+]

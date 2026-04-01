@@ -1,0 +1,31 @@
+Full Name,Age,Email,Join Date,Salary($),Country
+bob JONES,25,eveatexample.com,2020-14-01,62000,USA
+bob JONES,30,julia@example.com,13/32/2020,50000,UK
+bob JONES, 45 ,david@example,03/03/2023,50000,america
+DAVID miller,twenty-nine,david@example,01/01/20,N/A,UK
+Charlie,twenty-nine,frank@example.com,05/20/2021,58000,u.k.
+frank,30,bob@@example.com,13/32/2020,not available,U.S.A.
+frank,,alice@example.com,01/01/20,not available,U.K.
+bob JONES,,julia@example.com,2022.10.10,62000,us
+Alice Smith, 45 ,eveatexample.com,12-02-2020,62000,us
+Grace,,henry@.com,2022.10.10,58000,U.S.A.
+frank, 45 ,eveatexample.com,12-02-2020,58000,america
+DAVID miller,Thirty-two,henry@.com,13/32/2020,N/A,america
+DAVID miller,NaN,alice@example.com,2020-14-01,50000,U.S.A.
+Grace,,bob@@example.com,2020-14-01,47000,u.k.
+HENRY Stone,twenty-nine,henry@.com,"March 3, 2019",N/A,USA
+DAVID miller,,julia@example.com,13/32/2020,unknown,U.S.A.
+DAVID miller,Thirty-two,isaac@example.com,01/01/20,not available,UK
+bob JONES,Thirty-two,charlie@ sample.com,13/32/2020,not available,U.K.
+Grace,40,isaac@example.com,05/20/2021,50000,us
+isaac,,frank@example.com,12-02-2020,N/A,U.K.
+Charlie,40,alice@example.com,05/20/2021,58000,america
+bob JONES,,isaac@example.com,,62000,USA
+frank,Thirty-two,isaac@example.com,03/03/2023,50000,None
+frank,40,alice@example.com,12-02-2020,47000,United Kingdom
+DAVID miller,25,david@example,,not available,us
+HENRY Stone,30,isaac@example.com,"March 3, 2019",58000,England
+isaac,Thirty-two,eveatexample.com,03/03/2023,unknown,u.k.
+isaac, 45 ,eveatexample.com,13/32/2020,47000,England
+isaac,40,bob@@example.com,2020-14-01,62000,us
+frank,25,julia@example.com,03/03/2023,62000,None

@@ -1,0 +1,386 @@
+[
+    {
+        "id":  "q-alg-1",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "subtopicId":  "1.2",
+        "prompt":  "What is the main benefit of decomposition when planning a coding task?",
+        "options":  [
+                        "It eliminates all testing needs",
+                        "It breaks complex tasks into manageable steps",
+                        "It guarantees the fastest algorithm",
+                        "It removes stakeholder requirements"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Decomposition makes planning and implementation practical by splitting complexity.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-alg-2",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "subtopicId":  "1.2",
+        "prompt":  "Which pseudocode structure is best for repeating until a condition changes?",
+        "options":  [
+                        "Single assignment",
+                        "Selection only",
+                        "Loop",
+                        "Constant declaration"
+                    ],
+        "correctIndex":  2,
+        "explanation":  "Loops are used for repeated execution while a condition is met.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-alg-3",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "subtopicId":  "1.2",
+        "prompt":  "A dry run is most useful for:",
+        "options":  [
+                        "Checking font styles in UI",
+                        "Validating algorithm logic step-by-step",
+                        "Compressing data files",
+                        "Signing legal documents"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Dry runs expose logic errors before implementation.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-alg-4",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "subtopicId":  "1.2",
+        "prompt":  "If input size doubles and runtime roughly quadruples, complexity is closest to:",
+        "options":  [
+                        "O(1)",
+                        "O(log n)",
+                        "O(n)",
+                        "O(n^2)"
+                    ],
+        "correctIndex":  3,
+        "explanation":  "Quadratic growth typically means O(n^2).",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-alg-5",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "subtopicId":  "1.2",
+        "prompt":  "Pattern recognition helps by:",
+        "options":  [
+                        "Avoiding all documentation",
+                        "Reusing known approaches to similar problems",
+                        "Skipping test planning",
+                        "Disabling code review"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Recognizing repeated structures speeds up solution design.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-alg-6",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "subtopicId":  "1.2",
+        "prompt":  "Which factor should you compare when choosing between two valid algorithms?",
+        "options":  [
+                        "Color palette",
+                        "Average and worst-case efficiency",
+                        "Keyboard layout",
+                        "Monitor resolution"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Efficiency and scalability are key selection factors.",
+        "diagnostic":  false
+    },
+    {
+        "id":  "q-prog-1",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "subtopicId":  "2.6",
+        "prompt":  "Why is selecting the correct data type important?",
+        "options":  [
+                        "It changes internet speed",
+                        "It controls memory use and valid operations",
+                        "It removes syntax rules",
+                        "It replaces testing"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Type choice affects storage, precision, and legal operations.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-prog-2",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "subtopicId":  "2.6",
+        "prompt":  "A while loop should be used when:",
+        "options":  [
+                        "Iteration count is always fixed",
+                        "You need repetition until a condition is false",
+                        "No condition is needed",
+                        "Only one execution is required"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "While loops are condition-driven and stop when condition fails.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-prog-3",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "subtopicId":  "2.6",
+        "prompt":  "What does a boundary value test target?",
+        "options":  [
+                        "Only random values",
+                        "Middle-range values only",
+                        "Edges like minimum and maximum valid input",
+                        "Comments in code"
+                    ],
+        "correctIndex":  2,
+        "explanation":  "Boundaries often reveal defects hidden in normal cases.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-prog-4",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "subtopicId":  "2.6",
+        "prompt":  "Which debugging approach is most systematic?",
+        "options":  [
+                        "Changing many lines at once",
+                        "Reproducing the bug and isolating one cause at a time",
+                        "Ignoring failing tests",
+                        "Deleting error logs"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Controlled isolation reduces guesswork and regression risk.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-prog-5",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "subtopicId":  "2.6",
+        "prompt":  "What is the key role of an if/else statement?",
+        "options":  [
+                        "Always repeat code",
+                        "Select logic path based on condition",
+                        "Store files permanently",
+                        "Create network sockets"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Selection handles different outcomes based on boolean checks.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-prog-6",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "subtopicId":  "2.6",
+        "prompt":  "Strong typing helps because it:",
+        "options":  [
+                        "Prevents all logic bugs",
+                        "Catches invalid operations earlier",
+                        "Removes need for functions",
+                        "Guarantees faster hardware"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Type checks catch many errors before runtime.",
+        "diagnostic":  false
+    },
+    {
+        "id":  "q-design-1",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "subtopicId":  "5.4",
+        "prompt":  "A user story should include value because it explains:",
+        "options":  [
+                        "Which IDE color theme to use",
+                        "Why the feature matters to the user",
+                        "How many tabs are open",
+                        "The exact CPU model"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Value clarifies purpose and supports prioritization.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-design-2",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "subtopicId":  "5.4",
+        "prompt":  "Acceptance criteria are useful because they are:",
+        "options":  [
+                        "Optional style notes",
+                        "Testable statements of completion",
+                        "Only legal text",
+                        "Randomized guesses"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "They define exactly how to verify a story is done.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-design-3",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "subtopicId":  "5.4",
+        "prompt":  "Modular architecture primarily improves:",
+        "options":  [
+                        "Dependency chaos",
+                        "Maintainability and isolated testing",
+                        "Manual deployment speed only",
+                        "Screen brightness"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Modules isolate changes and simplify testing.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-design-4",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "subtopicId":  "5.4",
+        "prompt":  "A pull request is mainly used to:",
+        "options":  [
+                        "Skip reviews",
+                        "Merge code with structured review and discussion",
+                        "Delete commit history",
+                        "Replace testing frameworks"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "PRs support quality checks before integration.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-design-5",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "subtopicId":  "5.4",
+        "prompt":  "Why keep commits focused and small?",
+        "options":  [
+                        "Harder rollback",
+                        "Easier review and safer debugging",
+                        "Longer build times",
+                        "More merge conflicts"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Small commits are easier to reason about and revert.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-design-6",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "subtopicId":  "5.4",
+        "prompt":  "Which choice best supports scaling team delivery?",
+        "options":  [
+                        "All logic in one file",
+                        "Clear module boundaries and API contracts",
+                        "No documentation",
+                        "No branching strategy"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Well-defined interfaces let teams work independently.",
+        "diagnostic":  false
+    },
+    {
+        "id":  "q-sec-1",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "subtopicId":  "8.2",
+        "prompt":  "Phishing attacks usually target:",
+        "options":  [
+                        "Source code formatting",
+                        "Human trust to steal credentials",
+                        "GPU performance only",
+                        "Printer firmware updates"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Phishing exploits user behavior and trust.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-sec-2",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "subtopicId":  "8.2",
+        "prompt":  "Least privilege means:",
+        "options":  [
+                        "Give admin rights by default",
+                        "Grant only required access for tasks",
+                        "Disable authentication",
+                        "Share all passwords"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Restricting access reduces blast radius of misuse.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-sec-3",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "subtopicId":  "8.2",
+        "prompt":  "Which is a core data protection principle?",
+        "options":  [
+                        "Collect all data just in case",
+                        "Use data only for clear lawful purpose",
+                        "Store passwords in plain text",
+                        "Never document processing"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Purpose limitation and lawful basis are essential principles.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-sec-4",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "subtopicId":  "8.2",
+        "prompt":  "An ethical software decision should consider:",
+        "options":  [
+                        "Only delivery speed",
+                        "User impact, fairness, and transparency",
+                        "No stakeholder feedback",
+                        "Ignoring harms"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Ethics requires evaluating outcomes beyond technical delivery.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-sec-5",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "subtopicId":  "8.2",
+        "prompt":  "Why encrypt sensitive data at rest?",
+        "options":  [
+                        "To increase UI contrast",
+                        "To limit exposure if storage is compromised",
+                        "To shorten passwords",
+                        "To remove backups"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Encryption reduces impact when raw data storage is accessed.",
+        "diagnostic":  true
+    },
+    {
+        "id":  "q-sec-6",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "subtopicId":  "8.2",
+        "prompt":  "What is the role of audit logs in security?",
+        "options":  [
+                        "Hide incidents",
+                        "Provide traceability for investigation and compliance",
+                        "Replace access control",
+                        "Avoid patching"
+                    ],
+        "correctIndex":  1,
+        "explanation":  "Audit trails support detection, response, and accountability.",
+        "diagnostic":  false
+    }
+]

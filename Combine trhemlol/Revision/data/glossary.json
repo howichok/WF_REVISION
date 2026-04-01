@@ -1,0 +1,82 @@
+[
+    {
+        "id":  "term-decomposition",
+        "term":  "Decomposition",
+        "definition":  "Splitting a large problem into smaller parts that can be solved and tested independently.",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "topicSlug":  "1.2"
+    },
+    {
+        "id":  "term-pseudocode",
+        "term":  "Pseudocode",
+        "definition":  "A language-neutral way of describing algorithm steps clearly before writing real code.",
+        "paperId":  "paper1",
+        "topicId":  "1.2",
+        "topicSlug":  "1.2"
+    },
+    {
+        "id":  "term-loop",
+        "term":  "Iteration",
+        "definition":  "Repeating a block of logic while a condition remains true, or for a fixed count.",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "topicSlug":  "2.6"
+    },
+    {
+        "id":  "term-unit-test",
+        "term":  "Unit test",
+        "definition":  "A focused automated test that checks one small behavior in isolation.",
+        "paperId":  "paper1",
+        "topicId":  "2.6",
+        "topicSlug":  "2.6"
+    },
+    {
+        "id":  "term-user-story",
+        "term":  "User story",
+        "definition":  "A short statement describing who needs a feature, what they need, and why.",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "topicSlug":  "5.4"
+    },
+    {
+        "id":  "term-modular",
+        "term":  "Modularity",
+        "definition":  "Designing software in separate components so each part is easier to change and test.",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "topicSlug":  "5.4"
+    },
+    {
+        "id":  "term-least-privilege",
+        "term":  "Least privilege",
+        "definition":  "Giving users and services only the access they need for their current task.",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "topicSlug":  "8.2"
+    },
+    {
+        "id":  "term-phishing",
+        "term":  "Phishing",
+        "definition":  "A social engineering attack that tricks users into revealing sensitive data.",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "topicSlug":  "8.2"
+    },
+    {
+        "id":  "term-gdpr",
+        "term":  "GDPR principles",
+        "definition":  "Rules for fair, lawful, transparent and secure handling of personal data.",
+        "paperId":  "paper2",
+        "topicId":  "8.2",
+        "topicSlug":  "8.2"
+    },
+    {
+        "id":  "term-code-review",
+        "term":  "Code review",
+        "definition":  "A structured check of code changes to improve quality and catch issues early.",
+        "paperId":  "paper2",
+        "topicId":  "5.4",
+        "topicSlug":  "5.4"
+    }
+]

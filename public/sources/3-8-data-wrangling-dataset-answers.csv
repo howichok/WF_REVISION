@@ -1,0 +1,31 @@
+First Name,Last Name,Age,Email,Join Date,Salary($),Country
+Bob,Jones,25.0,unknown@example.com,,62000.0,USA
+Bob,Jones,30.0,julia@example.com,,50000.0,UK
+Bob,Jones,45.0,unknown@example.com,2023-03-03,50000.0,USA
+David,Miller,,unknown@example.com,2020-01-01,,UK
+Charlie,Unknown,,frank@example.com,2021-05-20,58000.0,UK
+Frank,Unknown,30.0,bob@@example.com,,,USA
+Frank,Unknown,,alice@example.com,2020-01-01,,UK
+Bob,Jones,,julia@example.com,2022-10-10,62000.0,USA
+Alice,Smith,45.0,unknown@example.com,2020-12-02,62000.0,USA
+Grace,Unknown,,henry@.com,2022-10-10,58000.0,USA
+Frank,Unknown,45.0,unknown@example.com,2020-12-02,58000.0,USA
+David,Miller,,henry@.com,,,USA
+David,Miller,,alice@example.com,,50000.0,USA
+Grace,Unknown,,bob@@example.com,,47000.0,UK
+Henry,Stone,,henry@.com,2019-03-03,,USA
+David,Miller,,julia@example.com,,,USA
+David,Miller,,isaac@example.com,2020-01-01,,UK
+Bob,Jones,,charlie@ sample.com,,,UK
+Grace,Unknown,40.0,isaac@example.com,2021-05-20,50000.0,USA
+Isaac,Unknown,,frank@example.com,2020-12-02,,UK
+Charlie,Unknown,40.0,alice@example.com,2021-05-20,58000.0,USA
+Bob,Jones,,isaac@example.com,,62000.0,USA
+Frank,Unknown,,isaac@example.com,2023-03-03,50000.0,Unknown
+Frank,Unknown,40.0,alice@example.com,2020-12-02,47000.0,UK
+David,Miller,25.0,unknown@example.com,,,USA
+Henry,Stone,30.0,isaac@example.com,2019-03-03,58000.0,UK
+Isaac,Unknown,,unknown@example.com,2023-03-03,,UK
+Isaac,Unknown,45.0,unknown@example.com,,47000.0,UK
+Isaac,Unknown,40.0,bob@@example.com,,62000.0,USA
+Frank,Unknown,25.0,julia@example.com,2023-03-03,62000.0,Unknown

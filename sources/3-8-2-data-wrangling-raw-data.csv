@@ -1,0 +1,8 @@
+First Name,Last Name,Age,Email,Join Date,Salary($),Country
+Alice,Smith,25.0,alice@example.com,2021-01-01,50000.0,UK
+Bob,Jones,30.0,bob@example.com,2020-12-02,,USA
+Charlie,Unknown,28.0,charlie@example.com,2019-03-03,58000.0,USA
+David,Miller,45.0,david@example.com,2020-01-14,62000.0,Unknown
+Eve,Adams,34.0,unknown@example.com,2021-05-20,53000.0,UK
+Unknown,Unknown,22.0,eve@example.com,2022-10-10,48000.0,UK
+George,Smith,,george@example.com,2023-01-01,,UK

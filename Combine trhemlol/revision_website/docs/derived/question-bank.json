@@ -1,0 +1,1261 @@
+[
+  {
+    "id": "p1-ct-001",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification pages 10-12",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "topic-practice",
+    "topic_id": "problem-solving",
+    "subtopic_id": "computational-thinking",
+    "command_word": "explain",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "short-open",
+    "estimated_minutes": 5,
+    "title": "Decompose a cinema kiosk problem",
+    "prompt": "A cinema kiosk must let a user choose a film, seat type, and payment method before printing a ticket. Explain how decomposition would help design the solution and identify one benefit of showing the logic as a flowchart.",
+    "mark_scheme_points": [
+      "Break the problem into smaller parts such as input capture, validation, pricing, and ticket output.",
+      "State that decomposition reduces complexity or makes implementation and testing easier.",
+      "Identify a valid flowchart benefit such as visual clarity of sequence and decisions.",
+      "Link the flowchart benefit to debugging, planning, or communication."
+    ],
+    "common_pitfalls": [
+      "Listing features without explaining how decomposition helps.",
+      "Describing a flowchart generally without linking it to this task."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-1",
+      "problem-solving",
+      "flowcharts",
+      "computational-thinking"
+    ]
+  },
+  {
+    "id": "p1-ad-002",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification pages 11-12",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "quick-practice",
+    "topic_id": "problem-solving",
+    "subtopic_id": "algorithmic-design",
+    "command_word": "complete",
+    "marks": 3,
+    "difficulty": "foundation",
+    "answer_type": "code-trace",
+    "estimated_minutes": 4,
+    "title": "Trace a simple algorithm",
+    "prompt": "A program starts with total = 0, then repeats three times: total = total + 2. After the loop, it prints total. State the output and identify the control structure being used.",
+    "mark_scheme_points": [
+      "Output is 6.",
+      "The algorithm uses iteration.",
+      "It is specifically a count-controlled loop or repetition that runs three times."
+    ],
+    "common_pitfalls": [
+      "Adding 2 once instead of three times.",
+      "Naming sequence rather than iteration."
+    ],
+    "feedback_rule_id": "code-trace",
+    "tags": [
+      "paper-1",
+      "algorithm-trace",
+      "iteration"
+    ]
+  },
+  {
+    "id": "p1-vc-003",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification pages 13-14",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "topic-practice",
+    "topic_id": "introduction-to-programming",
+    "subtopic_id": "variables-constants-scope",
+    "command_word": "explain",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "short-open",
+    "estimated_minutes": 5,
+    "title": "Scope and type conversion",
+    "prompt": "Explain why a Python program might use a local variable for a temporary calculation and a type conversion function when reading age from keyboard input.",
+    "mark_scheme_points": [
+      "A local variable limits visibility to the function or block where it is needed.",
+      "Using local scope reduces accidental changes elsewhere in the program.",
+      "Keyboard input is read as text/string.",
+      "Type conversion is needed to treat the input as a number for arithmetic or comparison."
+    ],
+    "common_pitfalls": [
+      "Calling the input an integer by default.",
+      "Confusing local scope with constant values."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-1",
+      "scope",
+      "type-conversion",
+      "python"
+    ]
+  },
+  {
+    "id": "p1-ds-004",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification pages 13-17",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "topic-practice",
+    "topic_id": "introduction-to-programming",
+    "subtopic_id": "data-structures",
+    "command_word": "justify",
+    "marks": 5,
+    "difficulty": "secure",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 6,
+    "title": "Choose a data structure",
+    "prompt": "A school app stores each student's ID number, name, and current attendance percentage. Justify whether a dictionary or a list is the better primary structure for looking up one student quickly by ID.",
+    "mark_scheme_points": [
+      "A dictionary is more suitable when the student ID is used as the key.",
+      "Direct key-based access is faster or simpler than searching a list item by item.",
+      "The value can store multiple fields such as name and attendance.",
+      "A list would usually require linear search unless already indexed by position in a meaningful way.",
+      "A justified conclusion selects the structure that best fits the lookup requirement."
+    ],
+    "common_pitfalls": [
+      "Saying lists are always better because they are simpler.",
+      "Ignoring the lookup-by-ID requirement."
+    ],
+    "feedback_rule_id": "levels-evaluate",
+    "tags": [
+      "paper-1",
+      "data-structures",
+      "dictionaries",
+      "lists"
+    ]
+  },
+  {
+    "id": "p1-act-005",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification page 15",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "debug-lab",
+    "topic_id": "introduction-to-programming",
+    "subtopic_id": "actions-sequence-selection-iteration",
+    "command_word": "identify",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "fix-the-bug",
+    "estimated_minutes": 6,
+    "title": "Fix the off-by-one loop",
+    "prompt": "A loop is meant to print numbers 1 to 5 inclusive but instead prints 1 to 4. Identify the likely bug and describe a fix.",
+    "mark_scheme_points": [
+      "The loop boundary is wrong, so it stops one iteration too early.",
+      "A correct fix adjusts the end value or loop condition so 5 is included.",
+      "The explanation recognises this as an iteration/control-flow issue.",
+      "The fix preserves the intended order of outputs."
+    ],
+    "common_pitfalls": [
+      "Changing the start value instead of the end condition.",
+      "Offering a fix without explaining why the original fails."
+    ],
+    "feedback_rule_id": "code-trace",
+    "tags": [
+      "paper-1",
+      "loops",
+      "debugging"
+    ]
+  },
+  {
+    "id": "p1-fp-006",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification page 16",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "topic-practice",
+    "topic_id": "introduction-to-programming",
+    "subtopic_id": "functions-procedures",
+    "command_word": "compare",
+    "marks": 4,
+    "difficulty": "foundation",
+    "answer_type": "short-open",
+    "estimated_minutes": 5,
+    "title": "Function versus procedure",
+    "prompt": "Compare a function and a procedure in Python when building a reusable program.",
+    "mark_scheme_points": [
+      "A function returns a value.",
+      "A procedure performs an action without returning a result.",
+      "Both can take parameters.",
+      "Reusable modular code improves maintainability or clarity."
+    ],
+    "common_pitfalls": [
+      "Saying procedures cannot take parameters.",
+      "Treating every Python function as a procedure."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-1",
+      "functions",
+      "procedures",
+      "modularity"
+    ]
+  },
+  {
+    "id": "p1-val-007",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification page 16",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "topic-practice",
+    "topic_id": "introduction-to-programming",
+    "subtopic_id": "validation",
+    "command_word": "describe",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 5,
+    "title": "Validation for student registration",
+    "prompt": "Describe two validation checks that should be used when a student enters an email address and age into a registration form.",
+    "mark_scheme_points": [
+      "A format check can confirm the email follows an expected pattern.",
+      "A presence or length check can ensure the email field is not empty or unreasonably long.",
+      "A range check can ensure age falls within an acceptable interval.",
+      "A type check can ensure age is numeric before processing."
+    ],
+    "common_pitfalls": [
+      "Naming verification methods instead of validation checks.",
+      "Describing generic security controls rather than input validation."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-1",
+      "validation",
+      "forms"
+    ]
+  },
+  {
+    "id": "p1-rb-008",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification page 17",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "debug-lab",
+    "topic_id": "introduction-to-programming",
+    "subtopic_id": "robust-code-debugging",
+    "command_word": "explain",
+    "marks": 5,
+    "difficulty": "stretch",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 7,
+    "title": "Robust error handling",
+    "prompt": "Explain how robust code should respond when a program expects a number but the user enters text and then closes the program unexpectedly.",
+    "mark_scheme_points": [
+      "The program should validate or safely convert input before use.",
+      "It should handle unexpected input without crashing.",
+      "It should provide a clear and meaningful error message or prompt for re-entry.",
+      "Unexpected termination should be handled cleanly, for example by saving state or closing resources safely.",
+      "The explanation links these behaviours to reliability or user experience."
+    ],
+    "common_pitfalls": [
+      "Only saying 'use try/except' with no explanation of behaviour.",
+      "Ignoring the unexpected termination part of the question."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-1",
+      "robust-code",
+      "debugging",
+      "errors"
+    ]
+  },
+  {
+    "id": "p1-alg-009",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification pages 17-18",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "topic-practice",
+    "topic_id": "introduction-to-programming",
+    "subtopic_id": "common-algorithms",
+    "command_word": "justify",
+    "marks": 6,
+    "difficulty": "stretch",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 8,
+    "title": "Search algorithm choice",
+    "prompt": "A dataset of customer IDs is stored in sorted order. Justify whether linear search or binary search is the better algorithm when fast lookup matters.",
+    "mark_scheme_points": [
+      "Binary search is appropriate because the data is sorted.",
+      "It reduces the search space by half each step.",
+      "This generally needs fewer comparisons than linear search on larger datasets.",
+      "Linear search does not rely on sorted data but checks each item in sequence.",
+      "A strong answer notes that binary search is unsuitable if the data is not sorted or indexing is not possible.",
+      "A justified conclusion clearly selects binary search in this scenario."
+    ],
+    "common_pitfalls": [
+      "Choosing binary search without mentioning the sorted prerequisite.",
+      "Confusing search with sort."
+    ],
+    "feedback_rule_id": "levels-evaluate",
+    "tags": [
+      "paper-1",
+      "algorithms",
+      "binary-search",
+      "linear-search"
+    ]
+  },
+  {
+    "id": "p1-sort-010",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification page 18",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "quick-practice",
+    "topic_id": "introduction-to-programming",
+    "subtopic_id": "common-algorithms",
+    "command_word": "state",
+    "marks": 3,
+    "difficulty": "foundation",
+    "answer_type": "short-open",
+    "estimated_minutes": 3,
+    "title": "Sort comparison basics",
+    "prompt": "State one valid metric that can be used to compare sorting algorithms and give one reason why it matters.",
+    "mark_scheme_points": [
+      "Valid metrics include execution time, memory use, or number of comparisons.",
+      "The reason links the metric to efficiency or suitability.",
+      "The response is concise and correct."
+    ],
+    "common_pitfalls": [
+      "Naming a sort algorithm rather than a comparison metric.",
+      "Giving a vague reason such as 'it is better'."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-1",
+      "sorting",
+      "algorithm-metrics"
+    ]
+  },
+  {
+    "id": "p1-test-011",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification pages 18-19",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "topic-practice",
+    "topic_id": "introduction-to-programming",
+    "subtopic_id": "testing",
+    "command_word": "create",
+    "marks": 6,
+    "difficulty": "secure",
+    "answer_type": "test-design",
+    "estimated_minutes": 8,
+    "title": "Build a mini test plan",
+    "prompt": "Create three test cases for a function that accepts a mark from 0 to 100 and returns Pass when the mark is 40 or more. Include valid, boundary, and invalid data with expected results.",
+    "mark_scheme_points": [
+      "One valid test case such as 65 returning Pass.",
+      "One boundary test such as 40 returning Pass or 39 returning Fail.",
+      "One invalid test such as 120 or text input that should be rejected.",
+      "Expected results are explicit.",
+      "The cases are clearly labelled by type.",
+      "The answer aligns tests to the stated requirement."
+    ],
+    "common_pitfalls": [
+      "Using only valid data.",
+      "Failing to state the expected result."
+    ],
+    "feedback_rule_id": "test-design",
+    "tags": [
+      "paper-1",
+      "testing",
+      "boundary-testing",
+      "test-data"
+    ]
+  },
+  {
+    "id": "p1-ei-012",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification pages 19-21",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "paper-practice",
+    "topic_id": "emerging-issues",
+    "subtopic_id": "impact-of-digital-technologies",
+    "command_word": "evaluate",
+    "marks": 6,
+    "difficulty": "stretch",
+    "answer_type": "extended-open",
+    "estimated_minutes": 8,
+    "title": "Digital inclusion and AI",
+    "prompt": "Evaluate the impact of increased use of generative AI in public digital services on citizens and organisations.",
+    "mark_scheme_points": [
+      "Benefits may include faster service, wider access, automation, or improved availability.",
+      "Risks may include bias, exclusion, privacy concerns, reduced empathy, or over-reliance on AI.",
+      "A strong answer considers both organisational and user impact.",
+      "The response uses context such as accessibility, fairness, and trust.",
+      "There is a reasoned overall judgement."
+    ],
+    "common_pitfalls": [
+      "Listing only positives or only negatives.",
+      "Ignoring inclusion and bias."
+    ],
+    "feedback_rule_id": "levels-evaluate",
+    "tags": [
+      "paper-1",
+      "emerging-issues",
+      "ai",
+      "digital-inclusion"
+    ]
+  },
+  {
+    "id": "p1-leg-013",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from specification pages 21-23",
+    "component": "core",
+    "paper": "paper-1",
+    "year": "",
+    "season": "",
+    "section": "paper-practice",
+    "topic_id": "legislation-and-regulation",
+    "subtopic_id": "legislation",
+    "command_word": "explain",
+    "marks": 5,
+    "difficulty": "secure",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 6,
+    "title": "Law in a software company",
+    "prompt": "Explain how the Data Protection Act/GDPR and the Computer Misuse Act affect the work of a company developing an online employee portal.",
+    "mark_scheme_points": [
+      "DPA/GDPR requires lawful handling of personal data and appropriate protection.",
+      "The company should collect only necessary data and keep it secure.",
+      "The Computer Misuse Act makes unauthorised access or malicious actions illegal.",
+      "The organisation must prevent misuse by staff and external attackers.",
+      "A strong answer links the laws to design, access control, or organisational procedures."
+    ],
+    "common_pitfalls": [
+      "Confusing DPA/GDPR with copyright.",
+      "Describing generic ethics without naming legal impact."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-1",
+      "legislation",
+      "gdpr",
+      "cma"
+    ]
+  },
+  {
+    "id": "p2-2021-001",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2021",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2021",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "data",
+    "subtopic_id": "data-information-knowledge",
+    "command_word": "state",
+    "marks": 2,
+    "difficulty": "foundation",
+    "answer_type": "short-open",
+    "estimated_minutes": 2,
+    "title": "Ways data is generated",
+    "prompt": "State two ways data may be generated.",
+    "mark_scheme_points": [
+      "Valid answers include humans, AI or machine learning, sensors, IoT devices, or transactional systems.",
+      "Two distinct methods are needed for full marks."
+    ],
+    "common_pitfalls": [
+      "Giving examples of data rather than methods of generation."
+    ],
+    "feedback_rule_id": "points-identify",
+    "tags": [
+      "paper-2",
+      "official",
+      "data-generation"
+    ]
+  },
+  {
+    "id": "p2-2021-002",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2021",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2021",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "digital-environments",
+    "subtopic_id": "networks",
+    "command_word": "complete",
+    "marks": 2,
+    "difficulty": "foundation",
+    "answer_type": "table-completion",
+    "estimated_minutes": 2,
+    "title": "Complete the OSI model",
+    "prompt": "Complete the 7-layer OSI model by naming the missing layers 1 and 4.",
+    "mark_scheme_points": [
+      "Layer 1 is Application.",
+      "Layer 4 is Transport."
+    ],
+    "common_pitfalls": [
+      "Using TCP/IP layer names in the wrong positions."
+    ],
+    "feedback_rule_id": "points-identify",
+    "tags": [
+      "paper-2",
+      "official",
+      "osi",
+      "networks"
+    ]
+  },
+  {
+    "id": "p2-2021-003",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2021",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2021",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "business-context",
+    "subtopic_id": "change-management",
+    "command_word": "state",
+    "marks": 2,
+    "difficulty": "foundation",
+    "answer_type": "short-open",
+    "estimated_minutes": 2,
+    "title": "Triggers for organisational change",
+    "prompt": "State two factors that can trigger change in organisations.",
+    "mark_scheme_points": [
+      "Valid answers include competition, legislation, market demand, new technologies, system failures, or restructuring.",
+      "Two distinct factors are required."
+    ],
+    "common_pitfalls": [
+      "Giving project tasks rather than change triggers."
+    ],
+    "feedback_rule_id": "points-identify",
+    "tags": [
+      "paper-2",
+      "official",
+      "change-management"
+    ]
+  },
+  {
+    "id": "p2-2021-004",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2021",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2021",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "data",
+    "subtopic_id": "visualisation-models-and-access",
+    "command_word": "describe",
+    "marks": 2,
+    "difficulty": "foundation",
+    "answer_type": "short-open",
+    "estimated_minutes": 3,
+    "title": "Linking tables in a relational database",
+    "prompt": "Describe how data from two different tables in a relational database may be linked together.",
+    "mark_scheme_points": [
+      "Tables can be linked using a common field or key.",
+      "The linked field usually acts as a primary key in one table and a foreign key in another."
+    ],
+    "common_pitfalls": [
+      "Saying the tables are linked because they are stored in the same database."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-2",
+      "official",
+      "databases",
+      "relational-model"
+    ]
+  },
+  {
+    "id": "p2-2021-005",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2021",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2021",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "data",
+    "subtopic_id": "visualisation-models-and-access",
+    "command_word": "explain",
+    "marks": 3,
+    "difficulty": "foundation",
+    "answer_type": "short-open",
+    "estimated_minutes": 4,
+    "title": "Why use a graph for sales summary",
+    "prompt": "Explain why an accountant would choose to use a graph to present a summary of monthly sales data to business owners.",
+    "mark_scheme_points": [
+      "A graph makes trends or changes over time easier to see.",
+      "It allows quicker interpretation than raw rows of figures for many audiences.",
+      "The explanation links the visual choice to decision-making or clarity."
+    ],
+    "common_pitfalls": [
+      "Only saying 'graphs look better'."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-2",
+      "official",
+      "data-visualisation",
+      "graphs"
+    ]
+  },
+  {
+    "id": "p2-2021-006",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2021",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2021",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "business-context",
+    "subtopic_id": "project-feasibility",
+    "command_word": "explain",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 5,
+    "title": "Feasibility factors",
+    "prompt": "Explain two factors that can determine the feasibility of a digital project.",
+    "mark_scheme_points": [
+      "Valid factors include budget, time, staffing, technology, productivity impact, disruption, support, or resistance to change.",
+      "Each factor needs a linked explanation of how it affects viability."
+    ],
+    "common_pitfalls": [
+      "Naming generic project goals instead of feasibility factors."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-2",
+      "official",
+      "feasibility",
+      "business-context"
+    ]
+  },
+  {
+    "id": "p2-2022-001",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2022",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2022",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "digital-environments",
+    "subtopic_id": "networks",
+    "command_word": "name",
+    "marks": 2,
+    "difficulty": "foundation",
+    "answer_type": "short-open",
+    "estimated_minutes": 2,
+    "title": "Name two TCP/IP layers",
+    "prompt": "Name two layers of the four-layer TCP/IP model.",
+    "mark_scheme_points": [
+      "Valid answers include application, transport, internet, and network access.",
+      "Two correct layers are required."
+    ],
+    "common_pitfalls": [
+      "Using OSI-only names such as presentation."
+    ],
+    "feedback_rule_id": "points-identify",
+    "tags": [
+      "paper-2",
+      "official",
+      "tcp-ip",
+      "networks"
+    ]
+  },
+  {
+    "id": "p2-2022-002",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2022",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2022",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "security",
+    "subtopic_id": "threats-and-vulnerabilities",
+    "command_word": "explain",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "short-open",
+    "estimated_minutes": 5,
+    "title": "Technical threats to digital systems",
+    "prompt": "Explain two technical threats to digital systems.",
+    "mark_scheme_points": [
+      "Valid threats include botnets, DDoS, hacking, malware, social engineering, insecure APIs, open networks, or man-in-the-middle attacks.",
+      "Each threat needs a linked explanation of what it does or why it is harmful."
+    ],
+    "common_pitfalls": [
+      "Naming a threat without saying what impact it has."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-2",
+      "official",
+      "security-threats"
+    ]
+  },
+  {
+    "id": "p2-2022-003",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2022",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2022",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "data",
+    "subtopic_id": "data-information-knowledge",
+    "command_word": "describe",
+    "marks": 2,
+    "difficulty": "foundation",
+    "answer_type": "short-open",
+    "estimated_minutes": 3,
+    "title": "Transforming data into information",
+    "prompt": "Describe how data may be transformed into information.",
+    "mark_scheme_points": [
+      "Raw data is processed, analysed, or organised.",
+      "The transformed output becomes meaningful or useful in context."
+    ],
+    "common_pitfalls": [
+      "Defining data only, without mentioning transformation."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-2",
+      "official",
+      "data-transformation"
+    ]
+  },
+  {
+    "id": "p2-2022-004",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2022",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2022",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "digital-environments",
+    "subtopic_id": "virtual-environments",
+    "command_word": "explain",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 5,
+    "title": "Why use virtual environments",
+    "prompt": "Explain two reasons why a cyber security company would use virtual environments to develop and test a new anti-virus tool.",
+    "mark_scheme_points": [
+      "Isolation helps protect the host system while testing malicious or risky code.",
+      "Virtual environments are easier to reset, duplicate, or configure for testing.",
+      "They can be cost-effective and support multiple environments on shared hardware.",
+      "Each reason needs a linked benefit to development or testing."
+    ],
+    "common_pitfalls": [
+      "Talking about cloud computing instead of virtual environments."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-2",
+      "official",
+      "virtualisation",
+      "testing"
+    ]
+  },
+  {
+    "id": "p2-2022-005",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 Autumn 2022",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2022",
+    "season": "Autumn",
+    "section": "section-a",
+    "topic_id": "data",
+    "subtopic_id": "analysis-tools",
+    "command_word": "evaluate",
+    "marks": 9,
+    "difficulty": "stretch",
+    "answer_type": "extended-open",
+    "estimated_minutes": 12,
+    "title": "Evaluate data analysis tools in business",
+    "prompt": "Evaluate the use of data analysis tools and their use in business.",
+    "mark_scheme_points": [
+      "Relevant tools include data warehouses, data lakes, data marts, data mining, and reporting.",
+      "Strong answers explain how businesses use them for planning, CRM, or insight generation.",
+      "Balanced answers consider benefits such as better decisions and drawbacks such as cost, skills, or data quality risks.",
+      "A reasoned judgement is needed for top marks."
+    ],
+    "common_pitfalls": [
+      "Listing tools with no business application.",
+      "Ignoring drawbacks or limits."
+    ],
+    "feedback_rule_id": "levels-evaluate",
+    "tags": [
+      "paper-2",
+      "official",
+      "data-analysis",
+      "business-intelligence"
+    ]
+  },
+  {
+    "id": "p2-2023-001",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 2023",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2023",
+    "season": "Summer",
+    "section": "section-a",
+    "topic_id": "business-context",
+    "subtopic_id": "digital-value",
+    "command_word": "explain",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 5,
+    "title": "UI design for end users",
+    "prompt": "A digital system is being developed for use in doctors' surgeries to help prescribe medicines. Explain two ways the UI design should consider end-user characteristics.",
+    "mark_scheme_points": [
+      "Valid characteristics include age, digital skill, accessibility needs, or literacy.",
+      "Each point links the characteristic to a UI decision such as font size, contrast, simple navigation, or clear wording."
+    ],
+    "common_pitfalls": [
+      "Describing medical features rather than user characteristics."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-2",
+      "official",
+      "user-needs",
+      "ui",
+      "accessibility"
+    ]
+  },
+  {
+    "id": "p2-2023-002",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 2023",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2023",
+    "season": "Summer",
+    "section": "section-a",
+    "topic_id": "security",
+    "subtopic_id": "cia-and-iaaa",
+    "command_word": "describe",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "short-open",
+    "estimated_minutes": 5,
+    "title": "Confidentiality and integrity",
+    "prompt": "Describe how the relationship between confidentiality and integrity of patient records can be applied in a new system.",
+    "mark_scheme_points": [
+      "Confidentiality keeps records private from unauthorised users.",
+      "Integrity ensures records are accurate and not tampered with.",
+      "A strong answer links access control to protecting integrity.",
+      "The application is tied to patient records rather than security in general."
+    ],
+    "common_pitfalls": [
+      "Explaining availability instead of integrity."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-2",
+      "official",
+      "cia",
+      "health-data"
+    ]
+  },
+  {
+    "id": "p2-2023-003",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 2023",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2023",
+    "season": "Summer",
+    "section": "section-a",
+    "topic_id": "business-context",
+    "subtopic_id": "change-management",
+    "command_word": "describe",
+    "marks": 4,
+    "difficulty": "secure",
+    "answer_type": "short-open",
+    "estimated_minutes": 5,
+    "title": "Unforeseen change triggers",
+    "prompt": "Describe two unforeseen factors that could trigger change in an organisation.",
+    "mark_scheme_points": [
+      "Valid unforeseen factors include system failure, zero-day vulnerabilities, data corruption, cyber-attacks, or natural disasters.",
+      "Each factor needs a linked description of why it forces change."
+    ],
+    "common_pitfalls": [
+      "Giving planned strategic changes instead of unforeseen triggers."
+    ],
+    "feedback_rule_id": "points-linked-explanation",
+    "tags": [
+      "paper-2",
+      "official",
+      "change-triggers"
+    ]
+  },
+  {
+    "id": "p2-2023-004",
+    "source_type": "official-past-paper",
+    "source_name": "Paper 2 2023",
+    "component": "core",
+    "paper": "paper-2",
+    "year": "2023",
+    "season": "Summer",
+    "section": "section-a",
+    "topic_id": "data",
+    "subtopic_id": "visualisation-models-and-access",
+    "command_word": "evaluate",
+    "marks": 9,
+    "difficulty": "stretch",
+    "answer_type": "extended-open",
+    "estimated_minutes": 12,
+    "title": "Evaluate data access permissions",
+    "prompt": "Evaluate the impact of data access permissions on an organisation.",
+    "mark_scheme_points": [
+      "Relevant points include authorisation, privileges, access rights, RBAC, and API access management.",
+      "Benefits may include security, compliance, and reduced misuse.",
+      "Drawbacks or challenges may include administration overhead, poor user experience, or blocked productivity if badly configured.",
+      "Top-level answers balance impact and reach a judgement."
+    ],
+    "common_pitfalls": [
+      "Discussing network protocols rather than permission control."
+    ],
+    "feedback_rule_id": "levels-evaluate",
+    "tags": [
+      "paper-2",
+      "official",
+      "access-control",
+      "permissions"
+    ]
+  },
+  {
+    "id": "esp-001",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from ESP pages 49-58",
+    "component": "core",
+    "paper": "employer-set-project",
+    "year": "",
+    "season": "",
+    "section": "project-prep",
+    "topic_id": "employer-set-project",
+    "subtopic_id": "planning",
+    "command_word": "justify",
+    "marks": 8,
+    "difficulty": "stretch",
+    "answer_type": "portfolio-task",
+    "estimated_minutes": 12,
+    "title": "Plan a project response",
+    "prompt": "A client needs a dashboard product in six weeks. Outline the key sections of a project plan and justify two major scheduling or resource decisions you would include.",
+    "mark_scheme_points": [
+      "A strong plan includes tasks, subtasks, milestones, resources, costs, and deadlines.",
+      "Decisions are justified with staffing, risk, dependency, or budget reasoning.",
+      "The response links planning choices to the brief and delivery window.",
+      "Resource and schedule choices are internally coherent."
+    ],
+    "common_pitfalls": [
+      "Listing headings only with no rationale.",
+      "Ignoring task dependencies or realistic resourcing."
+    ],
+    "feedback_rule_id": "esp-rationale",
+    "tags": [
+      "esp",
+      "planning",
+      "gantt",
+      "resources"
+    ]
+  },
+  {
+    "id": "esp-002",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from ESP pages 50-52",
+    "component": "core",
+    "paper": "employer-set-project",
+    "year": "",
+    "season": "",
+    "section": "project-prep",
+    "topic_id": "employer-set-project",
+    "subtopic_id": "defect-fixing",
+    "command_word": "describe",
+    "marks": 6,
+    "difficulty": "secure",
+    "answer_type": "portfolio-task",
+    "estimated_minutes": 9,
+    "title": "Testing evidence for defect fixing",
+    "prompt": "Describe the evidence you should capture when testing existing code to identify and fix defects in the ESP.",
+    "mark_scheme_points": [
+      "Tests to be carried out",
+      "Purpose of each test",
+      "Test data including valid and invalid cases",
+      "Expected results",
+      "Actual results",
+      "Further actions or refinement after testing"
+    ],
+    "common_pitfalls": [
+      "Only mentioning the bug fix and not the evidence trail."
+    ],
+    "feedback_rule_id": "esp-rationale",
+    "tags": [
+      "esp",
+      "testing",
+      "defects",
+      "evidence"
+    ]
+  },
+  {
+    "id": "esp-003",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from ESP pages 50-52",
+    "component": "core",
+    "paper": "employer-set-project",
+    "year": "",
+    "season": "",
+    "section": "project-prep",
+    "topic_id": "employer-set-project",
+    "subtopic_id": "design",
+    "command_word": "explain",
+    "marks": 8,
+    "difficulty": "stretch",
+    "answer_type": "portfolio-task",
+    "estimated_minutes": 12,
+    "title": "Communicate a solution design",
+    "prompt": "Explain what makes a strong design submission for the ESP when you are presenting algorithms and solution structure to a client and a third-party developer.",
+    "mark_scheme_points": [
+      "The design should decompose the problem into clear sub-systems.",
+      "Algorithms should be logically correct and use suitable constructs.",
+      "Conventions should be applied consistently in code or flowchart notation.",
+      "The design should communicate clearly to both technical and non-technical audiences.",
+      "There should be enough detail for informed decisions and onward implementation."
+    ],
+    "common_pitfalls": [
+      "Treating design as only screen sketches.",
+      "Ignoring audience."
+    ],
+    "feedback_rule_id": "esp-rationale",
+    "tags": [
+      "esp",
+      "design",
+      "algorithms",
+      "communication"
+    ]
+  },
+  {
+    "id": "esp-004",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from ESP pages 52 and 56-57",
+    "component": "core",
+    "paper": "employer-set-project",
+    "year": "",
+    "season": "",
+    "section": "project-prep",
+    "topic_id": "employer-set-project",
+    "subtopic_id": "evaluation",
+    "command_word": "evaluate",
+    "marks": 8,
+    "difficulty": "stretch",
+    "answer_type": "portfolio-task",
+    "estimated_minutes": 12,
+    "title": "Reflective evaluation",
+    "prompt": "Evaluate how you would show that an ESP product meets the brief and explain what you would include in a reflective review.",
+    "mark_scheme_points": [
+      "Measure outcomes against success criteria and user needs.",
+      "Use testing evidence to support claims.",
+      "Discuss strengths and limitations honestly.",
+      "Suggest practical improvements if the product were revisited."
+    ],
+    "common_pitfalls": [
+      "Only saying the product works without evidence.",
+      "Giving vague improvements disconnected from the brief."
+    ],
+    "feedback_rule_id": "esp-rationale",
+    "tags": [
+      "esp",
+      "evaluation",
+      "review",
+      "success-criteria"
+    ]
+  },
+  {
+    "id": "os-001",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from OS pages 59-64",
+    "component": "occupational-specialism",
+    "paper": "occupational-specialism",
+    "year": "",
+    "season": "",
+    "section": "scenario-prep",
+    "topic_id": "occupational-specialism-digital-software-development",
+    "subtopic_id": "requirements-and-acceptance-criteria",
+    "command_word": "define",
+    "marks": 8,
+    "difficulty": "stretch",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 12,
+    "title": "Functional and non-functional requirements",
+    "prompt": "A client wants a booking platform for community events. Define suitable functional requirements, non-functional requirements, and user acceptance criteria for the solution.",
+    "mark_scheme_points": [
+      "Functional requirements describe what the system must do.",
+      "Non-functional requirements cover areas such as security, accessibility, scalability, and performance.",
+      "Acceptance criteria are measurable and tied to user outcomes or KPIs.",
+      "A strong answer keeps the requirements aligned to the brief and user needs."
+    ],
+    "common_pitfalls": [
+      "Writing vague aims instead of measurable requirements.",
+      "Confusing features with acceptance criteria."
+    ],
+    "feedback_rule_id": "esp-rationale",
+    "tags": [
+      "os",
+      "requirements",
+      "acceptance-criteria",
+      "kpis"
+    ]
+  },
+  {
+    "id": "os-002",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from OS pages 61-63",
+    "component": "occupational-specialism",
+    "paper": "occupational-specialism",
+    "year": "",
+    "season": "",
+    "section": "scenario-prep",
+    "topic_id": "occupational-specialism-digital-software-development",
+    "subtopic_id": "methodology-and-team",
+    "command_word": "justify",
+    "marks": 8,
+    "difficulty": "stretch",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 12,
+    "title": "Choose a methodology",
+    "prompt": "Justify whether Agile, Waterfall, or RAD is more suitable for a small software team building a product with evolving user requirements.",
+    "mark_scheme_points": [
+      "The chosen methodology should match changing requirements and team size.",
+      "Agile or RAD may suit incremental feedback and iteration; Waterfall may be less suitable if requirements are unstable.",
+      "A high-mark answer compares alternatives and justifies a final choice.",
+      "The response links methodology to user involvement, documentation, pace, and risk."
+    ],
+    "common_pitfalls": [
+      "Naming a methodology with no contextual reasoning."
+    ],
+    "feedback_rule_id": "levels-evaluate",
+    "tags": [
+      "os",
+      "methodologies",
+      "agile",
+      "waterfall",
+      "rad"
+    ]
+  },
+  {
+    "id": "os-003",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from OS pages 67-68",
+    "component": "occupational-specialism",
+    "paper": "occupational-specialism",
+    "year": "",
+    "season": "",
+    "section": "design-clinic",
+    "topic_id": "occupational-specialism-digital-software-development",
+    "subtopic_id": "research-and-evidence",
+    "command_word": "evaluate",
+    "marks": 6,
+    "difficulty": "secure",
+    "answer_type": "scenario-response",
+    "estimated_minutes": 8,
+    "title": "Reliable sources of knowledge",
+    "prompt": "Evaluate the reliability of two different sources you might use when researching how to implement a new feature for a software project.",
+    "mark_scheme_points": [
+      "A strong answer considers credibility, bias, evidence, recency, and triangulation.",
+      "It compares source types such as official docs, forums, academic papers, or blogs.",
+      "The evaluation leads to a justified judgement about which source is more dependable for the task."
+    ],
+    "common_pitfalls": [
+      "Calling a source reliable simply because it is online."
+    ],
+    "feedback_rule_id": "levels-evaluate",
+    "tags": [
+      "os",
+      "research",
+      "source-reliability"
+    ]
+  },
+  {
+    "id": "os-004",
+    "source_type": "curriculum-authored",
+    "source_name": "Derived from OS pages 73-80",
+    "component": "occupational-specialism",
+    "paper": "occupational-specialism",
+    "year": "",
+    "season": "",
+    "section": "scenario-prep",
+    "topic_id": "occupational-specialism-digital-software-development",
+    "subtopic_id": "implementation-testing-support",
+    "command_word": "discuss",
+    "marks": 10,
+    "difficulty": "stretch",
+    "answer_type": "extended-open",
+    "estimated_minutes": 14,
+    "title": "Implement, test, and support",
+    "prompt": "Discuss how you would implement, test, deploy, and support a software product that uses a front end, a back end, and a database.",
+    "mark_scheme_points": [
+      "Implementation should reference at least two languages or layers plus suitable tools and modules.",
+      "Testing should include functional and non-functional methods with valid test data.",
+      "Deployment should match context, such as web, cloud, local, or containerised release.",
+      "Support should include communication, issue resolution, documentation, and maintenance.",
+      "The answer is strongest when it connects choices to user needs, risk, and scale."
+    ],
+    "common_pitfalls": [
+      "Focusing on coding only and ignoring testing or support."
+    ],
+    "feedback_rule_id": "levels-evaluate",
+    "tags": [
+      "os",
+      "implementation",
+      "testing",
+      "deployment",
+      "support"
+    ]
+  }
+]

@@ -1,0 +1,32 @@
+Data Snippet,Format Type,Clues,Real-World Use
+"{ ""name"": ""Alice"", ""age"": 30 }",,,
+<user><name>Alice</name><age>30</age></user>,,,
+"""Name"",""Age""
+""Alice"",30",,,
+Alice|30|Engineer,,,
+"Alice
+30
+Engineer",,,
+"[{""name"": ""Bob"", ""active"": true}]",,,
+"<items><item id=""1""/></items>",,,
+"Bob,35,True",,,
+"{""products"": [{""id"": 1, ""price"": 10.5}]}",,,
+<product><id>1</id><price>10.5</price></product>,,,
+"Name;Age;Country
+Alice;30;UK",,,
+"{""values"": [1, 2, 3]}",,,
+<root><value>Test</value></root>,,,
+"ID,Value
+001,Test",,,
+"{""temperature"": 22.5}",,,
+"<data temp=""22.5""/>",,,
+Temp: 22.5°C,,,
+true,,,
+False,,,
+2023-06-01,,,
+01/06/2023,,,
+Alice’s phone,,,
+Alice’s phone,,,
+Alices phone,,,
+"name,score
+bob,85",,,

@@ -1,0 +1,171 @@
+{
+  "problem-solving": {
+    "skills": [
+      "decompose a problem into smaller computational parts",
+      "trace and debug algorithms",
+      "translate between flowchart, prose, and code",
+      "justify a suitable problem-solving strategy"
+    ],
+    "practice_modes": [
+      "quick-practice",
+      "topic-practice",
+      "debug-lab"
+    ],
+    "question_shapes": [
+      "algorithm trace",
+      "flowchart critique",
+      "short explanation",
+      "strategy judgement"
+    ]
+  },
+  "introduction-to-programming": {
+    "skills": [
+      "write and debug Python 3.10+ code",
+      "choose data types, structures, and control flow",
+      "create validation and test data",
+      "compare search and sort algorithms"
+    ],
+    "practice_modes": [
+      "quick-practice",
+      "topic-practice",
+      "timed-practice",
+      "debug-lab"
+    ],
+    "question_shapes": [
+      "code completion",
+      "predict output",
+      "fix the bug",
+      "test design"
+    ]
+  },
+  "emerging-issues": {
+    "skills": [
+      "evaluate impact on organisations, society, and users",
+      "assess inclusion, bias, accessibility, and future technologies"
+    ],
+    "practice_modes": [
+      "quick-practice",
+      "paper-practice"
+    ],
+    "question_shapes": [
+      "evaluate",
+      "discuss",
+      "scenario response"
+    ]
+  },
+  "legislation-and-regulation": {
+    "skills": [
+      "apply legislation and professional standards to scenarios",
+      "distinguish legal duty from best practice"
+    ],
+    "practice_modes": [
+      "quick-practice",
+      "paper-practice"
+    ],
+    "question_shapes": [
+      "explain",
+      "judge impact",
+      "compare duties"
+    ]
+  },
+  "business-context": {
+    "skills": [
+      "connect system design to business value and user need",
+      "assess organisational risk and project feasibility",
+      "reason about change management decisions"
+    ],
+    "practice_modes": [
+      "topic-practice",
+      "timed-practice",
+      "paper-practice"
+    ],
+    "question_shapes": [
+      "explain",
+      "evaluate",
+      "discuss feasibility"
+    ]
+  },
+  "data": {
+    "skills": [
+      "classify data and formats",
+      "select visualisation and storage approaches",
+      "explain access control and analysis tooling"
+    ],
+    "practice_modes": [
+      "topic-practice",
+      "timed-practice",
+      "paper-practice"
+    ],
+    "question_shapes": [
+      "state",
+      "describe",
+      "evaluate"
+    ]
+  },
+  "digital-environments": {
+    "skills": [
+      "reason about hardware, networking, virtualisation, cloud, and resilience",
+      "link technical components to performance and reliability outcomes"
+    ],
+    "practice_modes": [
+      "topic-practice",
+      "timed-practice",
+      "paper-practice"
+    ],
+    "question_shapes": [
+      "describe",
+      "explain",
+      "compare"
+    ]
+  },
+  "security": {
+    "skills": [
+      "identify threats and vulnerabilities",
+      "select mitigations and justify them",
+      "apply CIA and IAAA to scenario questions"
+    ],
+    "practice_modes": [
+      "topic-practice",
+      "timed-practice",
+      "paper-practice"
+    ],
+    "question_shapes": [
+      "identify",
+      "explain",
+      "evaluate"
+    ]
+  },
+  "employer-set-project": {
+    "skills": [
+      "plan a response to a vocational brief",
+      "collect evidence of testing, design, development, and reflection",
+      "justify decisions with cost, risk, and user need in view"
+    ],
+    "practice_modes": [
+      "project-prep",
+      "portfolio-drill"
+    ],
+    "question_shapes": [
+      "portfolio task",
+      "rationale",
+      "annotated evidence"
+    ]
+  },
+  "occupational-specialism-digital-software-development": {
+    "skills": [
+      "define requirements and acceptance criteria",
+      "design, implement, test, maintain, and support software",
+      "work across research, risk, collaboration, and deployment"
+    ],
+    "practice_modes": [
+      "scenario-prep",
+      "portfolio-drill",
+      "design-clinic"
+    ],
+    "question_shapes": [
+      "scenario plan",
+      "design choice",
+      "implementation critique"
+    ]
+  }
+}

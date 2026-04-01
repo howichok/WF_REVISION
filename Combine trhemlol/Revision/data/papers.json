@@ -1,0 +1,114 @@
+[
+  {
+    "id": "paper1",
+    "slug": "paper1",
+    "title": "Paper 1",
+    "examTitle": "Core Concepts",
+    "examDate": "2026-06-02T09:00:00.000Z",
+    "durationMinutes": 135,
+    "topics": [
+      {
+        "id": "algorithms",
+        "slug": "algorithms",
+        "title": "Computational Thinking and Algorithms",
+        "summary": "Break problems into chunks, model logic, and reason about efficiency with confidence.",
+        "subtopics": [
+          {
+            "id": "decomposition",
+            "title": "Decomposition and pattern spotting",
+            "notes": "Split large requirements into manageable tasks and reuse known patterns."
+          },
+          {
+            "id": "algorithm-design",
+            "title": "Algorithm design and tracing",
+            "notes": "Write pseudocode, trace dry runs, and justify algorithm choices."
+          },
+          {
+            "id": "complexity",
+            "title": "Performance basics",
+            "notes": "Reason about growth trends and practical runtime trade-offs."
+          }
+        ]
+      },
+      {
+        "id": "programming",
+        "slug": "programming",
+        "title": "Programming Fundamentals",
+        "summary": "Work confidently with data, control flow, functions, and debugging routines.",
+        "subtopics": [
+          {
+            "id": "variables-types",
+            "title": "Variables and data types",
+            "notes": "Pick suitable data types and avoid accidental conversions."
+          },
+          {
+            "id": "control-flow",
+            "title": "Control flow and iteration",
+            "notes": "Use selection and loops with clear, testable conditions."
+          },
+          {
+            "id": "testing-debugging",
+            "title": "Testing and debugging",
+            "notes": "Use planned test cases and isolate root causes quickly."
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "id": "paper2",
+    "slug": "paper2",
+    "title": "Paper 2",
+    "examTitle": "Software Development Practice",
+    "examDate": "2026-06-09T09:00:00.000Z",
+    "durationMinutes": 135,
+    "topics": [
+      {
+        "id": "software-design",
+        "slug": "software-design",
+        "title": "Software Design and Development Lifecycle",
+        "summary": "Link user requirements to practical architecture, planning, and delivery decisions.",
+        "subtopics": [
+          {
+            "id": "requirements",
+            "title": "Requirements and user stories",
+            "notes": "Capture measurable outcomes and acceptance criteria."
+          },
+          {
+            "id": "architecture",
+            "title": "Architecture and modularity",
+            "notes": "Choose structures that support maintainability and testing."
+          },
+          {
+            "id": "version-control",
+            "title": "Version control workflow",
+            "notes": "Use branches, commits, and reviews to reduce regressions."
+          }
+        ]
+      },
+      {
+        "id": "security-legal",
+        "slug": "security-legal",
+        "title": "Security, Legal and Ethical Practice",
+        "summary": "Apply security-first thinking and comply with legal and ethical responsibilities.",
+        "subtopics": [
+          {
+            "id": "cyber-threats",
+            "title": "Threats and mitigations",
+            "notes": "Recognise common attack vectors and practical controls."
+          },
+          {
+            "id": "data-protection",
+            "title": "Data protection responsibilities",
+            "notes": "Store and process personal data with clear lawful purpose."
+          },
+          {
+            "id": "ethics",
+            "title": "Ethical decision making",
+            "notes": "Assess impacts, bias, and transparency in software outcomes."
+          }
+        ]
+      }
+    ]
+  }
+]

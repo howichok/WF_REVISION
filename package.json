@@ -1,27 +1,37 @@
 {
-  "name": "revision-site",
+  "name": "walthamforest-revision",
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "dev": "next dev",
+    "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "seed:curriculum": "tsx scripts/sync-curriculum-seed.ts",
+    "test:evaluator": "node --test --import tsx src/lib/practice-evaluator.test.ts",
+    "test:revision-sync": "node --test --import tsx src/lib/intelligence/revision-catalog-sync.test.ts",
+    "perf:lighthouse": "node -e \"console.log('With dev server running: npx lighthouse http://localhost:3000 --only-categories=performance --view')\""
   },
   "dependencies": {
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
-    "next": "15.5.14"
+    "@supabase/ssr": "^0.9.0",
+    "@supabase/supabase-js": "^2.99.0",
+    "clsx": "^2.1.1",
+    "framer-motion": "^12.35.2",
+    "lucide-react": "^0.577.0",
+    "next": "16.1.6",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {
-    "typescript": "^5",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@tailwindcss/postcss": "^4",
-    "tailwindcss": "^4",
     "eslint": "^9",
-    "eslint-config-next": "15.5.14",
-    "@eslint/eslintrc": "^3"
+    "eslint-config-next": "16.1.6",
+    "tailwindcss": "^4",
+    "tsx": "^4.21.0",
+    "typescript": "^5"
   }
 }

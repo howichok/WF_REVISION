@@ -1,0 +1,148 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String             @id @default(cuid())
+  email            String?            @unique
+  displayName      String?
+  createdAt        DateTime           @default(now())
+  attempts         Attempt[]
+  bookmarks        Bookmark[]
+  studySessions    StudySession[]
+  revisionPlans    RevisionPlan[]
+  weakTopicSignals WeakTopicSignal[]
+  topicMastery     UserTopicMastery[]
+}
+
+model Topic {
+  id          String             @id
+  componentId String
+  paperId     String?
+  title       String
+  slug        String             @unique
+  parentId    String?
+  depth       Int                @default(0)
+  summary     String?
+  questions   Question[]
+  mastery     UserTopicMastery[]
+  signals     WeakTopicSignal[]
+}
+
+model Question {
+  id              String     @id
+  component       String
+  paper           String
+  topicId         String
+  subtopicId      String?
+  commandWord     String
+  marks           Int
+  difficulty      String
+  answerType      String
+  title           String
+  prompt          String
+  sourceType      String
+  sourceName      String
+  createdAt       DateTime   @default(now())
+  topic           Topic      @relation(fields: [topicId], references: [id])
+  attempts        Attempt[]
+  bookmarks       Bookmark[]
+  mockAssignments MockExamQuestion[]
+}
+
+model Attempt {
+  id                String   @id @default(cuid())
+  userId            String
+  questionId        String
+  score             Int
+  maxScore          Int
+  confidence        Int
+  timeSpentSeconds  Int
+  answeredAt        DateTime @default(now())
+  selectedEvidence  Json
+  writtenAnswer     String?
+  user              User     @relation(fields: [userId], references: [id])
+  question          Question @relation(fields: [questionId], references: [id])
+}
+
+model UserTopicMastery {
+  id              String   @id @default(cuid())
+  userId          String
+  topicId         String
+  masteryPercent  Float
+  attemptCount    Int      @default(0)
+  recentTrend     Float    @default(0)
+  updatedAt       DateTime @updatedAt
+  user            User     @relation(fields: [userId], references: [id])
+  topic           Topic    @relation(fields: [topicId], references: [id])
+
+  @@unique([userId, topicId])
+}
+
+model WeakTopicSignal {
+  id           String   @id @default(cuid())
+  userId       String
+  topicId      String
+  strength     Float
+  drivers      Json
+  observedAt   DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id])
+  topic        Topic    @relation(fields: [topicId], references: [id])
+}
+
+model Bookmark {
+  id         String   @id @default(cuid())
+  userId     String
+  questionId String
+  createdAt  DateTime @default(now())
+  user       User     @relation(fields: [userId], references: [id])
+  question   Question @relation(fields: [questionId], references: [id])
+
+  @@unique([userId, questionId])
+}
+
+model StudySession {
+  id               String   @id @default(cuid())
+  userId           String
+  title            String
+  focusPaper       String?
+  plannedMinutes   Int
+  completedMinutes Int?
+  scheduledFor     DateTime?
+  createdAt        DateTime @default(now())
+  user             User     @relation(fields: [userId], references: [id])
+}
+
+model RevisionPlan {
+  id          String   @id @default(cuid())
+  userId      String
+  title       String
+  startsOn    DateTime
+  planPayload Json
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+}
+
+model MockExam {
+  id          String             @id @default(cuid())
+  title       String
+  scope       String
+  timeLimit   Int
+  createdAt   DateTime           @default(now())
+  questions   MockExamQuestion[]
+}
+
+model MockExamQuestion {
+  mockExamId  String
+  questionId  String
+  sortOrder   Int
+  mockExam    MockExam @relation(fields: [mockExamId], references: [id])
+  question    Question @relation(fields: [questionId], references: [id])
+
+  @@id([mockExamId, questionId])
+}

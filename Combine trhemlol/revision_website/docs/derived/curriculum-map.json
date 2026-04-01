@@ -1,0 +1,745 @@
+{
+  "qualification": {
+    "id": "tlevel-digital-software-development",
+    "title": "T Level Technical Qualification in Digital Software Development (Level 3)",
+    "awarding_body": "Pearson",
+    "version": "1.0",
+    "publication_date": "2025-05",
+    "first_teaching": "2025-09",
+    "qualification_number": "610/5801/4",
+    "guided_learning_hours": 1260,
+    "total_qualification_time": 1740,
+    "source_pdf": "docs/source-pdfs/digital-dsd-specification.pdf",
+    "source_priority_note": "Specification and exam papers in docs/source-pdfs are the active source of truth because AGENTS.md and PRODUCT_SPEC.md are empty."
+  },
+  "components": [
+    {
+      "id": "core",
+      "title": "Core component",
+      "weighting_qualification_percent": 50,
+      "assessments": [
+        {
+          "id": "paper-1",
+          "title": "Core Paper 1",
+          "duration_minutes": 135,
+          "marks": 90,
+          "weighting_core_percent": 30,
+          "weighting_qualification_percent": 15,
+          "page_start": 10,
+          "page_end": 24,
+          "content_areas": [
+            {
+              "id": "problem-solving",
+              "paper": "paper-1",
+              "content_area": 1,
+              "title": "Problem solving",
+              "page_start": 10,
+              "page_end": 12,
+              "summary": "Computational thinking, algorithmic design, and structured approaches to solving programming and process problems.",
+              "subtopics": [
+                {
+                  "id": "computational-thinking",
+                  "title": "Computational thinking",
+                  "page": 10,
+                  "outcomes": [
+                    "Define computational thinking and justify when it should be used.",
+                    "Apply decomposition, pattern recognition, abstraction, and algorithmic design.",
+                    "Represent decomposition with flowcharts, code, diagrams, and written descriptions."
+                  ]
+                },
+                {
+                  "id": "algorithmic-design",
+                  "title": "Algorithmic design",
+                  "page": 11,
+                  "outcomes": [
+                    "Interpret, debug, and translate algorithms across flowcharts, written descriptions, and code.",
+                    "Use sequence, selection, and iteration correctly.",
+                    "Design algorithms that produce correct outputs for given inputs."
+                  ]
+                },
+                {
+                  "id": "problem-solving-strategies",
+                  "title": "Problem-solving strategies",
+                  "page": 12,
+                  "outcomes": [
+                    "Compare top-down, bottom-up, and modular approaches.",
+                    "Apply root-cause analysis techniques such as five whys, FMEA, and ETA.",
+                    "Use a high-level strategy from problem definition through review."
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "introduction-to-programming",
+              "paper": "paper-1",
+              "content_area": 2,
+              "title": "Introduction to programming",
+              "page_start": 13,
+              "page_end": 19,
+              "summary": "Python 3.10+ programming fundamentals, practical code development, debugging, validation, algorithms, and testing.",
+              "subtopics": [
+                {
+                  "id": "standard-data-types",
+                  "title": "Standard data types",
+                  "page": 13,
+                  "outcomes": [
+                    "Use integers, floats, strings, and Booleans appropriately.",
+                    "Choose the correct type for a variable or constant in context."
+                  ]
+                },
+                {
+                  "id": "variables-constants-scope",
+                  "title": "Variables, constants, and scope",
+                  "page": 13,
+                  "outcomes": [
+                    "Declare variables and constants using standard data types.",
+                    "Apply local and global scope appropriately.",
+                    "Use type conversion functions when moving between representations."
+                  ]
+                },
+                {
+                  "id": "data-structures",
+                  "title": "Data structures",
+                  "page": 13,
+                  "outcomes": [
+                    "Interpret and develop code using lists, arrays, and dictionaries.",
+                    "Debug programs that use structured collections."
+                  ]
+                },
+                {
+                  "id": "operators",
+                  "title": "Operators",
+                  "page": 14,
+                  "outcomes": [
+                    "Use arithmetic, relational, and Boolean operators in Python.",
+                    "Interpret and debug operator-heavy expressions."
+                  ]
+                },
+                {
+                  "id": "input-output",
+                  "title": "Input and output",
+                  "page": 14,
+                  "outcomes": [
+                    "Handle input via keyboard, screen, and text files.",
+                    "Open, read, write, and close text files safely."
+                  ]
+                },
+                {
+                  "id": "actions-sequence-selection-iteration",
+                  "title": "Actions: sequence, selection, and iteration",
+                  "page": 15,
+                  "outcomes": [
+                    "Interpret, develop, and debug sequence, selection, and loops.",
+                    "Use if, else if, else, match/case, for, and while appropriately."
+                  ]
+                },
+                {
+                  "id": "functions-procedures",
+                  "title": "Functions and procedures",
+                  "page": 16,
+                  "outcomes": [
+                    "Distinguish functions from procedures.",
+                    "Use user-written, built-in, library, and third-party code.",
+                    "Interpret, develop, and debug modular code."
+                  ]
+                },
+                {
+                  "id": "validation",
+                  "title": "Validation",
+                  "page": 16,
+                  "outcomes": [
+                    "Apply presence, length, range, type, format, and check digit validation.",
+                    "Interpret, develop, and debug validation logic."
+                  ]
+                },
+                {
+                  "id": "programming-practices",
+                  "title": "Programming practices and design decisions",
+                  "page": 17,
+                  "outcomes": [
+                    "Choose data structures and action order for efficiency and maintainability.",
+                    "Use meaningful names and readable code style conventions."
+                  ]
+                },
+                {
+                  "id": "robust-code-debugging",
+                  "title": "Robust code and debugging",
+                  "page": 17,
+                  "outcomes": [
+                    "Handle unexpected input and termination cleanly.",
+                    "Locate and correct logic and runtime errors."
+                  ]
+                },
+                {
+                  "id": "common-algorithms",
+                  "title": "Common algorithms",
+                  "page": 17,
+                  "outcomes": [
+                    "Explain linear and binary search.",
+                    "Explain bubble, insertion, and merge sort.",
+                    "Judge algorithm suitability using execution time, memory use, and comparisons."
+                  ]
+                },
+                {
+                  "id": "testing",
+                  "title": "Testing",
+                  "page": 18,
+                  "outcomes": [
+                    "Select testing methods including unit, system, acceptance, usability, and performance testing.",
+                    "Create valid, invalid, boundary, and erroneous test data.",
+                    "Produce structured test plans with expected and actual results."
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "emerging-issues",
+              "paper": "paper-1",
+              "content_area": 3,
+              "title": "Emerging issues and the impact of digital",
+              "page_start": 19,
+              "page_end": 21,
+              "summary": "How digital technologies change organisations, society, inclusion, working practices, and the use of AI and emerging platforms.",
+              "subtopics": [
+                {
+                  "id": "impact-of-digital-technologies",
+                  "title": "Impact of digital technologies",
+                  "page": 19,
+                  "outcomes": [
+                    "Evaluate organisational, societal, and inclusion impacts of digital dependence.",
+                    "Consider end-user characteristics, accessibility, and digital inclusion."
+                  ]
+                },
+                {
+                  "id": "emerging-technologies",
+                  "title": "Emerging technologies",
+                  "page": 20,
+                  "outcomes": [
+                    "Assess technologies such as IoT, AI, XR, blockchain, quantum computing, and autonomous systems.",
+                    "Judge organisational, societal, and individual impacts in context."
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "legislation-and-regulation",
+              "paper": "paper-1",
+              "content_area": 4,
+              "title": "Legislation and regulatory requirements",
+              "page_start": 21,
+              "page_end": 23,
+              "summary": "Health and safety, data protection, computer misuse, equality, intellectual property, and professional conduct.",
+              "subtopics": [
+                {
+                  "id": "legislation",
+                  "title": "Legislation",
+                  "page": 21,
+                  "outcomes": [
+                    "Explain implications of health and safety, DPA/GDPR, CMA, equality, and intellectual property law.",
+                    "Make judgements about legal impacts on organisations, society, and individuals."
+                  ]
+                },
+                {
+                  "id": "guidelines-and-standards",
+                  "title": "Guidelines, standards, and policy",
+                  "page": 23,
+                  "outcomes": [
+                    "Apply codes of conduct, acceptable use policies, whistleblowing, and industry standards.",
+                    "Link professional behaviour to quality, confidentiality, accessibility, and compliance."
+                  ]
+                }
+              ]
+            }
+          ],
+          "assessment_objectives": {
+            "AO1a": {
+              "marks": 3,
+              "percent": 3.3
+            },
+            "AO1b": {
+              "marks": 27,
+              "percent": 30.0
+            },
+            "AO2": {
+              "marks": 39,
+              "percent": 43.3
+            },
+            "AO3a": {
+              "marks": 12,
+              "percent": 13.3
+            },
+            "AO3b": {
+              "marks": 9,
+              "percent": 10.0
+            }
+          }
+        },
+        {
+          "id": "paper-2",
+          "title": "Core Paper 2",
+          "duration_minutes": 135,
+          "marks": 90,
+          "weighting_core_percent": 30,
+          "weighting_qualification_percent": 15,
+          "page_start": 24,
+          "page_end": 49,
+          "content_areas": [
+            {
+              "id": "business-context",
+              "paper": "paper-2",
+              "content_area": 5,
+              "title": "Business context",
+              "page_start": 24,
+              "page_end": 30,
+              "summary": "Organisation types, digital value, business risk, technical change, and project feasibility.",
+              "subtopics": [
+                {
+                  "id": "business-environment",
+                  "title": "Business environment",
+                  "page": 24,
+                  "outcomes": [
+                    "Identify organisation types, sectors, business models, and stakeholders."
+                  ]
+                },
+                {
+                  "id": "digital-value",
+                  "title": "Digital value to organisations",
+                  "page": 25,
+                  "outcomes": [
+                    "Explain how digital systems support operations, HR, finance, sales, and management.",
+                    "Relate system design decisions to user needs and service quality."
+                  ]
+                },
+                {
+                  "id": "organisational-risk",
+                  "title": "Risk to organisations",
+                  "page": 26,
+                  "outcomes": [
+                    "Explain risks including security, privacy, legal non-compliance, bias, and technical failure.",
+                    "Assess impact such as fines, reputational harm, and loss of business."
+                  ]
+                },
+                {
+                  "id": "change-management",
+                  "title": "Technical change management",
+                  "page": 27,
+                  "outcomes": [
+                    "Explain internal and external change triggers.",
+                    "Use CAB, SMARTER objectives, implementation methods, rollback, and monitoring."
+                  ]
+                },
+                {
+                  "id": "project-feasibility",
+                  "title": "Digital project feasibility",
+                  "page": 30,
+                  "outcomes": [
+                    "Assess benefits, costs, constraints, and risks when judging feasibility."
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "data",
+              "paper": "paper-2",
+              "content_area": 6,
+              "title": "Data",
+              "page_start": 30,
+              "page_end": 36,
+              "summary": "Data generation, transformation, quality, storage, models, analysis, and cross-platform access.",
+              "subtopics": [
+                {
+                  "id": "data-information-knowledge",
+                  "title": "Data, information, and knowledge",
+                  "page": 30,
+                  "outcomes": [
+                    "Distinguish data from information and knowledge.",
+                    "Explain how humans, sensors, AI, IoT, and transactions generate data."
+                  ]
+                },
+                {
+                  "id": "data-transformation-and-taxonomy",
+                  "title": "Data transformation and taxonomy",
+                  "page": 31,
+                  "outcomes": [
+                    "Explain manipulation, analysis, and processing.",
+                    "Compare quantitative/qualitative and structured/unstructured data."
+                  ]
+                },
+                {
+                  "id": "data-types-and-formats",
+                  "title": "Data types and formats",
+                  "page": 32,
+                  "outcomes": [
+                    "Use data types and formats such as JSON, CSV, XML, UTF-8, and ASCII in context."
+                  ]
+                },
+                {
+                  "id": "storage-quality-and-maintenance",
+                  "title": "Storage, quality, and maintenance",
+                  "page": 32,
+                  "outcomes": [
+                    "Explain metadata, file and directory structures, Big Data dimensions, and quality assurance methods."
+                  ]
+                },
+                {
+                  "id": "data-systems-and-entry",
+                  "title": "Data systems and data entry",
+                  "page": 33,
+                  "outcomes": [
+                    "Explain data wrangling, core data system functions, and methods to reduce entry errors."
+                  ]
+                },
+                {
+                  "id": "visualisation-models-and-access",
+                  "title": "Visualisation, models, and access",
+                  "page": 34,
+                  "outcomes": [
+                    "Choose graphs, charts, tables, dashboards, and models appropriately.",
+                    "Explain hierarchical, network, and relational models plus RBAC, RuBAC, and APIs."
+                  ]
+                },
+                {
+                  "id": "analysis-tools",
+                  "title": "Data analysis tools",
+                  "page": 36,
+                  "outcomes": [
+                    "Explain data warehouses, lakes, marts, mining, reporting, and business intelligence use."
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "digital-environments",
+              "paper": "paper-2",
+              "content_area": 7,
+              "title": "Digital environments",
+              "page_start": 36,
+              "page_end": 42,
+              "summary": "Hardware, software, networking, virtualisation, cloud, and resilience in technical environments.",
+              "subtopics": [
+                {
+                  "id": "hardware",
+                  "title": "Hardware",
+                  "page": 36,
+                  "outcomes": [
+                    "Explain devices, processors, memory, storage, motherboards, GPUs, NICs, cooling, and sensors."
+                  ]
+                },
+                {
+                  "id": "software-and-tools",
+                  "title": "Software and development tools",
+                  "page": 37,
+                  "outcomes": [
+                    "Explain OS types, utilities, IDEs, compilers, interpreters, and common application software."
+                  ]
+                },
+                {
+                  "id": "networks",
+                  "title": "Networks",
+                  "page": 38,
+                  "outcomes": [
+                    "Explain network types, media, topologies, models, components, packets, protocols, and OSI/TCP-IP."
+                  ]
+                },
+                {
+                  "id": "virtual-environments",
+                  "title": "Virtual environments",
+                  "page": 40,
+                  "outcomes": [
+                    "Explain virtual machines, hypervisors, benefits, drawbacks, and use cases."
+                  ]
+                },
+                {
+                  "id": "cloud-environments",
+                  "title": "Cloud environments",
+                  "page": 41,
+                  "outcomes": [
+                    "Compare public and private cloud plus IaaS, PaaS, and SaaS."
+                  ]
+                },
+                {
+                  "id": "resilience",
+                  "title": "Resilient digital environments",
+                  "page": 42,
+                  "outcomes": [
+                    "Explain updates, redundancy, backup strategies, hardening, and hot/cold/warm sites."
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "security",
+              "paper": "paper-2",
+              "content_area": 8,
+              "title": "Security",
+              "page_start": 42,
+              "page_end": 48,
+              "summary": "Confidentiality, threats, vulnerabilities, mitigation techniques, and security models.",
+              "subtopics": [
+                {
+                  "id": "confidentiality-and-impact",
+                  "title": "Confidential information and impact",
+                  "page": 42,
+                  "outcomes": [
+                    "Identify confidential information and explain organisational impact when confidentiality fails."
+                  ]
+                },
+                {
+                  "id": "threats-and-vulnerabilities",
+                  "title": "Threats and vulnerabilities",
+                  "page": 44,
+                  "outcomes": [
+                    "Explain technical, human, and physical threats and vulnerabilities."
+                  ]
+                },
+                {
+                  "id": "threat-mitigation",
+                  "title": "Threat mitigation",
+                  "page": 46,
+                  "outcomes": [
+                    "Explain anti-malware, encryption, access control, training, backups, VPNs, MFA, and testing."
+                  ]
+                },
+                {
+                  "id": "cia-and-iaaa",
+                  "title": "CIA and IAAA security models",
+                  "page": 47,
+                  "outcomes": [
+                    "Explain how confidentiality, integrity, and availability interrelate.",
+                    "Explain identification, authentication, authorisation, and accountability."
+                  ]
+                }
+              ]
+            }
+          ],
+          "assessment_objectives": {
+            "AO1a": {
+              "marks": 10,
+              "percent": 11.1
+            },
+            "AO1b": {
+              "marks": 21,
+              "percent": 23.3
+            },
+            "AO2": {
+              "marks": 38,
+              "percent": 42.2
+            },
+            "AO3a": {
+              "marks": 12,
+              "percent": 13.3
+            },
+            "AO3b": {
+              "marks": 9,
+              "percent": 10.0
+            }
+          }
+        },
+        {
+          "id": "employer-set-project",
+          "title": "Employer Set Project",
+          "duration_minutes": 870,
+          "marks": 100,
+          "weighting_core_percent": 40,
+          "weighting_qualification_percent": 20,
+          "page_start": 49,
+          "page_end": 58,
+          "tasks": [
+            {
+              "id": "esp-task-1",
+              "title": "Planning a project",
+              "focus": "Project planning tools, Gantt chart, resource and cost plan, rationale.",
+              "evidence": [
+                "Task sequencing and milestone planning",
+                "Resource allocation and cost calculation",
+                "Decision rationale with risks, benefits, time, and cost impact"
+              ]
+            },
+            {
+              "id": "esp-task-2",
+              "title": "Identifying and fixing defects in existing code",
+              "focus": "Testing, defect diagnosis, remediation, and evidence capture.",
+              "evidence": [
+                "Test selection and test data",
+                "Expected versus actual results",
+                "Corrective actions and refinement"
+              ]
+            },
+            {
+              "id": "esp-task-3",
+              "title": "Designing a solution",
+              "focus": "Decomposition, algorithms, conventions, and communication of design intent.",
+              "evidence": [
+                "Breakdown of the problem into computational parts",
+                "Appropriate notation including flowcharts or code",
+                "Audience-aware design communication"
+              ]
+            },
+            {
+              "id": "esp-task-4a",
+              "title": "Developing a solution",
+              "focus": "Code organisation, technical skill, user experience, and implementation quality.",
+              "evidence": [
+                "Readable, modular, convention-led code",
+                "Appropriate handling of data, security, and exceptions",
+                "Evidence that the solution meets the brief"
+              ]
+            },
+            {
+              "id": "esp-task-4b",
+              "title": "Reflective evaluation",
+              "focus": "Review how well the product meets requirements and user needs.",
+              "evidence": [
+                "Success criteria review",
+                "Testing-informed evaluation",
+                "Improvements if the problem were revisited"
+              ]
+            }
+          ],
+          "assessment_objectives": [
+            {
+              "id": "AO1",
+              "title": "Planning",
+              "proportion_percent": 12
+            },
+            {
+              "id": "AO2",
+              "title": "Application",
+              "proportion_percent": 41
+            },
+            {
+              "id": "AO3",
+              "title": "Selecting relevant techniques and resources",
+              "proportion_percent": 9
+            },
+            {
+              "id": "AO4",
+              "title": "English, maths, and digital communication skills",
+              "proportion_percent": 3
+            },
+            {
+              "id": "AO5a",
+              "title": "Project outcome",
+              "proportion_percent": 26
+            },
+            {
+              "id": "AO5b",
+              "title": "Review",
+              "proportion_percent": 9
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "occupational-specialism",
+      "title": "Occupational Specialism",
+      "weighting_qualification_percent": 50,
+      "assessment": {
+        "id": "occupational-specialism-digital-software-development",
+        "title": "Occupational Specialism: Digital Software Development",
+        "duration_minutes": 3030,
+        "marks": 144,
+        "weighting_qualification_percent": 50,
+        "page_start": 59,
+        "page_end": 81,
+        "performance_outcomes": [
+          "PO1 Analyse a problem to define requirements and acceptance criteria, aligned to user needs.",
+          "PO2 Design, implement and test software.",
+          "PO3 Change, maintain and support software.",
+          "PO4 Create solutions in a social and collaborative environment.",
+          "PO5 Discover, evaluate and apply reliable sources of knowledge.",
+          "PO6 Apply ethical principles and manage risks in line with legal and regulatory requirements when developing software."
+        ],
+        "content_areas": [
+          {
+            "id": "os-requirements-and-acceptance-criteria",
+            "title": "Analyse a problem to define requirements and acceptance criteria aligned to user needs",
+            "page_start": 59,
+            "page_end": 64,
+            "focus": [
+              "Software development lifecycle",
+              "Roles and responsibilities",
+              "Project methodologies",
+              "Functional and non-functional requirements",
+              "KPIs, constraints, and acceptance criteria",
+              "Emerging technologies and training needs"
+            ]
+          },
+          {
+            "id": "os-ethics-risk-legal",
+            "title": "Apply ethical principles and manage risks in line with legal and regulatory requirements",
+            "page_start": 65,
+            "page_end": 66,
+            "focus": [
+              "Legal and regulatory requirements",
+              "Standards and ethical implications",
+              "Risk identification, mitigation, contingency, and monitoring"
+            ]
+          },
+          {
+            "id": "os-research-and-evidence",
+            "title": "Discover, evaluate and apply reliable sources of knowledge",
+            "page_start": 67,
+            "page_end": 67,
+            "focus": [
+              "Reliability of websites, blogs, papers, forums, and repositories",
+              "Triangulation, bias, recency, and credibility",
+              "Qualitative and quantitative evidence gathering"
+            ]
+          },
+          {
+            "id": "os-design",
+            "title": "Design",
+            "page_start": 68,
+            "page_end": 71,
+            "focus": [
+              "Function-oriented, object-oriented, data model, TDD, BDD, and functional design",
+              "Source/content management platforms and workflows",
+              "UX/UI design principles, CMS features, databases, and network integration points"
+            ]
+          },
+          {
+            "id": "os-collaboration",
+            "title": "Create solutions in a social and collaborative environment",
+            "page_start": 72,
+            "page_end": 72,
+            "focus": [
+              "Collaborative techniques, code review, paired programming, version control, IDEs, and teamwork"
+            ]
+          },
+          {
+            "id": "os-implementation",
+            "title": "Implement a solution using at least two appropriate languages",
+            "page_start": 73,
+            "page_end": 76,
+            "focus": [
+              "Front-end and back-end languages",
+              "APIs, packages, modules, libraries, and CI/CD",
+              "Data sources, responsive UI, deployment methods, and 12-factor principles"
+            ]
+          },
+          {
+            "id": "os-testing",
+            "title": "Testing a software solution",
+            "page_start": 77,
+            "page_end": 78,
+            "focus": [
+              "Functional, non-functional, front-end, security, manual, and automated testing",
+              "Test data, expected results, retests, and regression testing"
+            ]
+          },
+          {
+            "id": "os-maintain-and-support",
+            "title": "Change, maintain and support software",
+            "page_start": 79,
+            "page_end": 80,
+            "focus": [
+              "Maintenance drivers, change management, coding principles, and user support"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}
