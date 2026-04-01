@@ -1,0 +1,32 @@
+Data Snippet,Format Type,Clues,Real-World Use
+"{ ""name"": ""Alice"", ""age"": 30 }",JSON,"Curly braces, key-value pairs",Web APIs
+<user><name>Alice</name><age>30</age></user>,XML,"Angle brackets, nested tags",Data exchange in enterprise systems
+"""Name"",""Age""
+""Alice"",30",CSV,"Commas separate values, line-based",Spreadsheet import/export
+Alice|30|Engineer,Text (Pipe-delimited),Pipes separate fields,Log file export
+"Alice
+30
+Engineer",Plain Text,"Newlines separate fields, no structure",Basic notes or descriptions
+"[{""name"": ""Bob"", ""active"": true}]",JSON,Array of objects with keys,App user data
+"<items><item id=""1""/></items>",XML,Self-closing tags,Inventory systems
+"Bob,35,True",CSV,"Comma-separated fields, plain text",Quick data storage
+"{""products"": [{""id"": 1, ""price"": 10.5}]}",JSON,Nested structure with objects,E-commerce APIs
+<product><id>1</id><price>10.5</price></product>,XML,Deeply nested tags,Product databases
+"Name;Age;Country
+Alice;30;UK",Text (Semicolon-delimited),Semicolons as delimiters,European spreadsheet standards
+"{""values"": [1, 2, 3]}",JSON,Array inside object,Data series in APIs
+<root><value>Test</value></root>,XML,Tag hierarchy and opening/closing tags,Config files
+"ID,Value
+001,Test",CSV,Header row with simple structure,Basic data entry
+"{""temperature"": 22.5}",JSON,Single key-value,IoT data feeds
+"<data temp=""22.5""/>",XML,Attribute in tag,Sensor data
+Temp: 22.5°C,Plain Text,Human-readable format,Weather reports
+true,Boolean (in JSON),"Lowercase, plain ""true""",JSON configuration
+False,Boolean (Python-style),Capitalized False,Scripting languages
+2023-06-01,Date (ISO),YYYY-MM-DD format,Standard timestamping
+01/06/2023,Date (UK format),DD/MM/YYYY format,Local user input
+Alice’s phone,UTF-8 Encoded Text,Unicode escape sequence,Encoded user data
+Alice’s phone,UTF-8 Text,Smart quotes (non-ASCII),International characters
+Alices phone,ASCII Corrupted,"Mojibake, corrupted symbol",Encoding mismatch
+"name,score
+bob,85",CSV,"Comma-separated, numeric values",Grading systems
