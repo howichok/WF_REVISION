@@ -47,37 +47,42 @@ export function TopicRouteShell({
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="flex items-start gap-3">
-          <Link href="/revision/topics" className="mt-1">
-            <Button variant="ghost" size="sm">
-              <ArrowLeft size={14} />
-            </Button>
-          </Link>
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-wider text-accent/90 mb-1">{eyebrow}</p>
-            <div className="flex items-center gap-2">
-              <span className="text-xl">{topicInfo.icon}</span>
-              <h1 className="text-xl font-bold text-foreground">{title}</h1>
+      <div className="rounded-[2rem] border border-border/70 bg-gradient-to-br from-card via-card to-background/85 p-4 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.35)] sm:p-5">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <div className="flex items-start gap-3">
+            <Link href="/revision/topics" className="mt-1">
+              <Button variant="ghost" size="sm" className="border border-border/60 bg-background/80 shadow-sm">
+                <ArrowLeft size={14} />
+              </Button>
+            </Link>
+            <div>
+              <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-accent/90">
+                {eyebrow}
+              </p>
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xl">{topicInfo.icon}</span>
+                <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">{title}</h1>
+              </div>
+              <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">{description}</p>
             </div>
-            <p className="mt-1 max-w-2xl text-sm text-muted-foreground">{description}</p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            {scorePercent !== null ? (
+              <Badge variant={scorePercent >= 70 ? "success" : scorePercent >= 40 ? "warning" : "danger"}>
+                {scorePercent}% diagnostic
+              </Badge>
+            ) : null}
+            {progress.progressPercent > 0 ? (
+              <Badge variant="default">
+                {progress.completed}/{progress.totalSubtopics} reviewed
+              </Badge>
+            ) : null}
           </div>
         </div>
 
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          {scorePercent !== null ? (
-            <Badge variant={scorePercent >= 70 ? "success" : scorePercent >= 40 ? "warning" : "danger"}>
-              {scorePercent}% diagnostic
-            </Badge>
-          ) : null}
-          {progress.progressPercent > 0 ? (
-            <span>{progress.completed}/{progress.totalSubtopics} reviewed</span>
-          ) : null}
-        </div>
-      </div>
-
-      <nav className="overflow-x-auto">
-        <div className="flex min-w-max gap-1 rounded-xl border border-border bg-card/40 p-1">
+        <nav className="mt-5 overflow-x-auto">
+          <div className="flex min-w-max gap-1.5 rounded-2xl border border-border/70 bg-card/70 p-1.5 shadow-sm">
           {topicRoutes.map((item) => {
             const isActive = item.id === activeNavMode || pathname === item.href;
 
@@ -86,18 +91,19 @@ export function TopicRouteShell({
                 key={item.id}
                 href={item.href}
                 className={cn(
-                  "rounded-lg px-3 py-1.5 text-sm font-medium transition-colors",
+                  "rounded-xl px-4 py-2 text-sm font-medium transition-all duration-200",
                   isActive
-                    ? "bg-accent/10 text-accent"
-                    : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
+                    ? "border border-accent/20 bg-accent/12 text-accent shadow-sm"
+                    : "text-muted-foreground hover:border-border/70 hover:bg-background/70 hover:text-foreground"
                 )}
               >
                 {item.label}
               </Link>
             );
           })}
-        </div>
-      </nav>
+          </div>
+        </nav>
+      </div>
 
       {aside ? (
         <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">

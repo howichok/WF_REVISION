@@ -31,18 +31,38 @@ function RevisionTopicsPageContent() {
       <div className="space-y-8">
         <RevisionSubnav activeRoute="topics" />
 
-        <Card variant="navigation" className="p-5 sm:p-6">
-          <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            Practice by topic
-          </p>
-          <h1 className="mt-1 text-2xl font-bold text-foreground sm:text-3xl">
-            {examMode ? "Choose one topic and launch exam conditions" : "Open one topic and stay in that lane"}
-          </h1>
-          <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            {examMode
-              ? "Pick the topic you want, then go straight into the separate timed exam feature instead of passing through the normal practice hub."
-              : "Use this route when you already know which topic you want to revise. Each topic now has its own overview, practice hub, recall mode, exam route, quiz, resources, and progress page."}
-          </p>
+        <Card
+          variant="navigation"
+          className="rounded-[2rem] border-border/70 bg-gradient-to-br from-card via-card to-background/80 p-5 shadow-[0_20px_50px_-36px_rgba(15,23,42,0.25)] sm:p-6"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge variant="accent">Practice by topic</Badge>
+            <Badge variant={examMode ? "warning" : "default"}>
+              {examMode ? "Exam conditions mode" : "Topic navigation"}
+            </Badge>
+          </div>
+          <div className="mt-3 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+            <div className="max-w-3xl">
+              <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+                {examMode ? "Choose one topic and launch exam conditions" : "Open one topic and stay in that lane"}
+              </h1>
+              <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+                {examMode
+                  ? "Pick the topic you want, then go straight into the separate timed exam feature instead of passing through the normal practice hub."
+                  : "Use this route when you already know which topic you want to revise. Each topic now has its own overview, practice hub, recall mode, exam route, quiz, resources, and progress page."}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3 shadow-sm">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                {examMode ? "What this does" : "Choose your flow"}
+              </p>
+              <p className="mt-1 text-sm font-medium text-foreground">
+                {examMode
+                  ? "Launch straight into a full timed session for one topic."
+                  : "Open a topic first, then decide whether to revise or write under exam conditions."}
+              </p>
+            </div>
+          </div>
         </Card>
 
         <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
@@ -69,15 +89,19 @@ function RevisionTopicsPageContent() {
             );
 
             return (
-              <Card key={topic.id} variant="navigation" className="h-full p-5">
+              <Card
+                key={topic.id}
+                variant="navigation"
+                className="group h-full overflow-hidden rounded-[2rem] border-border/70 bg-gradient-to-br from-card via-card to-background/75 p-5 shadow-[0_18px_44px_-34px_rgba(15,23,42,0.22)] transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/20"
+              >
                 <div className="flex items-start justify-between gap-3">
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/20 bg-accent/10 text-2xl">
+                      <span className="flex h-12 w-12 items-center justify-center rounded-2xl border border-accent/20 bg-accent/12 text-2xl shadow-inner">
                         {topic.icon}
                       </span>
                       <div>
-                        <p className="text-sm font-semibold text-foreground">{topic.label}</p>
+                        <p className="text-sm font-semibold tracking-tight text-foreground">{topic.label}</p>
                         <p className="text-xs text-muted-foreground">
                           {tree?.subtopics.length ?? 0} subtopics
                         </p>
@@ -95,7 +119,7 @@ function RevisionTopicsPageContent() {
                 </div>
 
                 <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                  <div className="surface-cutout rounded-xl px-3 py-3">
+                  <div className="surface-cutout rounded-2xl border border-border/60 px-3 py-3">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       Topic progress
                     </p>
@@ -131,7 +155,7 @@ function RevisionTopicsPageContent() {
 
                 <div className="mt-5 flex flex-wrap gap-2">
                   <Link href={`/revision/${topic.id}/overview`}>
-                    <span className="inline-flex items-center gap-1 rounded-xl border border-border bg-surface/30 px-3 py-2 text-sm text-foreground transition-colors hover:border-accent/20 hover:bg-card">
+                    <span className="inline-flex items-center gap-1 rounded-xl border border-border/70 bg-background/80 px-3 py-2 text-sm text-foreground transition-colors hover:border-accent/20 hover:bg-background">
                       <BookOpen size={14} />
                       Overview
                     </span>

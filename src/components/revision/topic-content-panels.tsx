@@ -104,7 +104,7 @@ export function TopicOverviewPanel({ topicId }: { topicId: string }) {
 
           <Link
             href={`/revision/${topicId}/exam-questions`}
-            className="rounded-xl border border-border bg-surface/30 p-4 text-left transition-colors hover:border-accent/20 hover:bg-card"
+            className="rounded-xl border border-border/70 bg-background/75 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/20 hover:bg-background"
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Exam-style practice
@@ -119,7 +119,7 @@ export function TopicOverviewPanel({ topicId }: { topicId: string }) {
 
           <Link
             href={`/revision/${topicId}/resources`}
-            className="rounded-xl border border-border bg-surface/30 p-4 text-left transition-colors hover:border-accent/20 hover:bg-card"
+            className="rounded-xl border border-border/70 bg-background/75 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/20 hover:bg-background"
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
               Support material
@@ -187,7 +187,7 @@ export function TopicOverviewPanel({ topicId }: { topicId: string }) {
             {topicContent.officialPoints.map((point) => (
               <div
                 key={point.id}
-                className="rounded-xl border border-white/8 bg-black/20 px-4 py-4"
+                className="rounded-xl border border-border/70 bg-background/75 px-4 py-4 shadow-sm"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -214,7 +214,7 @@ export function TopicOverviewPanel({ topicId }: { topicId: string }) {
             {tree.subtopics.map((subtopic) => (
               <div
                 key={subtopic.id}
-                className="rounded-xl border border-white/8 bg-black/20 px-4 py-4"
+                className="rounded-xl border border-border/70 bg-background/75 px-4 py-4 shadow-sm"
               >
                 <div className="flex items-center gap-2">
                   <span className="font-mono text-xs text-accent">{subtopic.id}</span>
@@ -245,7 +245,7 @@ export function TopicOverviewPanel({ topicId }: { topicId: string }) {
                 focusedSubtopics.map((subtopic) => (
                   <div
                     key={subtopic.id}
-                    className="rounded-xl border border-border bg-surface/30 px-3 py-3 text-sm text-foreground"
+                    className="rounded-xl border border-border/70 bg-background/75 px-3 py-3 text-sm text-foreground shadow-sm"
                   >
                     <span className="font-mono text-xs text-accent">{subtopic.id}</span>{" "}
                     {subtopic.label}
@@ -267,7 +267,7 @@ export function TopicOverviewPanel({ topicId }: { topicId: string }) {
               {allKeywords.slice(0, 18).map((keyword) => (
                 <span
                   key={keyword}
-                  className="rounded-lg border border-border bg-surface/30 px-2.5 py-1.5 text-xs text-foreground"
+                  className="rounded-lg border border-border/70 bg-background/75 px-2.5 py-1.5 text-xs text-foreground shadow-sm"
                 >
                   {keyword}
                 </span>
@@ -396,7 +396,7 @@ export function TopicExamQuestionsPanel({ topicId }: { topicId: string }) {
       ) : (
         groupedQuestions.map((group) => (
           <section key={group.sourceLabel} className="space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border bg-surface/20 px-4 py-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-border/70 bg-background/75 px-4 py-3 shadow-sm">
               <div>
                 <p className="text-sm font-semibold text-foreground">{group.sourceLabel}</p>
                 <p className="mt-1 text-xs text-muted-foreground">
@@ -429,7 +429,7 @@ export function TopicExamQuestionsPanel({ topicId }: { topicId: string }) {
                     </div>
                   </div>
                   <p className="mt-3 text-xs leading-relaxed text-muted">{question.summary}</p>
-                  <div className="mt-3 rounded-lg border border-white/8 bg-black/20 px-3 py-3">
+                  <div className="mt-3 rounded-lg border border-border/70 bg-background/75 px-3 py-3 shadow-sm">
                     <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       Prompt
                     </p>
@@ -437,7 +437,7 @@ export function TopicExamQuestionsPanel({ topicId }: { topicId: string }) {
                       {question.practicePrompt}
                     </p>
                   </div>
-                  <div className="mt-3 rounded-lg border border-white/8 bg-black/20 px-3 py-3">
+                  <div className="mt-3 rounded-lg border border-border/70 bg-background/75 px-3 py-3 shadow-sm">
                     <p className="mb-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                       Answer focus
                     </p>
@@ -629,7 +629,7 @@ export function TopicProgressPanel({ topicId }: { topicId: string }) {
           {tree.subtopics.map((subtopic) => (
             <div
               key={subtopic.id}
-              className="flex items-center justify-between rounded-xl border border-border bg-surface/30 p-3"
+              className="flex items-center justify-between rounded-xl border border-border/70 bg-background/75 p-3 shadow-sm"
             >
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs text-accent">{subtopic.id}</span>
@@ -656,7 +656,7 @@ export function TopicProgressPanel({ topicId }: { topicId: string }) {
           {practiceSetProgress.map((set) => (
             <div
               key={set.label}
-              className="flex items-center justify-between rounded-xl border border-border bg-surface/30 p-3"
+              className="flex items-center justify-between rounded-xl border border-border/70 bg-background/75 p-3 shadow-sm"
             >
               <div>
                 <p className="text-sm text-foreground">{set.label}</p>

@@ -55,8 +55,8 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
           <Link
             href="/revision/topics?mode=exam-conditions"
             className={cn(
-              "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/8 to-transparent p-6 shadow-[0_24px_64px_-28px_rgba(139,92,246,0.45)] transition-all duration-300",
-              "hover:-translate-y-1 hover:border-accent/40 hover:shadow-[0_32px_72px_-24px_rgba(139,92,246,0.5)]",
+                "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-accent/25 bg-gradient-to-br from-accent/12 via-card to-background/80 p-6 shadow-[0_24px_64px_-28px_rgba(139,92,246,0.3)] transition-all duration-300",
+                "hover:-translate-y-1 hover:border-accent/35 hover:shadow-[0_28px_64px_-24px_rgba(139,92,246,0.38)]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               compact ? "p-5" : "sm:p-8"
             )}
@@ -102,7 +102,7 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
               ].map(({ icon: Icon, label, hint }) => (
                 <li
                   key={label}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/[0.12] px-4 py-3 backdrop-blur-sm transition-colors duration-200 group-hover:border-accent/15 group-hover:bg-black/[0.16] dark:bg-white/[0.04] dark:group-hover:bg-white/[0.06]"
+                className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/75 px-4 py-3 shadow-sm backdrop-blur-sm transition-all duration-200 group-hover:border-accent/15 group-hover:bg-background"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
                     <Icon size={16} strokeWidth={2} />
@@ -126,8 +126,8 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
           <Link
             href="/revision/topics"
             className={cn(
-              "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-warning/30 bg-gradient-to-br from-warning/18 via-amber-500/8 to-transparent p-6 shadow-[0_24px_64px_-28px_rgba(245,158,11,0.38)] transition-all duration-300",
-              "hover:-translate-y-1 hover:border-warning/45 hover:shadow-[0_32px_72px_-24px_rgba(245,158,11,0.42)]",
+                "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-warning/30 bg-gradient-to-br from-warning/14 via-card to-background/80 p-6 shadow-[0_24px_64px_-28px_rgba(245,158,11,0.26)] transition-all duration-300",
+              "hover:-translate-y-1 hover:border-warning/40 hover:shadow-[0_28px_64px_-24px_rgba(245,158,11,0.32)]",
               "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
               compact ? "p-5" : "sm:p-8"
             )}
@@ -172,7 +172,7 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
               ].map(({ icon: Icon, label, hint }) => (
                 <li
                   key={label}
-                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/[0.12] px-4 py-3 backdrop-blur-sm transition-colors duration-200 group-hover:border-warning/20 group-hover:bg-black/[0.16] dark:bg-white/[0.04] dark:group-hover:bg-white/[0.06]"
+                className="flex items-center gap-3 rounded-2xl border border-border/70 bg-background/75 px-4 py-3 shadow-sm backdrop-blur-sm transition-all duration-200 group-hover:border-warning/20 group-hover:bg-background"
                 >
                   <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/15 text-warning">
                     <Icon size={16} strokeWidth={2} />
