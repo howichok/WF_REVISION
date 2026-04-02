@@ -74,17 +74,18 @@ export default async function RootLayout({
           }}
         />
       </head>
-      <body className={`${inter.variable} antialiased relative`}>
+      <body className={`${inter.variable} antialiased relative bg-background text-foreground`}>
         {/* Ambient violet light — fixed, non-interactive */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden>
           <div
-            className="absolute -top-[40%] -right-[20%] w-[70%] aspect-square rounded-full opacity-[0.12] blur-[140px]"
-            style={{ background: "radial-gradient(circle, rgba(139, 92, 246, 0.35) 0%, transparent 70%)" }}
+            className="absolute -top-[40%] -right-[20%] w-[68%] aspect-square rounded-full opacity-[0.09] blur-[150px]"
+            style={{ background: "radial-gradient(circle, rgba(103, 92, 241, 0.22) 0%, transparent 72%)" }}
           />
           <div
-            className="absolute -bottom-[30%] -left-[15%] w-[50%] aspect-square rounded-full opacity-[0.08] blur-[120px]"
-            style={{ background: "radial-gradient(circle, rgba(139, 92, 246, 0.3) 0%, transparent 70%)" }}
+            className="absolute -bottom-[30%] -left-[15%] w-[52%] aspect-square rounded-full opacity-[0.07] blur-[130px]"
+            style={{ background: "radial-gradient(circle, rgba(245, 158, 11, 0.14) 0%, transparent 72%)" }}
           />
+          <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-white/35 to-transparent dark:from-white/4" />
         </div>
         <div className="relative z-10">
           <ThemeProvider>

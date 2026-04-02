@@ -15,7 +15,7 @@ const sizes = {
 
 export function PageContainer({ children, className, size = "lg" }: PageContainerProps) {
   return (
-    <main className={cn("mx-auto w-full py-12", sizes[size], className)}>
+    <main className={cn("mx-auto w-full px-4 py-10 sm:px-6 sm:py-12 lg:px-8", sizes[size], className)}>
       {children}
     </main>
   );

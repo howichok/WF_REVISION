@@ -21,11 +21,11 @@ export function Navbar() {
   const isSettingsActive = pathname.startsWith("/settings");
 
   return (
-    <nav className="sticky top-0 z-50 glass">
-      <div className="max-w-7xl mx-auto px-6 sm:px-8 h-16 flex items-center justify-between">
+    <nav className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
+      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <Link href="/home" className="flex items-center gap-2.5 group">
-          <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-card shadow-sm">
             <span className="text-accent font-bold text-[10px] leading-none">DSD</span>
           </div>
           <span className="font-semibold text-foreground text-sm tracking-tight">
@@ -34,7 +34,7 @@ export function Navbar() {
         </Link>
 
         {/* Nav Links */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 rounded-full border border-border/70 bg-card/70 p-1 shadow-sm">
           {navLinks.map(({ href, label, icon: Icon }) => {
             const isActive =
               href === "/revision"
@@ -47,10 +47,10 @@ export function Navbar() {
                 key={href}
                 href={href}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all duration-200",
+                  "flex items-center gap-2 rounded-full px-3.5 py-2 text-sm font-medium transition-colors duration-200",
                   isActive
-                    ? "bg-accent/10 text-accent"
-                    : "text-muted hover:text-foreground hover:bg-card"
+                    ? "bg-accent/10 text-accent shadow-sm"
+                    : "text-muted hover:text-foreground hover:bg-background/70"
                 )}
               >
                 <Icon size={16} />
@@ -64,7 +64,7 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           <button
             onClick={toggleTheme}
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-card transition-colors cursor-pointer"
+            className="rounded-full border border-border/60 p-2 text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground cursor-pointer"
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >
             {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
@@ -72,10 +72,10 @@ export function Navbar() {
           <Link
             href="/settings"
             className={cn(
-              "hidden sm:flex items-center gap-2 px-3 py-2 rounded-xl text-xs transition-colors min-w-0",
+              "hidden min-w-0 items-center gap-2 rounded-full border border-border/60 px-3 py-2 text-xs transition-colors sm:flex",
               isSettingsActive
-                ? "bg-accent/10 text-accent"
-                : "text-muted hover:text-foreground hover:bg-card"
+                ? "bg-accent/10 text-accent shadow-sm"
+                : "text-muted hover:border-border hover:text-foreground hover:bg-background/70"
             )}
             title="Account settings"
           >
@@ -85,7 +85,7 @@ export function Navbar() {
           <Link
             href="/settings"
             className={cn(
-              "sm:hidden p-2 rounded-lg transition-colors",
+              "rounded-full border border-border/60 p-2 transition-colors sm:hidden",
               isSettingsActive
                 ? "bg-accent/10 text-accent"
                 : "text-muted-foreground hover:text-foreground hover:bg-card"
@@ -96,7 +96,7 @@ export function Navbar() {
           </Link>
           <button
             onClick={() => void signOut()}
-            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-card transition-colors cursor-pointer"
+            className="rounded-full border border-border/60 p-2 text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground cursor-pointer"
             title="Sign out"
           >
             <LogOut size={16} />
