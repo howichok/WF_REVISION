@@ -1,10 +1,16 @@
 import { evaluateCommunityContent } from "./moderation";
 import { REVISION_QUESTION_SCHEMAS } from "./rules/revision";
+import {
+  generateRevisionImprovement,
+  generateRevisionImprovementResponse,
+} from "./revision-improve";
 import { evaluateRevisionAnswerWithSchema } from "./scoring";
+import { generateTopicIntelligenceResponse } from "./topic-assistant";
 import type {
   CommunityEvaluationRequest,
   IntelligenceEvaluationRequest,
   IntelligenceEvaluationResponse,
+  RevisionImprovementRequest,
   RevisionEvaluationRequest,
   RevisionQuestionSchema,
 } from "./types";
@@ -39,6 +45,12 @@ export function evaluateCommunityRequest(
   });
 }
 
+export function evaluateRevisionImprovementRequest(
+  request: RevisionImprovementRequest
+): IntelligenceEvaluationResponse {
+  return generateRevisionImprovement(request);
+}
+
 export function evaluateIntelligenceRequest(
   request: IntelligenceEvaluationRequest
 ): IntelligenceEvaluationResponse {
@@ -46,11 +58,18 @@ export function evaluateIntelligenceRequest(
     return evaluateRevisionAnswer(request);
   }
 
+  if (request.mode === "revision-improve") {
+    return evaluateRevisionImprovementRequest(request);
+  }
+
   return evaluateCommunityRequest(request);
 }
 
 export {
   evaluateCommunityContent,
+  generateRevisionImprovement,
+  generateRevisionImprovementResponse,
   evaluateRevisionAnswerWithSchema,
+  generateTopicIntelligenceResponse,
   REVISION_QUESTION_SCHEMAS,
 };

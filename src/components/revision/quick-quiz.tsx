@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -20,6 +20,7 @@ import { TaskFeedbackPanel } from "@/components/revision/active-learning/task-fe
 import { TaskPanel } from "@/components/revision/active-learning/task-panel";
 import { TaskResponsePanel } from "@/components/revision/active-learning/task-response-panel";
 import { useAppData } from "@/components/providers/app-data-provider";
+import { useAiOverlay } from "@/components/providers/ai-overlay-provider";
 import { Badge, Button, Card, ProgressBar } from "@/components/ui";
 import { getFilteredQuickQuizQuestionPool, getPracticeSetId } from "@/lib/practice";
 import {
@@ -27,6 +28,7 @@ import {
   getAcceptedAnswerCues,
 } from "@/lib/practice-evaluator";
 import { extractCommandWord } from "@/lib/command-words";
+import { getQuizNextStepRecommendations } from "@/lib/topic-progression";
 import { cn } from "@/lib/utils";
 import { TOPICS } from "@/lib/types";
 
@@ -308,6 +310,8 @@ function QuickQuizResults({
   saveError,
   onRetry,
   routeMeta,
+  primaryRecommendation,
+  secondaryRecommendation,
 }: {
   context: QuickQuizContext;
   selectedTopicId: string | null;
@@ -317,6 +321,8 @@ function QuickQuizResults({
   saveError: string;
   onRetry: () => void;
   routeMeta: ReturnType<typeof getRouteMeta>;
+  primaryRecommendation: ReturnType<typeof getQuizNextStepRecommendations>["primary"];
+  secondaryRecommendation: ReturnType<typeof getQuizNextStepRecommendations>["secondary"];
 }) {
   const scorePct = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
   const variant = scorePct >= 70 ? "success" : scorePct >= 40 ? "warning" : "danger";
@@ -394,6 +400,34 @@ function QuickQuizResults({
         </Card>
       ) : null}
 
+      {(primaryRecommendation || secondaryRecommendation) && selectedTopicId ? (
+        <Card variant="support" className="rounded-3xl px-5 py-4">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            Same-topic next step
+          </p>
+          <div className="mt-4 space-y-3">
+            {primaryRecommendation ? (
+              <Link
+                href={primaryRecommendation.href}
+                className="block rounded-2xl border border-accent/20 bg-accent/8 px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-foreground">{primaryRecommendation.label}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{primaryRecommendation.why}</p>
+              </Link>
+            ) : null}
+            {secondaryRecommendation ? (
+              <Link
+                href={secondaryRecommendation.href}
+                className="block rounded-2xl border border-border bg-card/40 px-4 py-3"
+              >
+                <p className="text-sm font-semibold text-foreground">{secondaryRecommendation.label}</p>
+                <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{secondaryRecommendation.why}</p>
+              </Link>
+            ) : null}
+          </div>
+        </Card>
+      ) : null}
+
       <div className="al-action-bar">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Button variant="outline" onClick={onRetry}>
@@ -402,10 +436,10 @@ function QuickQuizResults({
           </Button>
 
           <Link
-            href={primaryAction.href}
+            href={primaryRecommendation?.href ?? primaryAction.href}
             className="focus-ring inline-flex min-w-[12rem] items-center justify-center gap-2 rounded-xl bg-accent px-5 py-2.5 text-sm font-medium text-white transition-all duration-200 hover:bg-accent-soft hover:shadow-lg hover:shadow-accent/20"
           >
-            {primaryAction.label}
+            {primaryRecommendation?.label ?? primaryAction.label}
             <ArrowRight size={14} />
           </Link>
         </div>
@@ -421,7 +455,14 @@ export function QuickQuiz({
   onClose,
   onStageChange,
 }: QuickQuizProps) {
-  const { trackPracticeSetProgress } = useAppData();
+  const overlay = useAiOverlay();
+  const {
+    recordQuizCoaching,
+    revisionProgress,
+    topicCoachingMemory,
+    trackPracticeSetProgress,
+  } = useAppData();
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
   const lockedPaper =
     paperId === "paper-1" ? "Paper 1" : paperId === "paper-2" ? "Paper 2" : undefined;
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(topicId ?? null);
@@ -472,10 +513,147 @@ export function QuickQuiz({
     : quizFinished
       ? "results"
       : "active";
+  const overlaySurfaceId = useMemo(
+    () => `quick-quiz-${selectedTopicId ?? topicId ?? paperId ?? "mixed"}`,
+    [paperId, selectedTopicId, topicId]
+  );
+  const scorePercent = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
+  const quizNextSteps = useMemo(
+    () =>
+      selectedTopicId && stage === "results"
+        ? getQuizNextStepRecommendations({
+            topicId: selectedTopicId,
+            scorePercent,
+            revisionProgress,
+            coachingMemory: topicCoachingMemory,
+          })
+        : { primary: null, secondary: null },
+    [revisionProgress, scorePercent, selectedTopicId, stage, topicCoachingMemory]
+  );
 
   useEffect(() => {
     onStageChange?.(stage);
   }, [onStageChange, stage]);
+
+  useEffect(() => {
+    if (!selectedTopicId) {
+      return;
+    }
+
+    const topicInfo = TOPICS.find((topic) => topic.id === selectedTopicId);
+    overlay.registerRevisionSurface({
+      surfaceId: overlaySurfaceId,
+      topicId: selectedTopicId,
+      topicLabel: topicInfo?.label ?? selectedTopicId,
+      prompt:
+        stage === "launcher"
+          ? routeMeta.routeTitle
+          : stage === "results"
+            ? "Quiz complete"
+            : currentQuestion?.question ?? routeMeta.routeTitle,
+      anchorRef: surfaceRef,
+    });
+
+    return () => {
+      overlay.unregisterRevisionSurface(overlaySurfaceId);
+    };
+  }, [currentQuestion?.question, overlay, overlaySurfaceId, routeMeta.routeTitle, selectedTopicId, stage]);
+
+  useEffect(() => {
+    if (!selectedTopicId) {
+      return;
+    }
+
+    overlay.syncRevisionSurface({
+      surfaceId: overlaySurfaceId,
+      prompt:
+        stage === "results"
+          ? "Quiz complete"
+          : currentQuestion?.question ?? routeMeta.routeTitle,
+      answer:
+        currentQuestion?.type === "short-answer"
+          ? typedAnswer
+          : selectedAnswer ?? "",
+      canUndoEdits: false,
+      canClearInsertedCues: false,
+    });
+  }, [currentQuestion?.question, currentQuestion?.type, overlay, overlaySurfaceId, routeMeta.routeTitle, selectedAnswer, selectedTopicId, stage, typedAnswer]);
+
+  useEffect(() => {
+    if (!selectedTopicId) {
+      return;
+    }
+
+    overlay.streamRevisionProgress({
+      surfaceId: overlaySurfaceId,
+      statusLine:
+        stage === "launcher"
+          ? "Quiz route ready. Start when you want a fast same-topic retrieval check."
+          : stage === "results"
+            ? "Quiz complete. Use the score to choose the next same-topic task."
+            : `Quiz in progress. Question ${currentIndex + 1} of ${totalQuestions}.`,
+      note:
+        stage === "active"
+          ? "Quiz mode keeps the overlay lightweight and uses it for progress and next-step guidance only."
+          : undefined,
+    });
+  }, [currentIndex, overlay, overlaySurfaceId, selectedTopicId, stage, totalQuestions]);
+
+  useEffect(() => {
+    if (!selectedTopicId) {
+      return;
+    }
+
+    overlay.setSurfaceRecommendations({
+      surfaceId: overlaySurfaceId,
+      primaryAction: quizNextSteps.primary
+        ? {
+            label: quizNextSteps.primary.label,
+            href: quizNextSteps.primary.href,
+            kind: quizNextSteps.primary.actionKind,
+          }
+        : null,
+      secondaryAction: quizNextSteps.secondary
+        ? {
+            label: quizNextSteps.secondary.label,
+            href: quizNextSteps.secondary.href,
+            kind: quizNextSteps.secondary.actionKind,
+          }
+        : null,
+    });
+  }, [overlay, overlaySurfaceId, quizNextSteps.primary, quizNextSteps.secondary, selectedTopicId]);
+
+  useEffect(() => {
+    if (!selectedTopicId || stage !== "results") {
+      return;
+    }
+
+    overlay.completeGuidedSession({
+      surfaceId: overlaySurfaceId,
+      phase: scorePercent >= 70 ? "merit" : scorePercent >= 40 ? "ready" : "fail",
+      statusLine:
+        scorePercent >= 70
+          ? "Quiz complete. The next same-topic step can now be harder."
+          : scorePercent >= 40
+            ? "Quiz complete. Retrieval is partly there, but the topic still needs guided follow-up."
+            : "Quiz complete. Stay inside the same topic before jumping to harder written work.",
+      note: "Quiz mode keeps the overlay lightweight and routes you to the next best same-topic task.",
+      primaryAction: quizNextSteps.primary
+        ? {
+            label: quizNextSteps.primary.label,
+            href: quizNextSteps.primary.href,
+            kind: quizNextSteps.primary.actionKind,
+          }
+        : null,
+      secondaryAction: quizNextSteps.secondary
+        ? {
+            label: quizNextSteps.secondary.label,
+            href: quizNextSteps.secondary.href,
+            kind: quizNextSteps.secondary.actionKind,
+          }
+        : null,
+    });
+  }, [overlay, overlaySurfaceId, quizNextSteps.primary, quizNextSteps.secondary, scorePercent, selectedTopicId, stage]);
 
   async function persistTopicQuizProgress(finalScore: number, finalTotal: number) {
     if (!selectedTopicId || finalTotal === 0) {
@@ -495,6 +673,18 @@ export function QuickQuiz({
         title: `${topicInfo?.label ?? "Topic"} quick quiz`,
         progressPercent,
         minutesSpent: Math.max(8, finalTotal * 2),
+      });
+      const recommendations = getQuizNextStepRecommendations({
+        topicId: selectedTopicId,
+        scorePercent: progressPercent,
+        revisionProgress,
+        coachingMemory: topicCoachingMemory,
+      });
+      recordQuizCoaching({
+        topicId: selectedTopicId,
+        scorePercent: progressPercent,
+        recommendedAction: recommendations.primary?.reasonCode ?? null,
+        recommendedHref: recommendations.primary?.href ?? null,
       });
     } catch (error) {
       setSaveError(
@@ -590,30 +780,36 @@ export function QuickQuiz({
       : 0;
 
     return (
-      <QuickQuizLauncher
-        routeMeta={routeMeta}
-        availableTopics={availableTopics}
-        lockedTopic={lockedTopic}
-        lockedTopicCount={lockedTopicCount}
-        lockedPaper={lockedPaper}
-        lockedPaperCount={lockedPaperCount}
-        onStart={startQuiz}
-      />
+      <div ref={surfaceRef}>
+        <QuickQuizLauncher
+          routeMeta={routeMeta}
+          availableTopics={availableTopics}
+          lockedTopic={lockedTopic}
+          lockedTopicCount={lockedTopicCount}
+          lockedPaper={lockedPaper}
+          lockedPaperCount={lockedPaperCount}
+          onStart={startQuiz}
+        />
+      </div>
     );
   }
 
   if (stage === "results") {
     return (
-      <QuickQuizResults
-        context={context}
-        selectedTopicId={selectedTopicId}
-        score={score}
+      <div ref={surfaceRef}>
+        <QuickQuizResults
+          context={context}
+          selectedTopicId={selectedTopicId}
+          score={score}
         totalQuestions={totalQuestions}
         isSavingProgress={isSavingProgress}
         saveError={saveError}
         onRetry={restartCurrentQuiz}
         routeMeta={routeMeta}
+        primaryRecommendation={quizNextSteps.primary}
+        secondaryRecommendation={quizNextSteps.secondary}
       />
+      </div>
     );
   }
 
@@ -661,7 +857,8 @@ export function QuickQuiz({
   );
 
   return (
-    <ActiveLearningLayout
+    <div ref={surfaceRef}>
+      <ActiveLearningLayout
       railTitle={
         context.kind === "paper"
           ? context.paperId === "paper-1"
@@ -998,7 +1195,8 @@ export function QuickQuiz({
               variant: "ghost",
             }
       }
-    />
+      />
+    </div>
   );
 }
 

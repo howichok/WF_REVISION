@@ -13,9 +13,18 @@ import type {
 } from "./types";
 import type { Database, Json } from "./supabase/database.types";
 import {
+  normalizeTopicCoachingMemoryMap,
+  type TopicCoachingMemoryEntry,
+  type TopicCoachingMemoryMap,
+} from "./coaching-memory";
+import {
   loadPersistedTopicDiagnostics,
   persistDiagnosticSessionDetails,
 } from "./diagnostic-database";
+import {
+  getLocalSharedCurriculumSnapshot,
+  type SharedCurriculumSnapshot,
+} from "./shared-curriculum";
 
 type AppSupabaseClient = SupabaseClient<Database>;
 
@@ -28,6 +37,8 @@ type DiagnosticScoreRow =
   Database["public"]["Tables"]["diagnostic_topic_scores"]["Row"];
 type RevisionRow = Database["public"]["Tables"]["revision_progress"]["Row"];
 type ActivityRow = Database["public"]["Tables"]["activity_history"]["Row"];
+type TopicCoachingRow =
+  Database["public"]["Tables"]["topic_coaching_memory"]["Row"];
 
 function trimOrNull(value: string | null | undefined) {
   const trimmed = value?.trim();
@@ -362,6 +373,30 @@ function mapActivities(rows: ActivityRow[]): ActivityLog[] {
   }));
 }
 
+function isMissingTopicCoachingTableError(error: unknown) {
+  const message = error instanceof Error ? error.message : String(error ?? "");
+  return message.includes("topic_coaching_memory");
+}
+
+function mapTopicCoachingMemory(rows: TopicCoachingRow[]): TopicCoachingMemoryMap {
+  const snapshots = Object.fromEntries(
+    rows.map((row) => [
+      row.topic_id,
+      {
+        ...(row.memory_snapshot &&
+        typeof row.memory_snapshot === "object" &&
+        !Array.isArray(row.memory_snapshot)
+          ? row.memory_snapshot
+          : {}),
+        topicId: row.topic_id,
+        updatedAt: row.updated_at,
+      } satisfies Partial<TopicCoachingMemoryEntry>,
+    ])
+  );
+
+  return normalizeTopicCoachingMemoryMap(snapshots);
+}
+
 export async function ensureUserBootstrap(
   supabase: AppSupabaseClient,
   user: SupabaseUser,
@@ -417,7 +452,8 @@ export async function ensureUserBootstrap(
 
 export async function loadAppState(
   supabase: AppSupabaseClient,
-  user: SupabaseUser
+  user: SupabaseUser,
+  options: { sharedCurriculum?: SharedCurriculumSnapshot } = {}
 ): Promise<AppBootstrapState> {
   await ensureUserBootstrap(supabase, user);
 
@@ -502,6 +538,7 @@ export async function loadAppState(
   const activityState = (activityRows ?? []) as ActivityRow[];
   const latestAttempt = diagnosticAttempt as DiagnosticAttemptRow | null;
   let diagnostic: DiagnosticResult | null = null;
+  let topicCoachingMemory: TopicCoachingMemoryMap = {};
 
   if (latestAttempt) {
     const { data: diagnosticScoreRows, error: scoreError } = await supabase
@@ -548,11 +585,34 @@ export async function loadAppState(
     }
   }
 
+  try {
+    const { data: topicCoachingRows, error: topicCoachingError } = await supabase
+      .from("topic_coaching_memory")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false });
+
+    if (topicCoachingError) {
+      throw topicCoachingError;
+    }
+
+    topicCoachingMemory = mapTopicCoachingMemory(
+      (topicCoachingRows ?? []) as TopicCoachingRow[]
+    );
+  } catch (error) {
+    if (!isMissingTopicCoachingTableError(error)) {
+      throw error;
+    }
+  }
+
   return {
+    sharedCurriculum:
+      options.sharedCurriculum ?? getLocalSharedCurriculumSnapshot(),
     user: mapProfile(profile),
     onboarding: mapFocusBreakdown(onboardingState, focusState),
     diagnostic,
     revisionProgress: mapRevisionProgress(revisionState),
+    topicCoachingMemory,
     activityHistory: mapActivities(activityState),
   };
 }
@@ -822,6 +882,31 @@ export async function savePracticeSetProgress(
       progressPercent: nextProgressPercent,
     },
   });
+}
+
+export async function saveTopicCoachingMemoryEntries(
+  supabase: AppSupabaseClient,
+  userId: string,
+  entries: TopicCoachingMemoryEntry[]
+) {
+  if (entries.length === 0) {
+    return;
+  }
+
+  const rows = entries.map((entry) => ({
+    user_id: userId,
+    topic_id: entry.topicId,
+    memory_snapshot: JSON.parse(JSON.stringify(entry)) as Json,
+    updated_at: entry.updatedAt,
+  }));
+
+  const { error } = await supabase.from("topic_coaching_memory").upsert(rows, {
+    onConflict: "user_id,topic_id",
+  });
+
+  if (error) {
+    throw error;
+  }
 }
 
 export async function saveDiagnosticResult(

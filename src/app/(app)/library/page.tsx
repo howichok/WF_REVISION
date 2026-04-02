@@ -19,6 +19,7 @@ import {
   SearchComposer,
   ResourceCard,
 } from "@/components/ui";
+import { useAppData } from "@/components/providers/app-data-provider";
 import { PageContainer } from "@/components/layout/page-container";
 import {
   getOfficialGuidanceResources,
@@ -49,12 +50,16 @@ function matchesResourceType(resource: ContentResource, activeType: string) {
 }
 
 export default function LibraryPage() {
+  const { sharedCurriculum } = useAppData();
   const [search, setSearch] = useState("");
   const [activeType, setActiveType] = useState("all");
   const [activeTopic, setActiveTopic] = useState("all");
-  const allResources = useMemo(() => getLibraryResources(), []);
+  const allResources = useMemo(() => getLibraryResources(sharedCurriculum), [sharedCurriculum]);
   const qualificationOverview = useMemo(() => getQualificationOverview(), []);
-  const officialResources = useMemo(() => getOfficialGuidanceResources(4), []);
+  const officialResources = useMemo(
+    () => getOfficialGuidanceResources(4, sharedCurriculum),
+    [sharedCurriculum]
+  );
   const topicSearch = useMemo(
     () =>
       searchTopicMetadata(search, {
@@ -66,8 +71,8 @@ export default function LibraryPage() {
     () =>
       searchStructuredContent(search, {
         legacyTopicId: activeTopic !== "all" ? activeTopic : undefined,
-      }),
-    [search, activeTopic]
+      }, sharedCurriculum),
+    [search, activeTopic, sharedCurriculum]
   );
   const matchedTopicIds = useMemo(() => {
     return Array.from(
@@ -84,8 +89,8 @@ export default function LibraryPage() {
       searchLibraryResources(search, {
         legacyTopicId: activeTopic !== "all" ? activeTopic : undefined,
         matchedTopicIds,
-      }),
-    [activeTopic, matchedTopicIds, search]
+      }, sharedCurriculum),
+    [activeTopic, matchedTopicIds, search, sharedCurriculum]
   );
 
   const filtered = (search ? rankedResources : allResources).filter((r) => {

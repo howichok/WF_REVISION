@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateGroundedResearchAnswer } from "@/lib/research/google-grounding";
+import { recordRevisionRouteMetric } from "@/lib/revision-runtime";
 import type { GroundedResearchRequest } from "@/lib/research/types";
 
 export const runtime = "nodejs";
@@ -32,6 +33,7 @@ function validateRequest(value: unknown): GroundedResearchRequest | { error: str
 }
 
 export async function POST(request: Request) {
+  const startedAt = Date.now();
   let body: unknown;
 
   try {
@@ -46,12 +48,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    return NextResponse.json(await generateGroundedResearchAnswer(validated));
+    const response = await generateGroundedResearchAnswer(validated);
+    recordRevisionRouteMetric("grounded-answer", Date.now() - startedAt, true);
+    return NextResponse.json(response);
   } catch (error) {
     const message =
       error instanceof Error
         ? error.message
         : "Unable to generate a grounded research answer right now.";
+    recordRevisionRouteMetric("grounded-answer", Date.now() - startedAt, false);
 
     if (message.startsWith("Missing GEMINI_API_KEY")) {
       return jsonError(message, 503);

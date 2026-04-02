@@ -3,6 +3,7 @@ import type {
   GlossaryTerm,
   QuestionMetadata,
 } from "@/data/curriculum";
+import type { SharedCurriculumSnapshot } from "@/lib/shared-curriculum";
 import {
   getMarkSchemeConceptsForQuestion,
   getTopicContentBundle,
@@ -215,8 +216,11 @@ function buildSubtopicQuestion(topicId: string): PracticeQuizQuestion[] {
   });
 }
 
-function extractQuestionCues(question: QuestionMetadata) {
-  const markSchemeCues = getMarkSchemeConceptsForQuestion(question.id)
+function extractQuestionCues(
+  question: QuestionMetadata,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  const markSchemeCues = getMarkSchemeConceptsForQuestion(question.id, snapshot)
     .flatMap((concept) => concept.conceptTargets)
     .slice(0, 5);
 
@@ -231,9 +235,10 @@ function extractQuestionCues(question: QuestionMetadata) {
 
 function buildExamPromptQuestion(
   topicId: string,
-  question: QuestionMetadata
+  question: QuestionMetadata,
+  snapshot?: SharedCurriculumSnapshot | null
 ): PracticeQuizQuestion {
-  const cues = extractQuestionCues(question);
+  const cues = extractQuestionCues(question, snapshot);
 
   return {
     id: `quiz-exam-${question.id}`,
@@ -305,8 +310,11 @@ function pickResource(
   );
 }
 
-function getResourceSteps(topicId: string): PracticeResourceStep[] {
-  const bundle = getTopicContentBundle(topicId);
+function getResourceSteps(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+): PracticeResourceStep[] {
+  const bundle = getTopicContentBundle(topicId, snapshot);
   const learnResource = pickResource(bundle.resources, ["textbook", "specification"]);
   const testResource = pickResource(bundle.resources, ["question-bank", "past-paper"]);
   const reviewResource = pickResource(bundle.resources, ["mark-scheme"]);
@@ -337,9 +345,12 @@ export function getPracticeSetId(topicId: string, kind: PracticeSetKind) {
   return `practice:${kind}:${topicId}`;
 }
 
-export function getTopicPracticeBundle(topicId: string): TopicPracticeBundle {
+export function getTopicPracticeBundle(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+): TopicPracticeBundle {
   const topicInfo = getTopicById(topicId);
-  const bundle = getTopicContentBundle(topicId);
+  const bundle = getTopicContentBundle(topicId, snapshot);
   const officialPointCards = bundle.officialPoints.map((point) => ({
     id: `recall-point-${point.id}`,
     topicId,
@@ -399,13 +410,13 @@ export function getTopicPracticeBundle(topicId: string): TopicPracticeBundle {
     nextStep: "Say where this term could appear in an exam answer or scenario.",
   }));
 
-  const allTerms = TOPICS.flatMap((topic) => getTopicContentBundle(topic.id).terms);
+  const allTerms = TOPICS.flatMap((topic) => getTopicContentBundle(topic.id, snapshot).terms);
   const quizQuestions = [
     ...bundle.terms
       .map((term) => buildTermMultipleChoiceQuestion(topicId, term, allTerms))
       .filter((question): question is PracticeQuizQuestion => Boolean(question)),
     ...buildSubtopicQuestion(topicId),
-    ...bundle.questions.map((question) => buildExamPromptQuestion(topicId, question)),
+    ...bundle.questions.map((question) => buildExamPromptQuestion(topicId, question, snapshot)),
     ...bundle.officialPoints.flatMap((point, pointIndex) =>
       point.practicePrompts.slice(0, 4).map((prompt, promptIndex) => {
         const difficulty = getPromptDifficulty(prompt);
@@ -435,7 +446,7 @@ export function getTopicPracticeBundle(topicId: string): TopicPracticeBundle {
   ];
 
   const questionDrills = bundle.questions.map((question) => {
-    const conceptTargets = getMarkSchemeConceptsForQuestion(question.id)
+    const conceptTargets = getMarkSchemeConceptsForQuestion(question.id, snapshot)
       .flatMap((concept) => concept.conceptTargets)
       .slice(0, 4);
     const linkedResourceIds = bundle.resources
@@ -502,13 +513,17 @@ export function getTopicPracticeBundle(topicId: string): TopicPracticeBundle {
     recallCards: [...termCards, ...officialPointCards],
     examDrills: [...questionDrills, ...curriculumDrills],
     quizQuestions,
-    resourceSteps: getResourceSteps(topicId),
+      resourceSteps: getResourceSteps(topicId, snapshot),
   };
 }
 
-export function getQuickQuizQuestionPool(topicId?: string) {
+export function getQuickQuizQuestionPool(
+  topicId?: string,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
   return getFilteredQuickQuizQuestionPool(
-    topicId ? { topicId } : undefined
+    topicId ? { topicId } : undefined,
+    snapshot
   );
 }
 
@@ -518,7 +533,10 @@ interface QuickQuizPoolOptions {
   topicIds?: string[];
 }
 
-export function getFilteredQuickQuizQuestionPool(options: QuickQuizPoolOptions = {}) {
+export function getFilteredQuickQuizQuestionPool(
+  options: QuickQuizPoolOptions = {},
+  snapshot?: SharedCurriculumSnapshot | null
+) {
   const topicIds = options.topicIds?.length
     ? options.topicIds
     : options.topicId
@@ -526,7 +544,7 @@ export function getFilteredQuickQuizQuestionPool(options: QuickQuizPoolOptions =
       : TOPICS.filter((topic) => topic.id !== "esp").map((topic) => topic.id);
 
   const pool = dedupeById(
-    topicIds.flatMap((topicId) => getTopicPracticeBundle(topicId).quizQuestions)
+    topicIds.flatMap((topicId) => getTopicPracticeBundle(topicId, snapshot).quizQuestions)
   );
 
   if (!options.paper) {
@@ -536,10 +554,13 @@ export function getFilteredQuickQuizQuestionPool(options: QuickQuizPoolOptions =
   return pool.filter((question) => question.paper === options.paper);
 }
 
-export function getPaperPracticeBundle(pathId: Exclude<PracticePathId, "mixed">) {
+export function getPaperPracticeBundle(
+  pathId: Exclude<PracticePathId, "mixed">,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
   const paper: PracticePaper = pathId === "paper-1" ? "Paper 1" : "Paper 2";
   const topicIds = TOPICS.filter((topic) => topic.id !== "esp").map((topic) => topic.id);
-  const bundles = topicIds.map((topicId) => getTopicPracticeBundle(topicId));
+  const bundles = topicIds.map((topicId) => getTopicPracticeBundle(topicId, snapshot));
   const quizQuestions = dedupeById(
     bundles.flatMap((bundle) =>
       bundle.quizQuestions.filter((question) => question.paper === paper)
@@ -563,12 +584,15 @@ export function getPaperPracticeBundle(pathId: Exclude<PracticePathId, "mixed">)
   };
 }
 
-export function getPracticePathSummary(pathId: PracticePathId): PracticePathSummary {
+export function getPracticePathSummary(
+  pathId: PracticePathId,
+  snapshot?: SharedCurriculumSnapshot | null
+): PracticePathSummary {
   if (pathId === "mixed") {
     const relatedTopicIds = TOPICS.filter((topic) => topic.id !== "esp").map(
       (topic) => topic.id
     );
-    const questionCount = getFilteredQuickQuizQuestionPool().length;
+    const questionCount = getFilteredQuickQuizQuestionPool(undefined, snapshot).length;
 
     return {
       id: "mixed",
@@ -578,7 +602,7 @@ export function getPracticePathSummary(pathId: PracticePathId): PracticePathSumm
         "Cross-topic retrieval for waking everything up before you narrow down into a paper or one weak topic.",
       questionCount,
       examDrillCount: relatedTopicIds.reduce(
-        (sum, topicId) => sum + getTopicPracticeBundle(topicId).examDrills.length,
+        (sum, topicId) => sum + getTopicPracticeBundle(topicId, snapshot).examDrills.length,
         0
       ),
       topicCount: relatedTopicIds.length,
@@ -589,7 +613,7 @@ export function getPracticePathSummary(pathId: PracticePathId): PracticePathSumm
     };
   }
 
-  const paperBundle = getPaperPracticeBundle(pathId);
+  const paperBundle = getPaperPracticeBundle(pathId, snapshot);
   const isPaperOne = pathId === "paper-1";
 
   return {

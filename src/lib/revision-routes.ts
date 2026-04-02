@@ -11,6 +11,7 @@ export type RevisionRouteId =
 
 export type TopicLearningMode =
   | "overview"
+  | "ask"
   | "practice"
   | "recall"
   | "exam-drill"
@@ -68,6 +69,11 @@ export const TOPIC_ROUTE_ITEMS: Array<{
   description?: string;
 }> = [
   { id: "overview", label: "Overview", description: "What this topic covers" },
+  {
+    id: "ask",
+    label: "Ask DSD",
+    description: "Universal hints, sources, next questions, and answer help",
+  },
   { id: "recall", label: "Recall", description: "Quick retrieval of key ideas" },
   { id: "practice", label: "Practice", description: "Guided questions and checks" },
   {

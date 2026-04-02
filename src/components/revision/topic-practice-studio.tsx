@@ -1,10 +1,18 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, BrainCircuit, ClipboardList, Sparkles, Target } from "lucide-react";
+import {
+  ArrowRight,
+  BrainCircuit,
+  ClipboardList,
+  Search,
+  Sparkles,
+  Target,
+} from "lucide-react";
 import { Badge } from "@/components/ui";
 import { getPracticeSetId, getTopicPracticeBundle } from "@/lib/practice";
 import { getPracticeSetProgress } from "@/lib/progress";
+import { getTopicPracticeStudioRecommendation } from "@/lib/topic-progression";
 import { useAppData } from "@/components/providers/app-data-provider";
 
 interface TopicPracticeStudioProps {
@@ -23,8 +31,8 @@ export function TopicPracticeStudio({
   topicId,
   topicLabel,
 }: TopicPracticeStudioProps) {
-  const { revisionProgress } = useAppData();
-  const bundle = getTopicPracticeBundle(topicId);
+  const { revisionProgress, topicCoachingMemory, sharedCurriculum } = useAppData();
+  const bundle = getTopicPracticeBundle(topicId, sharedCurriculum);
   const recallProgress =
     getPracticeSetProgress(revisionProgress, topicId, getPracticeSetId(topicId, "recall"))
       ?.progressPercent ?? 0;
@@ -35,14 +43,22 @@ export function TopicPracticeStudio({
     getPracticeSetProgress(revisionProgress, topicId, getPracticeSetId(topicId, "quiz"))
       ?.progressPercent ?? 0;
 
-  const suggested =
-    recallProgress < 30
-      ? "recall"
-      : examProgress < 30
-        ? "exam-drill"
-        : "answer-check";
+  const practiceRecommendation = getTopicPracticeStudioRecommendation(
+    topicId,
+    revisionProgress,
+    topicCoachingMemory
+  );
+  const suggested = practiceRecommendation.suggestedMode;
 
   const modes = [
+    {
+      id: "ask",
+      href: `/revision/${topicId}/ask`,
+      title: "Universal Ask DSD",
+      description: "One coach for hints, short explanations, official sources, and next questions.",
+      icon: Search,
+      progress: null,
+    },
     {
       id: "recall",
       href: `/revision/${topicId}/recall`,
@@ -82,12 +98,15 @@ export function TopicPracticeStudio({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold text-foreground">
-          Practice {topicLabel}
-        </h2>
-        {avgProgress > 0 ? (
-          <Badge variant="accent">{avgProgress}%</Badge>
-        ) : null}
+        <div>
+          <h2 className="text-lg font-semibold text-foreground">
+            Practice {topicLabel}
+          </h2>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            {practiceRecommendation.why}
+          </p>
+        </div>
+        {avgProgress > 0 ? <Badge variant="accent">{avgProgress}%</Badge> : null}
       </div>
 
       <div className="divide-y divide-border rounded-2xl border border-border">

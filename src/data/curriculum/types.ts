@@ -161,6 +161,50 @@ export interface QuestionMetadata {
   evaluationProfile?: QuestionEvaluationProfile;
 }
 
+export type CoverageQuestionVariant =
+  | "core-explain"
+  | "scenario-apply"
+  | "compare-justify"
+  | "evaluate-impact"
+  | "design-decision"
+  | "risk-priority"
+  | "evaluate-tradeoff"
+  | "fix-misconception";
+
+export interface CoverageRewriteRule {
+  target: string;
+  hint: string;
+  microRewrite?: string;
+}
+
+export interface CurriculumPointCoverageNode {
+  pointId: string;
+  pointCode: string;
+  pointTitle: string;
+  legacyTopicIds: TopicId[];
+  relatedTerms: string[];
+  relatedConcepts: string[];
+  questionIds: string[];
+  generatedQuestionIds: string[];
+  generatedVariants: CoverageQuestionVariant[];
+  misconceptionSignals: string[];
+  rewriteRules: CoverageRewriteRule[];
+  resourcePriorityIds: string[];
+  followUpQuestionIds: string[];
+  commandWordTargets: string[];
+  improvementSignals: string[];
+}
+
+export interface TopicCoverageGraph {
+  topicId: TopicId;
+  coveredPointIds: string[];
+  generatedQuestionIds: string[];
+  generatedQuestionCount: number;
+  totalQuestionCount: number;
+  relatedTerms: string[];
+  coverageByPoint: CurriculumPointCoverageNode[];
+}
+
 export interface MarkSchemeConceptMetadata {
   id: string;
   sourceId: string;

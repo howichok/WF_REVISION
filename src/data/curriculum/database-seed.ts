@@ -9,6 +9,7 @@ import {
   LEGACY_TOPIC_MAPPINGS,
   QUESTION_METADATA,
 } from ".";
+import type { ContentSource } from "./types";
 
 function getSortOrderFromCode(code: string) {
   return Number(
@@ -23,6 +24,44 @@ function uniqueStrings(values: Array<string | undefined | null>) {
   return [...new Set(values.map((value) => value?.trim()).filter(Boolean) as string[])];
 }
 
+function toGeneratedPointSourceId(pointId: string) {
+  return `generated-official-point-${pointId
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")}`;
+}
+
+function buildGeneratedQuestionSources(): ContentSource[] {
+  const knownSourceIds = new Set(CONTENT_SOURCES.map((source) => source.id));
+  const pointByGeneratedSourceId = new Map(
+    DSD_CURRICULUM_POINTS.map((point) => [toGeneratedPointSourceId(point.id), point])
+  );
+
+  return [...new Set(QUESTION_METADATA.map((question) => question.sourceId))]
+    .filter((sourceId) => !knownSourceIds.has(sourceId))
+    .map((sourceId) => {
+      const point = pointByGeneratedSourceId.get(sourceId);
+
+      if (!point) {
+        throw new Error(
+          `Question source ${sourceId} does not map to a known curriculum point.`
+        );
+      }
+
+      return {
+        id: sourceId,
+        title: `Generated official-point questions for ${point.code} ${point.title}`,
+        kind: "question-bank",
+        classification: "secondary",
+        filePath: `generated://official-point-question-factory/${point.id}`,
+        caution:
+          "Synthetic internal source generated from the official DSD curriculum point for practice coverage.",
+        notes:
+          "This source is created by the revision platform to anchor generated exam-safe prompts back to a specific official curriculum point.",
+      } satisfies ContentSource;
+    });
+}
+
 export function buildCurriculumSeedPayload() {
   const schemaBySubtopicId = new Map(
     REVISION_QUESTION_SCHEMAS.filter((schema) => schema.subtopicId).map((schema) => [
@@ -31,7 +70,7 @@ export function buildCurriculumSeedPayload() {
     ])
   );
 
-  const sources = CONTENT_SOURCES.map((source) => ({
+  const sources = [...CONTENT_SOURCES, ...buildGeneratedQuestionSources()].map((source) => ({
     id: source.id,
     title: source.title,
     kind: source.kind,

@@ -4,16 +4,17 @@ import Link from "next/link";
 import { useDeferredValue, useState } from "react";
 import { AlertCircle, FileQuestion } from "lucide-react";
 import { useAppData } from "@/components/providers/app-data-provider";
+import { TopicIntelligenceAssistant } from "@/components/revision/topic-intelligence-assistant";
 import { Badge, Button, Card, ProgressBar, SearchComposer } from "@/components/ui";
 import {
   getMarkSchemeConceptsForQuestion,
   getResourceHref,
+  getTopicCoverageGraph,
   getTopicContentBundle,
   isResourceExternal,
 } from "@/lib/content";
 import { getPracticeSetId } from "@/lib/practice";
 import { getPracticeSetProgress, getSubtopicProgressForTopic } from "@/lib/progress";
-import type { GroundedResearchResponse } from "@/lib/research/types";
 import { getTopicById, getTopicTree } from "@/lib/types";
 
 function getScoreVariant(pct: number): "success" | "warning" | "danger" {
@@ -46,36 +47,11 @@ function matchesQuestionQuery(
   return haystack.includes(query);
 }
 
-function buildFocusedGoogleQuery(topicLabel: string, rawQuery: string) {
-  const focus = rawQuery.trim() || `${topicLabel} explanation`;
-
-  return [
-    `"T Level"`,
-    `"Digital Software Development"`,
-    `"${topicLabel}"`,
-    focus,
-    `(site:qualifications.pearson.com OR site:tlevels.gov.uk OR site:support.tlevels.gov.uk)`,
-    `-site:studocu.com -site:coursehero.com -site:brainly.com -site:quora.com -site:reddit.com`,
-  ].join(" ");
-}
-
-function openFocusedGoogleSearch(query: string) {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  window.open(
-    `https://www.google.com/search?q=${encodeURIComponent(query)}`,
-    "_blank",
-    "noopener,noreferrer"
-  );
-}
-
 export function TopicOverviewPanel({ topicId }: { topicId: string }) {
-  const { diagnostic, onboarding, revisionProgress } = useAppData();
+  const { diagnostic, onboarding, revisionProgress, sharedCurriculum } = useAppData();
   const topicInfo = getTopicById(topicId);
   const tree = getTopicTree(topicId);
-  const topicContent = getTopicContentBundle(topicId);
+  const topicContent = getTopicContentBundle(topicId, sharedCurriculum);
   const topicScore = diagnostic?.topicScores.find((score) => score.category === topicId);
   const topicProgress = getSubtopicProgressForTopic(revisionProgress, topicId);
   const focusedSubtopics =
@@ -112,17 +88,17 @@ export function TopicOverviewPanel({ topicId }: { topicId: string }) {
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <Link
-            href={`/revision/${topicId}/practice`}
+            href={`/revision/${topicId}/ask`}
             className="rounded-xl border border-accent/20 bg-accent/10 p-4 text-left transition-colors hover:border-accent/35 hover:bg-accent/15"
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
               Start here
             </p>
             <p className="mt-2 text-sm font-semibold text-foreground">
-              Open the topic practice hub
+              Open Universal Ask DSD
             </p>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Choose recall, guided exam practice, answer checking, quick quiz, or resources.
+              Start with one prompt and let the router decide whether you need a hint, source, answer check, or next question.
             </p>
           </Link>
 
@@ -305,58 +281,12 @@ export function TopicOverviewPanel({ topicId }: { topicId: string }) {
 }
 
 export function TopicExamQuestionsPanel({ topicId }: { topicId: string }) {
-  const topicContent = getTopicContentBundle(topicId);
+  const { sharedCurriculum } = useAppData();
+  const topicContent = getTopicContentBundle(topicId, sharedCurriculum);
+  const coverageGraph = getTopicCoverageGraph(topicId);
   const topicInfo = getTopicById(topicId);
   const [query, setQuery] = useState("");
-  const [researchQuery, setResearchQuery] = useState("");
-  const [groundedResult, setGroundedResult] = useState<GroundedResearchResponse | null>(null);
-  const [researchError, setResearchError] = useState("");
-  const [isResearchLoading, setIsResearchLoading] = useState(false);
   const deferredQuery = useDeferredValue(query.trim().toLowerCase());
-  const focusedGoogleQuery = buildFocusedGoogleQuery(
-    topicInfo?.label ?? topicId,
-    researchQuery
-  );
-
-  async function handleRunGroundedResearch() {
-    const trimmedQuery = researchQuery.trim();
-    if (trimmedQuery.length < 4) {
-      setResearchError("Write a slightly more specific research query first.");
-      return;
-    }
-
-    setIsResearchLoading(true);
-    setResearchError("");
-
-    try {
-      const response = await fetch("/api/research/grounded-answer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          topicId,
-          query: trimmedQuery,
-        }),
-      });
-
-      const payload = (await response.json()) as GroundedResearchResponse | { error?: string };
-      if (!response.ok || ("error" in payload && payload.error)) {
-        throw new Error(("error" in payload && payload.error) || "Unable to run grounded research.");
-      }
-
-      setGroundedResult(payload as GroundedResearchResponse);
-    } catch (error) {
-      setGroundedResult(null);
-      setResearchError(
-        error instanceof Error
-          ? error.message
-          : "Unable to run grounded research right now."
-      );
-    } finally {
-      setIsResearchLoading(false);
-    }
-  }
 
   if (topicContent.questions.length === 0) {
     return (
@@ -397,134 +327,12 @@ export function TopicExamQuestionsPanel({ topicId }: { topicId: string }) {
   return (
     <div className="space-y-3">
       <div className="grid gap-3 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <Card variant="support" className="p-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-            Ask official sources
-          </p>
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            Run a controlled, AI Overview-like answer for this DSD topic. The site uses Gemini with Google Search grounding plus the local curriculum pack, then shows the answer with source trails.
-          </p>
-          <div className="mt-4 space-y-3">
-            <SearchComposer
-              value={researchQuery}
-              onChange={setResearchQuery}
-              placeholder={`Search ${topicInfo?.label ?? "this topic"} in official DSD sources...`}
-            />
-            <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-1">
-              <Button
-                type="button"
-                className="w-full"
-                onClick={() => void handleRunGroundedResearch()}
-                isLoading={isResearchLoading}
-              >
-                Ask grounded AI
-              </Button>
-              <Button
-                type="button"
-                variant="secondary"
-                className="w-full"
-                onClick={() => openFocusedGoogleSearch(focusedGoogleQuery)}
-              >
-                Open focused Google search
-              </Button>
-            </div>
-            {researchError ? (
-              <div className="flex items-start gap-2 rounded-xl border border-danger/20 bg-danger/10 px-3 py-3 text-sm text-danger">
-                <AlertCircle size={14} className="mt-0.5 shrink-0" />
-                <span>{researchError}</span>
-              </div>
-            ) : null}
-            {groundedResult ? (
-              <div className="space-y-3 rounded-3xl border border-accent/15 bg-surface/20 p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
-                    Grounded answer
-                  </p>
-                  <Badge variant="accent">{groundedResult.model}</Badge>
-                </div>
-                <p className="text-sm leading-relaxed text-foreground/90 whitespace-pre-line">
-                  {groundedResult.answer}
-                </p>
-
-                {groundedResult.searchQueries.length > 0 ? (
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Query trail
-                    </p>
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {groundedResult.searchQueries.slice(0, 4).map((item) => (
-                        <span
-                          key={item}
-                          className="rounded-lg border border-border bg-card/60 px-2.5 py-1.5 text-[11px] text-muted-foreground"
-                        >
-                          {item}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {groundedResult.evidenceTrail.length > 0 ? (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Evidence trail
-                    </p>
-                    {groundedResult.evidenceTrail.map((item) => (
-                      <div
-                        key={item.id}
-                        className="rounded-2xl border border-border bg-card/40 px-3 py-3"
-                      >
-                        <p className="text-xs leading-relaxed text-foreground/90">
-                          {item.snippet}
-                        </p>
-                        <p className="mt-2 text-[11px] text-muted-foreground">
-                          Sources: {item.sourceIndices.map((index) => `[${index}]`).join(" ")}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-
-                {groundedResult.sources.length > 0 ? (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                      Sources
-                    </p>
-                    {groundedResult.sources.slice(0, 6).map((source) => (
-                      <a
-                        key={`${source.index}-${source.uri}`}
-                        href={source.uri}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="block rounded-2xl border border-border bg-card/40 px-3 py-3 transition-colors hover:border-accent/25 hover:bg-card"
-                      >
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-sm font-medium text-foreground">
-                              [{source.index}] {source.title}
-                            </p>
-                            <p className="mt-1 text-xs text-muted-foreground">
-                              {source.host}
-                            </p>
-                          </div>
-                          <Badge variant="default">Open</Badge>
-                        </div>
-                      </a>
-                    ))}
-                  </div>
-                ) : null}
-
-                <p className="text-xs leading-relaxed text-muted-foreground">
-                  {groundedResult.sourceStrategy}
-                </p>
-              </div>
-            ) : (
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                Use this for a tightly scoped explanation of a DSD idea. If `GEMINI_API_KEY` is not configured, the panel will tell you that instead of failing silently.
-              </p>
-            )}
-          </div>
-        </Card>
+        <TopicIntelligenceAssistant
+          topicId={topicId}
+          topicLabel={topicInfo?.label ?? topicId}
+          surface="panel"
+          showGoogleFallback
+        />
 
         <div className="space-y-3">
           <SearchComposer
@@ -532,7 +340,7 @@ export function TopicExamQuestionsPanel({ topicId }: { topicId: string }) {
             onChange={setQuery}
             placeholder="Filter by source, prompt, keyword, or paper..."
           />
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
             <Card variant="support" className="p-4">
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 Matched prompts
@@ -550,6 +358,28 @@ export function TopicExamQuestionsPanel({ topicId }: { topicId: string }) {
               </p>
               <p className="mt-2 text-2xl font-semibold text-foreground">
                 {groupedQuestions.length}
+              </p>
+            </Card>
+            <Card variant="support" className="p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Point coverage
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {coverageGraph?.coverageByPoint.length ?? 0}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                official points linked into this topic question graph
+              </p>
+            </Card>
+            <Card variant="support" className="p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                Factory prompts
+              </p>
+              <p className="mt-2 text-2xl font-semibold text-foreground">
+                {coverageGraph?.generatedQuestionCount ?? 0}
+              </p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                generated official-point prompts now in the bank
               </p>
             </Card>
           </div>
@@ -577,7 +407,10 @@ export function TopicExamQuestionsPanel({ topicId }: { topicId: string }) {
             </div>
 
             {group.questions.map((question) => {
-              const conceptTargets = getMarkSchemeConceptsForQuestion(question.id);
+              const conceptTargets = getMarkSchemeConceptsForQuestion(
+                question.id,
+                sharedCurriculum
+              );
 
               return (
                 <Card key={question.id} variant="warning" className="p-5">
@@ -635,7 +468,8 @@ export function TopicExamQuestionsPanel({ topicId }: { topicId: string }) {
 }
 
 export function TopicResourcesPanel({ topicId }: { topicId: string }) {
-  const topicContent = getTopicContentBundle(topicId);
+  const { sharedCurriculum } = useAppData();
+  const topicContent = getTopicContentBundle(topicId, sharedCurriculum);
 
   if (topicContent.resources.length === 0) {
     return (

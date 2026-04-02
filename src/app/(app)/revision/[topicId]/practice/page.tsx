@@ -29,6 +29,7 @@ export default async function TopicPracticePage({
             How to use this
           </p>
           <div className="mt-4 space-y-2 text-sm text-muted-foreground">
+            <p>Start with Universal Ask DSD when you are not sure which mode you need.</p>
             <p>Use recall when you need retrieval.</p>
             <p>Use exam drill when you need planning and self-checking.</p>
             <p>Use answer check when you want rubric-based feedback.</p>

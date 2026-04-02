@@ -180,6 +180,38 @@ export interface Database {
           },
         ];
       };
+      topic_coaching_memory: {
+        Row: {
+          user_id: string;
+          topic_id: string;
+          memory_snapshot: Json;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          topic_id: string;
+          memory_snapshot?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          topic_id?: string;
+          memory_snapshot?: Json;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "topic_coaching_memory_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           id: string;

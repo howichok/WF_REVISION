@@ -8,8 +8,17 @@
     "start": "next start",
     "lint": "eslint",
     "seed:curriculum": "tsx scripts/sync-curriculum-seed.ts",
+    "seed:curriculum:sql": "tsx scripts/generate-curriculum-sql.ts",
+    "seed:demo:sql": "tsx scripts/generate-demo-sql.ts",
+    "test:curriculum-seed": "node --test --import tsx src/data/curriculum/database-seed.test.ts",
+    "test:coverage-graph": "node --test --import tsx src/data/curriculum/coverage-graph.test.ts",
+    "test:shared-curriculum": "node --test --import tsx src/lib/shared-curriculum.test.ts",
     "test:evaluator": "node --test --import tsx src/lib/practice-evaluator.test.ts",
+    "test:revision-overlay": "node --test --import tsx src/lib/intelligence/revision-overlay.test.ts",
+    "test:revision-improve": "node --test --import tsx src/lib/intelligence/revision-improve.test.ts",
     "test:revision-sync": "node --test --import tsx src/lib/intelligence/revision-catalog-sync.test.ts",
+    "test:topic-progression": "node --test --import tsx src/lib/topic-progression.test.ts",
+    "test:topic-intelligence": "node --test --import tsx src/lib/intelligence/topic-assistant.test.ts",
     "perf:lighthouse": "node -e \"console.log('With dev server running: npx lighthouse http://localhost:3000 --only-categories=performance --view')\""
   },
   "dependencies": {

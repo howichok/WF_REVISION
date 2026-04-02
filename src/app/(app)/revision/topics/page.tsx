@@ -18,7 +18,7 @@ function getScoreVariant(pct: number): "success" | "warning" | "danger" {
 }
 
 export default function RevisionTopicsPage() {
-  const { diagnostic, revisionProgress } = useAppData();
+  const { diagnostic, revisionProgress, sharedCurriculum } = useAppData();
   const topics = TOPICS.filter((topic) => topic.id !== "esp");
 
   return (
@@ -42,7 +42,7 @@ export default function RevisionTopicsPage() {
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {topics.map((topic) => {
             const tree = getTopicTree(topic.id);
-            const content = getTopicContentBundle(topic.id);
+            const content = getTopicContentBundle(topic.id, sharedCurriculum);
             const diagnosticScore = diagnostic?.topicScores.find((score) => score.category === topic.id);
             const diagnosticPercent = diagnosticScore
               ? Math.round((diagnosticScore.score / diagnosticScore.maxScore) * 100)

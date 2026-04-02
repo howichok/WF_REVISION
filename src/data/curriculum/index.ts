@@ -1,5 +1,10 @@
 export { DSD_CURRICULUM_AREAS, DSD_CURRICULUM_POINTS } from "./curriculum";
+export {
+  CURRICULUM_POINT_COVERAGE_NODES,
+  TOPIC_COVERAGE_GRAPHS,
+} from "./coverage-graph";
 export { DSD_EXAM_GUIDE_2026 } from "./exam-2026";
+export { GENERATED_POINT_QUESTION_METADATA } from "./generated-point-questions";
 export { buildCurriculumSeedPayload } from "./database-seed";
 export { GLOSSARY_TERMS } from "./glossary";
 export { LEGACY_TOPIC_MAPPINGS } from "./mappings";
@@ -13,7 +18,9 @@ export type {
   AnswerRubricSlot,
   ContentResource,
   ContentSource,
+  CoverageQuestionVariant,
   CurriculumArea,
+  CurriculumPointCoverageNode,
   CurriculumPoint,
   ExamGuide,
   ExamGuideEntry,
@@ -26,6 +33,7 @@ export type {
   QuestionMetadata,
   RecommendedMaterial,
   StructuredSearchResults,
+  TopicCoverageGraph,
   TopicContentBundle,
 } from "./types";
 export type { CurriculumSeedPayload } from "./database-seed";

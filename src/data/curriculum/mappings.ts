@@ -39,7 +39,7 @@ export const LEGACY_TOPIC_MAPPINGS: LegacyTopicMapping[] = [
   },
   {
     topicId: "digital-environments",
-    officialPointIds: ["dsd-4.3", "dsd-5.2", "dsd-6.1", "dsd-6.4"],
+    officialPointIds: ["dsd-4.3", "dsd-5.2", "dsd-6.1", "dsd-6.4", "dsd-7.3"],
     note:
       "Digital environments maps to target platform decisions, collaborative tooling, implementation environment choices, and deployment methods.",
   },

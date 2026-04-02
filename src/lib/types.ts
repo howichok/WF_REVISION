@@ -1,3 +1,6 @@
+import type { TopicCoachingMemoryMap } from "@/lib/coaching-memory";
+import type { SharedCurriculumSnapshot } from "@/lib/shared-curriculum";
+
 export interface UserProfile {
   id: string;
   nickname: string;
@@ -125,7 +128,9 @@ export interface ActivityLog {
 }
 
 export interface AppBootstrapState extends AppState {
+  sharedCurriculum: SharedCurriculumSnapshot;
   revisionProgress: RevisionProgressEntry[];
+  topicCoachingMemory: TopicCoachingMemoryMap;
   activityHistory: ActivityLog[];
 }
 

@@ -15,11 +15,37 @@ import {
 import { getTopicById } from "@/lib/types";
 
 export default function RevisionProgressPage() {
-  const { activityHistory, diagnostic, revisionProgress } = useAppData();
+  const { activityHistory, diagnostic, revisionProgress, topicCoachingMemory } = useAppData();
   const weakestTopics = getWeakestTopics(diagnostic, 5);
   const minutesThisWeek = getThisWeekMinutes(activityHistory);
   const practiceEntries = revisionProgress.filter((entry) => entry.entityType === "practice-set");
   const subtopicEntries = revisionProgress.filter((entry) => entry.entityType === "subtopic");
+  const coachingPriority = Object.values(topicCoachingMemory).sort((left, right) => {
+    const leftPressure =
+      left.failStreak * 3 + left.drillNeedsWorkStreak * 2 - left.drillReadyStreak - left.distinctionStreak;
+    const rightPressure =
+      right.failStreak * 3 + right.drillNeedsWorkStreak * 2 - right.drillReadyStreak - right.distinctionStreak;
+
+    if (rightPressure !== leftPressure) {
+      return rightPressure - leftPressure;
+    }
+
+    return right.updatedAt.localeCompare(left.updatedAt);
+  })[0] ?? null;
+  const recommendedTopic =
+    (coachingPriority && getTopicById(coachingPriority.topicId)) ??
+    (weakestTopics[0] ? getTopicById(weakestTopics[0].category) : null);
+  const recommendedWhy = coachingPriority
+    ? coachingPriority.failStreak >= 2
+      ? "This topic is being pushed up because you hit the same weak area repeatedly and the coach should keep the next step in-topic."
+      : coachingPriority.drillReadyStreak >= 2
+        ? "This topic is being pushed up because guided planning is already strong and it is ready for harder same-topic written work."
+        : coachingPriority.drillNeedsWorkStreak >= 2
+          ? "This topic is being pushed up because guided drills are still unstable and need another focused loop."
+          : "This topic is being recommended because it has the strongest recent coaching signal."
+    : recommendedTopic
+      ? "This topic is being recommended from your weakest saved diagnostic score."
+      : "Run a diagnostic or revision activity to start building same-topic recommendations.";
 
   return (
     <PageContainer size="lg">
@@ -166,6 +192,38 @@ export default function RevisionProgressPage() {
                   </p>
                   <p className="mt-2 text-lg font-semibold text-foreground">{practiceEntries.length}</p>
                 </div>
+              </div>
+            </Card>
+
+            <Card variant="support" className="p-5">
+              <div className="flex items-center gap-2">
+                <Target size={15} className="text-accent" />
+                <h2 className="text-sm font-semibold text-foreground">Recommended next topic</h2>
+              </div>
+              <div className="mt-4 space-y-3">
+                {recommendedTopic ? (
+                  <div className="surface-cutout rounded-xl px-4 py-4">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-2">
+                        <span>{recommendedTopic.icon}</span>
+                        <p className="text-sm font-medium text-foreground">{recommendedTopic.label}</p>
+                      </div>
+                      <Link href={`/revision/${recommendedTopic.id}/practice`}>
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-accent">
+                          Open practice
+                          <ArrowRight size={12} />
+                        </span>
+                      </Link>
+                    </div>
+                    <p className="mt-3 text-xs leading-relaxed text-muted-foreground">
+                      {recommendedWhy}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    No recommendation signal yet.
+                  </p>
+                )}
               </div>
             </Card>
 

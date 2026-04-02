@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { ArrowLeft, Table2 } from "lucide-react";
+import { useMemo } from "react";
+import { useAppData } from "@/components/providers/app-data-provider";
 import { ResourceCard } from "@/components/ui";
 import { PageContainer } from "@/components/layout/page-container";
 import { getLibraryResources, getResourceHref, isResourceExternal } from "@/lib/content";
 import { TOPICS } from "@/lib/types";
-import { useMemo } from "react";
 
 export default function LibraryDatasetsPage() {
+  const { sharedCurriculum } = useAppData();
   const datasets = useMemo(
-    () => getLibraryResources().filter((r) => r.tags.includes("dataset")),
-    []
+    () => getLibraryResources(sharedCurriculum).filter((r) => r.tags.includes("dataset")),
+    [sharedCurriculum]
   );
 
   return (

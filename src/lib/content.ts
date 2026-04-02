@@ -1,18 +1,22 @@
 import {
   CONTENT_RESOURCES,
   CONTENT_SOURCES,
+  CURRICULUM_POINT_COVERAGE_NODES,
   DIGITAL_SOFTWARE_DEVELOPMENT_QUALIFICATION,
   DSD_CURRICULUM_AREAS,
   DSD_CURRICULUM_POINTS,
   DSD_EXAM_GUIDE_2026,
+  GENERATED_POINT_QUESTION_METADATA,
   GLOSSARY_TERMS,
   LEGACY_TOPIC_MAPPINGS,
   MARK_SCHEME_CONCEPTS,
   QUESTION_METADATA,
+  TOPIC_COVERAGE_GRAPHS,
 } from "@/data/curriculum";
 import type {
   ContentResource,
   ContentSource,
+  CurriculumPointCoverageNode,
   CurriculumArea,
   CurriculumPoint,
   ExamGuide,
@@ -22,10 +26,15 @@ import type {
   QuestionMetadata,
   RecommendedMaterial,
   StructuredSearchResults,
+  TopicCoverageGraph,
   TopicContentBundle,
 } from "@/data/curriculum";
 import { findPhraseEvidence, stringSimilarity } from "./intelligence/fuzzy";
 import { normalizeText } from "./intelligence/normalize";
+import {
+  resolveSharedCurriculumSnapshot,
+  type SharedCurriculumSnapshot,
+} from "./shared-curriculum";
 import { getTopicById, TOPICS, type TopicId } from "./types";
 
 function normalizeSearchValue(value: string) {
@@ -103,12 +112,22 @@ function intersects(left: string[], right: string[]) {
   return left.some((item) => right.includes(item));
 }
 
-function getLegacyTopicMapping(topicId: string): LegacyTopicMapping | null {
-  return LEGACY_TOPIC_MAPPINGS.find((mapping) => mapping.topicId === topicId) ?? null;
+function getLegacyTopicMapping(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+): LegacyTopicMapping | null {
+  return (
+    resolveSharedCurriculumSnapshot(snapshot).legacyTopicMappings.find(
+      (mapping) => mapping.topicId === topicId
+    ) ?? null
+  );
 }
 
-function getPointIdsForLegacyTopic(topicId: string) {
-  return getLegacyTopicMapping(topicId)?.officialPointIds ?? [];
+function getPointIdsForLegacyTopic(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  return getLegacyTopicMapping(topicId, snapshot)?.officialPointIds ?? [];
 }
 
 function getPrimaryLegacyTopicLabel(topicIds: TopicId[]) {
@@ -169,8 +188,8 @@ function getMaterialCta(resource: ContentResource) {
   }
 }
 
-export function getSourceInventory(): ContentSource[] {
-  return CONTENT_SOURCES;
+export function getSourceInventory(snapshot?: SharedCurriculumSnapshot | null): ContentSource[] {
+  return resolveSharedCurriculumSnapshot(snapshot).sources;
 }
 
 export function getQualificationOverview(): QualificationOverview {
@@ -181,40 +200,80 @@ export function getExamGuide2026(): ExamGuide {
   return DSD_EXAM_GUIDE_2026;
 }
 
-export function getCanonicalCurriculumAreas(): CurriculumArea[] {
-  return DSD_CURRICULUM_AREAS;
+export function getCanonicalCurriculumAreas(
+  snapshot?: SharedCurriculumSnapshot | null
+): CurriculumArea[] {
+  return resolveSharedCurriculumSnapshot(snapshot).areas;
 }
 
-export function getCanonicalCurriculumPoints(): CurriculumPoint[] {
-  return DSD_CURRICULUM_POINTS;
+export function getCanonicalCurriculumPoints(
+  snapshot?: SharedCurriculumSnapshot | null
+): CurriculumPoint[] {
+  return resolveSharedCurriculumSnapshot(snapshot).points;
 }
 
-export function getCurriculumPointById(pointId: string) {
-  return DSD_CURRICULUM_POINTS.find((point) => point.id === pointId) ?? null;
+export function getCurriculumPointById(
+  pointId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  return resolveSharedCurriculumSnapshot(snapshot).points.find((point) => point.id === pointId) ?? null;
 }
 
-export function getCurriculumAreaById(areaId: string) {
-  return DSD_CURRICULUM_AREAS.find((area) => area.id === areaId) ?? null;
+export function getCurriculumAreaById(
+  areaId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  return resolveSharedCurriculumSnapshot(snapshot).areas.find((area) => area.id === areaId) ?? null;
 }
 
-export function getGlossaryTermsForTopic(topicId: string): GlossaryTerm[] {
-  return GLOSSARY_TERMS.filter((term) => term.legacyTopicIds.includes(topicId as TopicId));
+export function getGlossaryTermsForTopic(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+): GlossaryTerm[] {
+  return resolveSharedCurriculumSnapshot(snapshot).terms.filter((term) =>
+    term.legacyTopicIds.includes(topicId as TopicId)
+  );
 }
 
-export function getResourcesForTopic(topicId: string): ContentResource[] {
-  return CONTENT_RESOURCES.filter((resource) =>
+export function getResourcesForTopic(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+): ContentResource[] {
+  return resolveSharedCurriculumSnapshot(snapshot).resources.filter((resource) =>
     resource.legacyTopicIds.includes(topicId as TopicId)
   );
 }
 
-export function getQuestionsForTopic(topicId: string): QuestionMetadata[] {
-  return QUESTION_METADATA.filter((question) =>
+export function getQuestionsForTopic(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+): QuestionMetadata[] {
+  return resolveSharedCurriculumSnapshot(snapshot).questions.filter((question) =>
     question.legacyTopicIds.includes(topicId as TopicId)
   );
 }
 
-export function getMarkSchemeConceptsForQuestion(questionId: string) {
-  const question = QUESTION_METADATA.find((entry) => entry.id === questionId);
+export function getGeneratedPointQuestions() {
+  return GENERATED_POINT_QUESTION_METADATA;
+}
+
+export function getTopicCoverageGraph(topicId: string): TopicCoverageGraph | null {
+  return TOPIC_COVERAGE_GRAPHS.find((graph) => graph.topicId === topicId) ?? null;
+}
+
+export function getCurriculumPointCoverageNode(
+  pointId: string
+): CurriculumPointCoverageNode | null {
+  return CURRICULUM_POINT_COVERAGE_NODES.find((node) => node.pointId === pointId) ?? null;
+}
+
+export function getMarkSchemeConceptsForQuestion(
+  questionId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  const question = resolveSharedCurriculumSnapshot(snapshot).questions.find(
+    (entry) => entry.id === questionId
+  );
   if (!question) {
     return [];
   }
@@ -224,23 +283,27 @@ export function getMarkSchemeConceptsForQuestion(questionId: string) {
   );
 }
 
-export function getTopicContentBundle(topicId: string): TopicContentBundle {
-  const mapping = getLegacyTopicMapping(topicId);
+export function getTopicContentBundle(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+): TopicContentBundle {
+  const sharedCurriculum = resolveSharedCurriculumSnapshot(snapshot);
+  const mapping = getLegacyTopicMapping(topicId, sharedCurriculum);
   const officialPointIds = mapping?.officialPointIds ?? [];
   const officialPoints = officialPointIds
-    .map((pointId) => getCurriculumPointById(pointId))
+    .map((pointId) => getCurriculumPointById(pointId, sharedCurriculum))
     .filter((point): point is CurriculumPoint => Boolean(point));
-  const terms = GLOSSARY_TERMS.filter(
+  const terms = sharedCurriculum.terms.filter(
     (term) =>
       term.legacyTopicIds.includes(topicId as TopicId) ||
       intersects(term.curriculumPointIds, officialPointIds)
   );
-  const resources = CONTENT_RESOURCES.filter(
+  const resources = sharedCurriculum.resources.filter(
     (resource) =>
       resource.legacyTopicIds.includes(topicId as TopicId) ||
       intersects(resource.curriculumPointIds, officialPointIds)
   );
-  const questions = QUESTION_METADATA.filter(
+  const questions = sharedCurriculum.questions.filter(
     (question) =>
       question.legacyTopicIds.includes(topicId as TopicId) ||
       intersects(question.curriculumPointIds, officialPointIds)
@@ -255,8 +318,8 @@ export function getTopicContentBundle(topicId: string): TopicContentBundle {
   };
 }
 
-export function getLibraryResources() {
-  return [...CONTENT_RESOURCES].sort((left, right) => {
+export function getLibraryResources(snapshot?: SharedCurriculumSnapshot | null) {
+  return [...resolveSharedCurriculumSnapshot(snapshot).resources].sort((left, right) => {
     const leftOfficial = isExternalPath(left.filePath) ? 1 : 0;
     const rightOfficial = isExternalPath(right.filePath) ? 1 : 0;
 
@@ -272,8 +335,11 @@ export function getLibraryResources() {
   });
 }
 
-export function getOfficialGuidanceResources(limit?: number) {
-  const resources = CONTENT_RESOURCES.filter(
+export function getOfficialGuidanceResources(
+  limit?: number,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  const resources = resolveSharedCurriculumSnapshot(snapshot).resources.filter(
     (resource) =>
       isExternalPath(resource.filePath) &&
       resource.tags.some((tag) => ["official", "pearson", "t levels", "student guide", "support"].includes(tag))
@@ -294,12 +360,14 @@ export function isResourceExternal(resource: ContentResource) {
 
 export function searchLibraryResources(
   query: string,
-  options: { legacyTopicId?: string; matchedTopicIds?: string[] } = {}
+  options: { legacyTopicId?: string; matchedTopicIds?: string[] } = {},
+  snapshot?: SharedCurriculumSnapshot | null
 ) {
   const normalizedQuery = normalizeSearchValue(query);
   const matchedTopicIds = options.matchedTopicIds ?? [];
+  const sharedCurriculum = resolveSharedCurriculumSnapshot(snapshot);
 
-  return CONTENT_RESOURCES.map((resource) => {
+  return sharedCurriculum.resources.map((resource) => {
     const topicLabels = resource.legacyTopicIds
       .map((topicId) => getTopicById(topicId)?.label)
       .filter(Boolean);
@@ -345,14 +413,19 @@ export function searchLibraryResources(
     .map((entry) => entry.resource);
 }
 
-export function getRecommendedMaterialCards(topicIds: string[], limit = 3): RecommendedMaterial[] {
+export function getRecommendedMaterialCards(
+  topicIds: string[],
+  limit = 3,
+  snapshot?: SharedCurriculumSnapshot | null
+): RecommendedMaterial[] {
+  const sharedCurriculum = resolveSharedCurriculumSnapshot(snapshot);
   const uniqueTopicIds = Array.from(new Set(topicIds)).filter(Boolean) as TopicId[];
   const fallbackTopicIds = TOPICS.filter((topic) => topic.id !== "esp")
     .slice(0, 3)
     .map((topic) => topic.id);
   const activeTopicIds = uniqueTopicIds.length > 0 ? uniqueTopicIds : fallbackTopicIds;
 
-  const selectedResources = CONTENT_RESOURCES.filter((resource) =>
+  const selectedResources = sharedCurriculum.resources.filter((resource) =>
     resource.legacyTopicIds.some((topicId) => activeTopicIds.includes(topicId))
   )
     .sort((left, right) => {
@@ -399,9 +472,11 @@ export function getRecommendedMaterialCards(topicIds: string[], limit = 3): Reco
 
 export function searchStructuredContent(
   query: string,
-  options: { legacyTopicId?: string } = {}
+  options: { legacyTopicId?: string } = {},
+  snapshot?: SharedCurriculumSnapshot | null
 ): StructuredSearchResults {
   const normalizedQuery = normalizeSearchValue(query);
+  const sharedCurriculum = resolveSharedCurriculumSnapshot(snapshot);
 
   if (!normalizedQuery) {
     return {
@@ -413,10 +488,10 @@ export function searchStructuredContent(
   }
 
   const pointIdsForTopic = options.legacyTopicId
-    ? getPointIdsForLegacyTopic(options.legacyTopicId)
+    ? getPointIdsForLegacyTopic(options.legacyTopicId, sharedCurriculum)
     : [];
 
-  const curriculumPoints = DSD_CURRICULUM_POINTS.map((point) => ({
+  const curriculumPoints = sharedCurriculum.points.map((point) => ({
     point,
     score:
       scoreTextMatch(query, [
@@ -433,7 +508,7 @@ export function searchStructuredContent(
     .slice(0, 6)
     .map((entry) => entry.point);
 
-  const glossaryTerms = GLOSSARY_TERMS.map((term) => ({
+  const glossaryTerms = sharedCurriculum.terms.map((term) => ({
     term,
     score:
       scoreTextMatch(query, [term.term, term.definition, term.aliases?.join(" ")]) +
@@ -444,7 +519,7 @@ export function searchStructuredContent(
     .slice(0, 8)
     .map((entry) => entry.term);
 
-  const resources = CONTENT_RESOURCES.map((resource) => ({
+  const resources = sharedCurriculum.resources.map((resource) => ({
     resource,
     score:
       scoreTextMatch(query, [
@@ -459,7 +534,7 @@ export function searchStructuredContent(
     .slice(0, 6)
     .map((entry) => entry.resource);
 
-  const questions = QUESTION_METADATA.map((question) => ({
+  const questions = sharedCurriculum.questions.map((question) => ({
     question,
     score:
       scoreTextMatch(query, [

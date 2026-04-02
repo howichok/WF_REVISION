@@ -2,9 +2,13 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter";
 import { AppDataProvider } from "@/components/providers/app-data-provider";
+import { AiOverlayProvider } from "@/components/providers/ai-overlay-provider";
+import { loadSharedCurriculumSnapshotFromDatabase } from "@/lib/curriculum-database";
 import { loadAppState } from "@/lib/app-data";
+import { getLocalSharedCurriculumSnapshot } from "@/lib/shared-curriculum";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
+import type { AppBootstrapState } from "@/lib/types";
 import "./globals.css";
 
 const inter = Inter({
@@ -23,20 +27,39 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let initialState = null;
+  let initialState: AppBootstrapState = {
+    user: null,
+    onboarding: null,
+    diagnostic: null,
+    sharedCurriculum: getLocalSharedCurriculumSnapshot(),
+    revisionProgress: [],
+    topicCoachingMemory: {},
+    activityHistory: [],
+  };
 
   if (getSupabaseConfig()) {
     try {
       const supabase = await createServerSupabaseClient();
+      const sharedCurriculum = await loadSharedCurriculumSnapshotFromDatabase(supabase);
       const {
         data: { user },
       } = await supabase.auth.getUser();
 
+      initialState = {
+        ...initialState,
+        sharedCurriculum,
+      };
+
       if (user) {
-        initialState = await loadAppState(supabase, user);
+        initialState = await loadAppState(supabase, user, {
+          sharedCurriculum,
+        });
       }
     } catch {
-      initialState = null;
+      initialState = {
+        ...initialState,
+        sharedCurriculum: getLocalSharedCurriculumSnapshot(),
+      };
     }
   }
 
@@ -56,8 +79,10 @@ export default async function RootLayout({
         </div>
         <div className="relative z-10">
           <AppDataProvider initialState={initialState}>
-            <WebVitalsReporter />
-            {children}
+            <AiOverlayProvider>
+              <WebVitalsReporter />
+              {children}
+            </AiOverlayProvider>
           </AppDataProvider>
         </div>
       </body>

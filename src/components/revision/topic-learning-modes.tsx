@@ -1,14 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
   Lightbulb,
   Sparkles,
   Target,
 } from "lucide-react";
+import { useAiOverlay } from "@/components/providers/ai-overlay-provider";
+import { useAppData } from "@/components/providers/app-data-provider";
+import { TopicNextSteps } from "@/components/revision/topic-next-steps";
 import { Badge, Button, Card } from "@/components/ui";
 import { extractCommandWord } from "@/lib/command-words";
+import {
+  getExamDrillNextStepRecommendations,
+  getRecallNextStepRecommendations,
+  type TopicNextStepRecommendation,
+} from "@/lib/topic-progression";
+import type { RevisionProgressEntry } from "@/lib/types";
 import type {
   PracticeExamDrill,
   PracticeRecallCard,
@@ -51,6 +60,14 @@ function getAveragePercent<T extends string>(
 
 function getRatedCount<T extends string>(ratings: Record<string, T>) {
   return Object.keys(ratings).length;
+}
+
+function getDrillPointId(drill: PracticeExamDrill) {
+  const match =
+    drill.questionId.match(/^point-([a-z0-9-]+)-\d+$/i) ??
+    drill.id.match(/^exam-drill-point-([a-z0-9-]+)-\d+$/i);
+
+  return match?.[1] ?? null;
 }
 
 function findFirstUnratedIndex<T extends { id: string }>(
@@ -209,6 +226,10 @@ export function RecallPanel({
   progressPercent: number;
   onComplete: (percent: number) => Promise<unknown>;
 }) {
+  const overlay = useAiOverlay();
+  const { recordRecallCoaching, revisionProgress, topicCoachingMemory } = useAppData();
+  const overlaySurfaceId = useMemo(() => `recall-${topicId}`, [topicId]);
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [ratings, setRatings] = useState<Record<string, RecallRating>>({});
@@ -251,6 +272,118 @@ export function RecallPanel({
       tone: progressPercent > 0 ? getPercentTone(progressPercent) : "default" as const,
     },
   ];
+  const recallNextSteps = useMemo(
+    () =>
+      sessionComplete
+        ? getRecallNextStepRecommendations({
+            topicId,
+            masteryPercent,
+            revisionProgress,
+            coachingMemory: topicCoachingMemory,
+          })
+        : { primary: null, secondary: null },
+    [masteryPercent, revisionProgress, sessionComplete, topicCoachingMemory, topicId]
+  );
+
+  useEffect(() => {
+    if (!currentCard) {
+      return;
+    }
+
+    overlay.registerRevisionSurface({
+      surfaceId: overlaySurfaceId,
+      topicId,
+      topicLabel,
+      prompt: currentCard.prompt,
+      anchorRef: surfaceRef,
+    });
+
+    return () => {
+      overlay.unregisterRevisionSurface(overlaySurfaceId);
+    };
+  }, [currentCard, overlay, overlaySurfaceId, topicId, topicLabel]);
+
+  useEffect(() => {
+    if (!currentCard) {
+      return;
+    }
+
+    overlay.syncRevisionSurface({
+      surfaceId: overlaySurfaceId,
+      prompt: currentCard.prompt,
+      answer: revealed ? currentCard.answer : "",
+      canUndoEdits: false,
+      canClearInsertedCues: false,
+    });
+  }, [currentCard, overlay, overlaySurfaceId, revealed]);
+
+  useEffect(() => {
+    if (!currentCard) {
+      return;
+    }
+
+    overlay.streamRevisionProgress({
+      surfaceId: overlaySurfaceId,
+      statusLine: revealed
+        ? "Recall answer revealed. Compare it with what you genuinely remembered."
+        : "Recall mode active. Try retrieval before revealing the answer.",
+      note: sessionComplete
+        ? "Recall mode keeps the overlay lightweight and routes the next same-topic step."
+        : `Card ${currentIndex + 1} of ${cards.length}.`,
+    });
+  }, [cards.length, currentCard, currentIndex, overlay, overlaySurfaceId, revealed, sessionComplete]);
+
+  useEffect(() => {
+    overlay.setSurfaceRecommendations({
+      surfaceId: overlaySurfaceId,
+      primaryAction: recallNextSteps.primary
+        ? {
+            label: recallNextSteps.primary.label,
+            href: recallNextSteps.primary.href,
+            kind: recallNextSteps.primary.actionKind,
+          }
+        : null,
+      secondaryAction: recallNextSteps.secondary
+        ? {
+            label: recallNextSteps.secondary.label,
+            href: recallNextSteps.secondary.href,
+            kind: recallNextSteps.secondary.actionKind,
+          }
+        : null,
+    });
+  }, [overlay, overlaySurfaceId, recallNextSteps.primary, recallNextSteps.secondary]);
+
+  useEffect(() => {
+    if (!sessionComplete) {
+      return;
+    }
+
+    overlay.completeGuidedSession({
+      surfaceId: overlaySurfaceId,
+      phase: masteryPercent >= 70 ? "merit" : masteryPercent >= 40 ? "ready" : "fail",
+      statusLine:
+        masteryPercent >= 70
+          ? "Recall complete. The next same-topic step can now be harder."
+          : masteryPercent >= 40
+            ? "Recall complete. Use the next same-topic task to tighten the weaker ideas."
+            : "Recall complete. Stay in the same topic before jumping to harder routes.",
+      note: "Recall is a lightweight overlay surface, so it only routes you into the next best topic action.",
+      primaryAction: recallNextSteps.primary
+        ? {
+            label: recallNextSteps.primary.label,
+            href: recallNextSteps.primary.href,
+            kind: recallNextSteps.primary.actionKind,
+          }
+        : null,
+      secondaryAction: recallNextSteps.secondary
+        ? {
+            label: recallNextSteps.secondary.label,
+            href: recallNextSteps.secondary.href,
+            kind: recallNextSteps.secondary.actionKind,
+          }
+        : null,
+    });
+  }, [masteryPercent, overlay, overlaySurfaceId, recallNextSteps.primary, recallNextSteps.secondary, sessionComplete]);
 
   async function handleRateCard(rating: RecallRating) {
     if (!currentCard) {
@@ -277,8 +410,21 @@ export function RecallPanel({
       setRevealed(false);
       setIsSaving(true);
 
+      const recommendations = getRecallNextStepRecommendations({
+        topicId,
+        masteryPercent: nextMastery,
+        revisionProgress,
+        coachingMemory: topicCoachingMemory,
+      });
+
       try {
         await onComplete(nextMastery);
+        recordRecallCoaching({
+          topicId,
+          masteryPercent: nextMastery,
+          recommendedAction: recommendations.primary?.reasonCode ?? null,
+          recommendedHref: recommendations.primary?.href ?? null,
+        });
       } catch (saveError) {
         setError(
           saveError instanceof Error
@@ -317,7 +463,8 @@ export function RecallPanel({
 
   if (sessionComplete) {
     return (
-      <LearningOutcomePanel
+      <div ref={surfaceRef}>
+        <LearningOutcomePanel
         eyebrow="Active Recall"
         title="Recall round complete"
         summary={`You rated ${cards.length} cards. Use the mastery signal to decide whether to move into written answers or repeat the deck.`}
@@ -335,24 +482,47 @@ export function RecallPanel({
             variant: getPercentTone(masteryPercent),
           },
         ]}
-        primaryAction={{
-          label: "Check this topic against the mark scheme",
-          href: `/revision/${topicId}/answer-check`,
-        }}
-        secondaryAction={{
-          label: "Run the recall cycle again",
-          onClick: handleRestart,
-          variant: "secondary",
-        }}
+        primaryAction={
+          recallNextSteps.primary?.actionKind === "route"
+            ? {
+                label: recallNextSteps.primary.label,
+                href: recallNextSteps.primary.href,
+              }
+            : {
+                label: "Check this topic against the mark scheme",
+                href: `/revision/${topicId}/answer-check`,
+              }
+        }
+        secondaryAction={
+          recallNextSteps.secondary?.actionKind === "route"
+            ? {
+                label: recallNextSteps.secondary.label,
+                href: recallNextSteps.secondary.href,
+                variant: "secondary",
+              }
+            : {
+                label: "Run the recall cycle again",
+                onClick: handleRestart,
+                variant: "secondary",
+              }
+        }
       >
-        {error ? (
-          <ErrorMessage message={error} />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Use the mastery signal to decide whether you should practise a written answer next or repeat the cards that still felt weak.
-          </p>
-        )}
-      </LearningOutcomePanel>
+          <div className="space-y-4">
+            {error ? (
+              <ErrorMessage message={error} />
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Use the mastery signal to decide whether you should practise a written answer next or repeat the cards that still felt weak.
+              </p>
+            )}
+            <TopicNextSteps
+              primary={recallNextSteps.primary}
+              secondary={recallNextSteps.secondary}
+              title="Same-topic next step"
+            />
+          </div>
+        </LearningOutcomePanel>
+      </div>
     );
   }
 
@@ -361,7 +531,8 @@ export function RecallPanel({
   }
 
   return (
-    <ActiveLearningLayout
+    <div ref={surfaceRef}>
+      <ActiveLearningLayout
       backHref={`/revision/${topicId}/practice`}
       railTitle={`${topicLabel} recall`}
       railSubtitle="Recall the idea first, then reveal the model answer and rate what you genuinely knew."
@@ -489,7 +660,8 @@ export function RecallPanel({
             }
           : undefined
       }
-    />
+      />
+    </div>
   );
 }
 
@@ -499,6 +671,8 @@ export function ExamDrillPanel({
   topicIcon,
   drills,
   progressPercent,
+  revisionProgress,
+  preferredDrillId,
   onComplete,
 }: {
   topicId: string;
@@ -506,8 +680,14 @@ export function ExamDrillPanel({
   topicIcon: string;
   drills: PracticeExamDrill[];
   progressPercent: number;
+  revisionProgress: RevisionProgressEntry[];
+  preferredDrillId?: string;
   onComplete: (percent: number) => Promise<unknown>;
 }) {
+  const overlay = useAiOverlay();
+  const { recordExamDrillCoaching, topicCoachingMemory } = useAppData();
+  const overlaySurfaceId = useMemo(() => `exam-drill-${topicId}`, [topicId]);
+  const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showChecklist, setShowChecklist] = useState(false);
   const [hintLevel, setHintLevel] = useState(0);
@@ -516,6 +696,7 @@ export function ExamDrillPanel({
   const [sessionComplete, setSessionComplete] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
+  const [lastRating, setLastRating] = useState<ExamRating | null>(null);
 
   const currentDrill = drills[currentIndex] ?? null;
   const ratedCount = getRatedCount(ratings);
@@ -549,6 +730,159 @@ export function ExamDrillPanel({
       tone: progressPercent > 0 ? getPercentTone(progressPercent) : "default" as const,
     },
   ];
+  const nextSteps = useMemo(
+    () =>
+      sessionComplete
+        ? getExamDrillNextStepRecommendations({
+            topicId,
+            drillId: currentDrill?.id ?? preferredDrillId,
+            lastRating: lastRating ?? undefined,
+            readinessPercent,
+            revisionProgress,
+            coachingMemory: topicCoachingMemory,
+          })
+        : { primary: null, secondary: null },
+    [currentDrill?.id, lastRating, preferredDrillId, readinessPercent, revisionProgress, sessionComplete, topicCoachingMemory, topicId]
+  );
+
+  useEffect(() => {
+    if (!preferredDrillId) {
+      return;
+    }
+
+    const preferredIndex = drills.findIndex((drill) => drill.id === preferredDrillId);
+    if (preferredIndex < 0) {
+      return;
+    }
+
+    setCurrentIndex(preferredIndex);
+    setShowChecklist(false);
+    setHintLevel(0);
+    setNotes("");
+    setError("");
+    setLastRating(null);
+  }, [drills, preferredDrillId]);
+
+  useEffect(() => {
+    if (!currentDrill) {
+      return;
+    }
+
+    overlay.registerRevisionSurface({
+      surfaceId: overlaySurfaceId,
+      topicId,
+      topicLabel,
+      prompt: currentDrill.prompt,
+      anchorRef: surfaceRef,
+    });
+
+    return () => {
+      overlay.unregisterRevisionSurface(overlaySurfaceId);
+    };
+  }, [currentDrill, overlay, overlaySurfaceId, topicId, topicLabel]);
+
+  useEffect(() => {
+    if (!currentDrill) {
+      return;
+    }
+
+    overlay.syncRevisionSurface({
+      surfaceId: overlaySurfaceId,
+      prompt: currentDrill.prompt,
+      answer: notes,
+      canUndoEdits: false,
+      canClearInsertedCues: false,
+    });
+  }, [currentDrill, notes, overlay, overlaySurfaceId]);
+
+  useEffect(() => {
+    if (!currentDrill) {
+      return;
+    }
+
+    overlay.streamRevisionProgress({
+      surfaceId: overlaySurfaceId,
+      statusLine: showChecklist
+        ? "Checklist revealed. Compare your plan against the guided answer focus."
+        : "Planning mode active. Use hints only if you genuinely need them.",
+      note:
+        hintLevel > 0
+          ? `Current scaffold: ${hintLevel} hint${hintLevel === 1 ? "" : "s"} shown.`
+          : "Lightweight drill mode keeps the overlay as a status and next-step shell, not a rewrite tool.",
+    });
+  }, [currentDrill, hintLevel, overlay, overlaySurfaceId, showChecklist]);
+
+  useEffect(() => {
+    overlay.setSurfaceRecommendations({
+      surfaceId: overlaySurfaceId,
+      primaryAction: nextSteps.primary
+        ? {
+            label: nextSteps.primary.label,
+            href: nextSteps.primary.href,
+            kind: nextSteps.primary.actionKind,
+          }
+        : null,
+      secondaryAction: nextSteps.secondary
+        ? {
+            label: nextSteps.secondary.label,
+            href: nextSteps.secondary.href,
+            kind: nextSteps.secondary.actionKind,
+          }
+        : null,
+    });
+  }, [nextSteps.primary, nextSteps.secondary, overlay, overlaySurfaceId]);
+
+  useEffect(() => {
+    if (!sessionComplete || !currentDrill) {
+      return;
+    }
+
+    const phase =
+      lastRating === "ready" && readinessPercent >= 70
+        ? "merit"
+        : lastRating === "needs-work"
+          ? "fail"
+          : "ready";
+
+    overlay.completeGuidedSession({
+      surfaceId: overlaySurfaceId,
+      phase,
+      statusLine:
+        lastRating === "ready"
+          ? "Drill complete. You are ready to step up to the next same-topic task."
+          : "Drill complete. Stay in the same topic and replay the weaker area once more.",
+      note: "Exam drill mode keeps the feedback lightweight and routes you into the next best same-topic action.",
+      primaryAction: nextSteps.primary
+        ? {
+            label: nextSteps.primary.label,
+            href: nextSteps.primary.href,
+            kind: nextSteps.primary.actionKind,
+          }
+        : null,
+      secondaryAction: nextSteps.secondary
+        ? {
+            label: nextSteps.secondary.label,
+            href: nextSteps.secondary.href,
+            kind: nextSteps.secondary.actionKind,
+          }
+        : null,
+    });
+  }, [currentDrill, lastRating, nextSteps.primary, nextSteps.secondary, overlay, overlaySurfaceId, readinessPercent, sessionComplete]);
+
+  function toLearningAction(
+    recommendation: TopicNextStepRecommendation | null,
+    variant?: "secondary" | "ghost"
+  ) {
+    if (!recommendation || recommendation.actionKind !== "route") {
+      return undefined;
+    }
+
+    return {
+      label: recommendation.label,
+      href: recommendation.href,
+      variant,
+    };
+  }
 
   async function handleRateDrill(rating: ExamRating) {
     if (!currentDrill) {
@@ -568,6 +902,7 @@ export function ExamDrillPanel({
     );
 
     setRatings(nextRatings);
+    setLastRating(rating);
     setNotes("");
     setError("");
 
@@ -576,8 +911,26 @@ export function ExamDrillPanel({
       setShowChecklist(false);
       setIsSaving(true);
 
+      const recommendations = getExamDrillNextStepRecommendations({
+        topicId,
+        drillId: currentDrill.id,
+        lastRating: rating,
+        readinessPercent: nextReadiness,
+        revisionProgress,
+        coachingMemory: topicCoachingMemory,
+      });
+
       try {
         await onComplete(nextReadiness);
+        recordExamDrillCoaching({
+          topicId,
+          drillId: currentDrill.id,
+          pointId: getDrillPointId(currentDrill) ?? currentDrill.questionId,
+          readinessPercent: nextReadiness,
+          rating,
+          recommendedAction: recommendations.primary?.reasonCode ?? null,
+          recommendedHref: recommendations.primary?.href ?? null,
+        });
       } catch (saveError) {
         setError(
           saveError instanceof Error
@@ -605,6 +958,7 @@ export function ExamDrillPanel({
     setSessionComplete(false);
     setIsSaving(false);
     setError("");
+    setLastRating(null);
   }
 
   if (drills.length === 0) {
@@ -637,23 +991,34 @@ export function ExamDrillPanel({
             variant: getPercentTone(readinessPercent),
           },
         ]}
-        primaryAction={{
-          label: "Check this topic against the mark scheme",
-          href: `/revision/${topicId}/answer-check`,
-        }}
-        secondaryAction={{
-          label: "Run another exam drill round",
-          onClick: handleRestart,
-          variant: "secondary",
-        }}
+        primaryAction={
+          toLearningAction(nextSteps.primary) ?? {
+            label: "Check this topic against the mark scheme",
+            href: `/revision/${topicId}/answer-check`,
+          }
+        }
+        secondaryAction={
+          toLearningAction(nextSteps.secondary, "secondary") ?? {
+            label: "Run another exam drill round",
+            onClick: handleRestart,
+            variant: "secondary",
+          }
+        }
       >
-        {error ? (
-          <ErrorMessage message={error} />
-        ) : (
-          <p className="text-sm text-muted-foreground">
-            Use the readiness signal to decide whether to move into rubric-based answer checking or spend another round planning exam responses.
-          </p>
-        )}
+        <div className="space-y-4">
+          {error ? (
+            <ErrorMessage message={error} />
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Use the readiness signal to decide whether to move into rubric-based answer checking or spend another round planning exam responses.
+            </p>
+          )}
+          <TopicNextSteps
+            primary={nextSteps.primary}
+            secondary={nextSteps.secondary}
+            title="Same-topic next step"
+          />
+        </div>
       </LearningOutcomePanel>
     );
   }
@@ -679,7 +1044,8 @@ export function ExamDrillPanel({
   const hasMoreHints = hintLevel < hintBullets.length;
 
   return (
-    <ActiveLearningLayout
+    <div ref={surfaceRef}>
+      <ActiveLearningLayout
       backHref={`/revision/${topicId}/practice`}
       railTitle={`${topicLabel} exam drill`}
       railSubtitle="Plan the answer first, then compare it with the checklist and decide whether you are ready for exam wording."
@@ -847,6 +1213,7 @@ export function ExamDrillPanel({
             }
           : undefined
       }
-    />
+      />
+    </div>
   );
 }

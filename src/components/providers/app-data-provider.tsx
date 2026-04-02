@@ -18,9 +18,24 @@ import {
   saveMaterialProgress,
   savePracticeSetProgress,
   saveProfileNickname,
+  saveTopicCoachingMemoryEntries,
   saveWeakAreas,
   toggleSubtopicProgress,
 } from "@/lib/app-data";
+import {
+  getTopicCoachingMemoryStorageKey,
+  mergeTopicCoachingMemoryMaps,
+  recordAnswerCheckTopicCoaching,
+  recordAskTopicCoaching,
+  recordExamDrillTopicCoaching,
+  recordQuizTopicCoaching,
+  recordRecallTopicCoaching,
+  readTopicCoachingMemory,
+  serializeTopicCoachingMemory,
+  type TopicCoachingMemoryEntry,
+  type TopicCoachingMemoryMap,
+} from "@/lib/coaching-memory";
+import { getLocalSharedCurriculumSnapshot } from "@/lib/shared-curriculum";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSupabaseConfig } from "@/lib/supabase/config";
 import { buildAuthRedirectUrl } from "@/lib/supabase/urls";
@@ -42,9 +57,11 @@ type AppDataContextValue = {
   isConfigured: boolean;
   isHydrating: boolean;
   user: UserProfile | null;
+  sharedCurriculum: AppBootstrapState["sharedCurriculum"];
   onboarding: AppBootstrapState["onboarding"];
   diagnostic: AppBootstrapState["diagnostic"];
   revisionProgress: RevisionProgressEntry[];
+  topicCoachingMemory: TopicCoachingMemoryMap;
   activityHistory: AppBootstrapState["activityHistory"];
   refreshAppState: () => Promise<AppBootstrapState | null>;
   signUp: (input: {
@@ -85,6 +102,42 @@ type AppDataContextValue = {
     progressPercent: number;
     minutesSpent?: number;
   }) => Promise<AppBootstrapState>;
+  recordAskCoaching: (input: {
+    topicId: string;
+    intent: string;
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) => void;
+  recordAnswerCheckCoaching: (input: {
+    topicId: string;
+    questionId?: string | null;
+    pointId?: string | null;
+    scorePercent: number;
+    misconceptionLabels?: string[];
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) => void;
+  recordExamDrillCoaching: (input: {
+    topicId: string;
+    drillId?: string | null;
+    pointId?: string | null;
+    readinessPercent: number;
+    rating?: "needs-work" | "ready";
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) => void;
+  recordRecallCoaching: (input: {
+    topicId: string;
+    masteryPercent: number;
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) => void;
+  recordQuizCoaching: (input: {
+    topicId: string;
+    scorePercent: number;
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) => void;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -93,7 +146,9 @@ const EMPTY_STATE: AppBootstrapState = {
   user: null,
   onboarding: null,
   diagnostic: null,
+  sharedCurriculum: getLocalSharedCurriculumSnapshot(),
   revisionProgress: [],
+  topicCoachingMemory: {},
   activityHistory: [],
 };
 
@@ -114,6 +169,9 @@ export function AppDataProvider({
     config ? getBrowserSupabaseClient() : null
   );
   const [state, setState] = useState<AppBootstrapState>(initialState ?? EMPTY_STATE);
+  const [topicCoachingMemory, setTopicCoachingMemory] = useState<TopicCoachingMemoryMap>(
+    initialState?.topicCoachingMemory ?? {}
+  );
   const [isHydrating, setIsHydrating] = useState(
     Boolean(config && !initialState?.user)
   );
@@ -124,6 +182,82 @@ export function AppDataProvider({
   );
   const mountedRef = useRef(true);
   const hydrateRequestRef = useRef(0);
+  const coachingMemoryReadyRef = useRef(false);
+  const topicCoachingUserIdRef = useRef<string | null>(initialState?.user?.id ?? null);
+  const topicCoachingMemoryRef = useRef<TopicCoachingMemoryMap>(
+    initialState?.topicCoachingMemory ?? {}
+  );
+
+  function readLocalTopicCoachingMemory(userId?: string | null) {
+    if (typeof window === "undefined") {
+      return {};
+    }
+
+    return readTopicCoachingMemory(
+      window.localStorage.getItem(getTopicCoachingMemoryStorageKey(userId))
+    );
+  }
+
+  function isEntryNewerThanRemote(
+    localEntry: TopicCoachingMemoryEntry,
+    remoteEntry?: TopicCoachingMemoryEntry | null
+  ) {
+    return (
+      Date.parse(localEntry.updatedAt) >
+      Date.parse(remoteEntry?.updatedAt ?? "")
+    );
+  }
+
+  function persistTopicCoachingEntries(entries: TopicCoachingMemoryEntry[]) {
+    if (!supabaseRef.current || !state.user || entries.length === 0) {
+      return;
+    }
+
+    void saveTopicCoachingMemoryEntries(
+      supabaseRef.current,
+      state.user.id,
+      entries
+    ).catch((error) => {
+      const message = error instanceof Error ? error.message : String(error ?? "");
+
+      if (
+        process.env.NODE_ENV !== "production" &&
+        !message.includes("topic_coaching_memory")
+      ) {
+        console.warn("Unable to persist topic coaching memory.", error);
+      }
+    });
+  }
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const localTopicCoachingMemory = readLocalTopicCoachingMemory(
+      initialState?.user?.id ?? null
+    );
+    const mergedTopicCoachingMemory = mergeTopicCoachingMemoryMaps(
+      initialState?.topicCoachingMemory ?? {},
+      localTopicCoachingMemory
+    );
+    setTopicCoachingMemory(mergedTopicCoachingMemory);
+    topicCoachingMemoryRef.current = mergedTopicCoachingMemory;
+    coachingMemoryReadyRef.current = true;
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !coachingMemoryReadyRef.current) {
+      return;
+    }
+
+    const storageUserId = state.user?.id ?? topicCoachingUserIdRef.current;
+    topicCoachingMemoryRef.current = topicCoachingMemory;
+    window.localStorage.setItem(
+      getTopicCoachingMemoryStorageKey(storageUserId),
+      serializeTopicCoachingMemory(topicCoachingMemory)
+    );
+  }, [state.user?.id, topicCoachingMemory]);
 
   async function hydrate(authUser?: SupabaseUser | null) {
     if (!supabaseRef.current) {
@@ -145,20 +279,63 @@ export function AppDataProvider({
           return null;
         }
 
-        setState(EMPTY_STATE);
+        setState((current) => ({
+          ...EMPTY_STATE,
+          sharedCurriculum: current.sharedCurriculum,
+        }));
+        setTopicCoachingMemory({});
+        topicCoachingMemoryRef.current = {};
+        topicCoachingUserIdRef.current = null;
         setConfigError(null);
         return null;
       }
 
-      const nextState = await loadAppState(supabaseRef.current, user);
+      const nextState = await loadAppState(supabaseRef.current, user, {
+        sharedCurriculum:
+          state.sharedCurriculum ?? initialState?.sharedCurriculum ?? getLocalSharedCurriculumSnapshot(),
+      });
+      const localTopicCoachingMemory = readLocalTopicCoachingMemory(user.id);
+      const mergedTopicCoachingMemory = mergeTopicCoachingMemoryMaps(
+        nextState.topicCoachingMemory,
+        localTopicCoachingMemory
+      );
+      const staleLocalEntries = Object.values(localTopicCoachingMemory).filter((entry) =>
+        isEntryNewerThanRemote(entry, nextState.topicCoachingMemory[entry.topicId])
+      );
 
       if (!mountedRef.current || requestId !== hydrateRequestRef.current) {
         return null;
       }
 
-      setState(nextState);
+      const hydratedState = {
+        ...nextState,
+        topicCoachingMemory: mergedTopicCoachingMemory,
+      };
+
+      setState(hydratedState);
+      setTopicCoachingMemory(mergedTopicCoachingMemory);
+      topicCoachingMemoryRef.current = mergedTopicCoachingMemory;
+      topicCoachingUserIdRef.current = user.id;
       setConfigError(null);
-      return nextState;
+
+      if (staleLocalEntries.length > 0) {
+        void saveTopicCoachingMemoryEntries(
+          supabaseRef.current,
+          user.id,
+          staleLocalEntries
+        ).catch((error) => {
+          const message = error instanceof Error ? error.message : String(error ?? "");
+
+          if (
+            process.env.NODE_ENV !== "production" &&
+            !message.includes("topic_coaching_memory")
+          ) {
+            console.warn("Unable to merge local coaching memory into Supabase.", error);
+          }
+        });
+      }
+
+      return hydratedState;
     } catch (error) {
       if (!mountedRef.current || requestId !== hydrateRequestRef.current) {
         return null;
@@ -188,7 +365,13 @@ export function AppDataProvider({
     } = supabaseRef.current.auth.onAuthStateChange((_event, session) => {
       if (!session?.user) {
         hydrateRequestRef.current += 1;
-        setState(EMPTY_STATE);
+        setState((current) => ({
+          ...EMPTY_STATE,
+          sharedCurriculum: current.sharedCurriculum,
+        }));
+        setTopicCoachingMemory({});
+        topicCoachingMemoryRef.current = {};
+        topicCoachingUserIdRef.current = null;
         setConfigError(null);
         setIsHydrating(false);
         return;
@@ -274,7 +457,10 @@ export function AppDataProvider({
 
   async function signOut() {
     if (!supabaseRef.current) {
-      setState(EMPTY_STATE);
+      setState((current) => ({
+        ...EMPTY_STATE,
+        sharedCurriculum: current.sharedCurriculum,
+      }));
       return;
     }
 
@@ -285,7 +471,13 @@ export function AppDataProvider({
       throw error;
     }
 
-    setState(EMPTY_STATE);
+    setState((current) => ({
+      ...EMPTY_STATE,
+      sharedCurriculum: current.sharedCurriculum,
+    }));
+    setTopicCoachingMemory({});
+    topicCoachingMemoryRef.current = {};
+    topicCoachingUserIdRef.current = null;
     setConfigError(null);
     setIsHydrating(false);
     startTransition(() => {
@@ -459,14 +651,99 @@ export function AppDataProvider({
     return nextState;
   }
 
+  function updateTopicCoachingMemory(
+    updater: (current: TopicCoachingMemoryMap) => TopicCoachingMemoryMap,
+    topicId?: string
+  ) {
+    const nextTopicCoachingMemory = updater(topicCoachingMemoryRef.current);
+    setTopicCoachingMemory(nextTopicCoachingMemory);
+    topicCoachingMemoryRef.current = nextTopicCoachingMemory;
+
+    if (topicId) {
+      const nextEntry = nextTopicCoachingMemory[topicId];
+
+      if (nextEntry) {
+        persistTopicCoachingEntries([nextEntry]);
+      }
+    }
+  }
+
+  function recordAskCoaching(input: {
+    topicId: string;
+    intent: string;
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) {
+    updateTopicCoachingMemory(
+      (current) => recordAskTopicCoaching(current, input),
+      input.topicId
+    );
+  }
+
+  function recordAnswerCheckCoaching(input: {
+    topicId: string;
+    questionId?: string | null;
+    pointId?: string | null;
+    scorePercent: number;
+    misconceptionLabels?: string[];
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) {
+    updateTopicCoachingMemory(
+      (current) => recordAnswerCheckTopicCoaching(current, input),
+      input.topicId
+    );
+  }
+
+  function recordExamDrillCoaching(input: {
+    topicId: string;
+    drillId?: string | null;
+    pointId?: string | null;
+    readinessPercent: number;
+    rating?: "needs-work" | "ready";
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) {
+    updateTopicCoachingMemory(
+      (current) => recordExamDrillTopicCoaching(current, input),
+      input.topicId
+    );
+  }
+
+  function recordRecallCoaching(input: {
+    topicId: string;
+    masteryPercent: number;
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) {
+    updateTopicCoachingMemory(
+      (current) => recordRecallTopicCoaching(current, input),
+      input.topicId
+    );
+  }
+
+  function recordQuizCoaching(input: {
+    topicId: string;
+    scorePercent: number;
+    recommendedAction?: string | null;
+    recommendedHref?: string | null;
+  }) {
+    updateTopicCoachingMemory(
+      (current) => recordQuizTopicCoaching(current, input),
+      input.topicId
+    );
+  }
+
   const value: AppDataContextValue = {
     configError,
     isConfigured: Boolean(config),
     isHydrating,
     user: state.user,
+    sharedCurriculum: state.sharedCurriculum,
     onboarding: state.onboarding,
     diagnostic: state.diagnostic,
     revisionProgress: state.revisionProgress,
+    topicCoachingMemory,
     activityHistory: state.activityHistory,
     refreshAppState,
     signUp,
@@ -480,6 +757,11 @@ export function AppDataProvider({
     toggleSubtopicReview: updateSubtopicReview,
     trackMaterialProgress: updateMaterialProgress,
     trackPracticeSetProgress: updatePracticeSetProgress,
+    recordAskCoaching,
+    recordAnswerCheckCoaching,
+    recordExamDrillCoaching,
+    recordRecallCoaching,
+    recordQuizCoaching,
   };
 
   return (

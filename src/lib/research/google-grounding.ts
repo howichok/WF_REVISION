@@ -1,9 +1,11 @@
+import { buildTopicMaterialPack } from "@/lib/research/topic-material-pack";
 import {
-  getResourceHref,
-  getTopicContentBundle,
-  isResourceExternal,
-} from "@/lib/content";
-import { getTopicById } from "@/lib/types";
+  buildGeminiCacheKey,
+  createGeminiTimeoutSignal,
+  getGeminiModePolicy,
+  readGeminiCachedResponse,
+  writeGeminiCachedResponse,
+} from "@/lib/research/gemini-policy";
 import type {
   GroundedResearchEvidence,
   GroundedResearchRequest,
@@ -76,48 +78,6 @@ function toHost(value: string) {
   } catch {
     return value;
   }
-}
-
-function buildTopicMaterialPack(topicId: string) {
-  const topic = getTopicById(topicId);
-  const bundle = getTopicContentBundle(topicId);
-
-  if (!topic) {
-    throw new Error(`Unknown topic: ${topicId}`);
-  }
-
-  const officialPoints = bundle.officialPoints
-    .slice(0, 8)
-    .map((point) => `- ${point.code}: ${point.title}. ${point.summary}`)
-    .join("\n");
-  const glossary = bundle.terms
-    .slice(0, 10)
-    .map((term) => `- ${term.term}: ${term.definition}`)
-    .join("\n");
-  const examSignals = bundle.questions
-    .slice(0, 8)
-    .map((question) => `- ${question.title}: ${question.practicePrompt}`)
-    .join("\n");
-  const officialResources = bundle.resources
-    .filter((resource) => isResourceExternal(resource) && Boolean(getResourceHref(resource)))
-    .slice(0, 6)
-    .map((resource) => `- ${resource.title}: ${getResourceHref(resource)}`)
-    .join("\n");
-
-  return {
-    topic,
-    bundle,
-    materialPack: [
-      `Topic: ${topic.label}`,
-      bundle.mapping?.note ? `Curriculum mapping note: ${bundle.mapping.note}` : null,
-      officialPoints ? `Official curriculum points:\n${officialPoints}` : null,
-      glossary ? `Key glossary:\n${glossary}` : null,
-      examSignals ? `Mapped exam prompts:\n${examSignals}` : null,
-      officialResources ? `Priority official resources:\n${officialResources}` : null,
-    ]
-      .filter(Boolean)
-      .join("\n\n"),
-  };
 }
 
 function buildResearchPrompt(topicId: string, query: string) {
@@ -231,6 +191,12 @@ export async function generateGroundedResearchAnswer(
   }
 
   const { apiKey, model } = requireGeminiGroundingConfig();
+  const policy = getGeminiModePolicy("grounded-official");
+  const cacheKey = buildGeminiCacheKey("grounded-official", topicId, query);
+  const cached = readGeminiCachedResponse<GroundedResearchResponse>(cacheKey);
+  if (cached) {
+    return cached;
+  }
   const { topicLabel, systemInstruction, userPrompt } = buildResearchPrompt(topicId, query);
 
   const response = await fetch(
@@ -255,10 +221,11 @@ export async function generateGroundedResearchAnswer(
         generationConfig: {
           temperature: 0.2,
           topP: 0.9,
-          maxOutputTokens: 900,
+          maxOutputTokens: policy.maxOutputTokens,
         },
       }),
       cache: "no-store",
+      signal: createGeminiTimeoutSignal("grounded-official"),
     }
   );
 
@@ -289,7 +256,7 @@ export async function generateGroundedResearchAnswer(
   const { sources, chunkIndexToSourceIndex } = dedupeSources(groundingChunks);
   const evidenceTrail = buildEvidenceTrail(groundingSupports, chunkIndexToSourceIndex);
 
-  return {
+  const groundedResponse = {
     topicId,
     topicLabel,
     model,
@@ -300,4 +267,7 @@ export async function generateGroundedResearchAnswer(
     sourceStrategy:
       "Grounded with Google Search and constrained by the local DSD curriculum pack for this topic.",
   };
+
+  writeGeminiCachedResponse("grounded-official", cacheKey, groundedResponse);
+  return groundedResponse;
 }

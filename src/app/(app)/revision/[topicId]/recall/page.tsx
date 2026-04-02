@@ -12,13 +12,13 @@ export default function TopicRecallPage() {
   const params = useParams();
   const topicId = typeof params.topicId === "string" ? params.topicId : "";
   const topicInfo = getTopicById(topicId);
-  const { revisionProgress, trackPracticeSetProgress } = useAppData();
+  const { revisionProgress, trackPracticeSetProgress, sharedCurriculum } = useAppData();
 
   if (!topicInfo) {
     return null;
   }
 
-  const bundle = getTopicPracticeBundle(topicId);
+  const bundle = getTopicPracticeBundle(topicId, sharedCurriculum);
   const practiceSetId = getPracticeSetId(topicId, "recall");
   const recallProgress =
     getPracticeSetProgress(revisionProgress, topicId, practiceSetId)?.progressPercent ?? 0;

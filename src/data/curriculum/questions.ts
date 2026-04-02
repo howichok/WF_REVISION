@@ -1,4 +1,5 @@
 import type { QuestionMetadata } from "./types";
+import { GENERATED_POINT_QUESTION_METADATA } from "./generated-point-questions";
 import { TEACHING_PACK_QUESTION_METADATA } from "./teaching-pack-questions";
 
 export const QUESTION_METADATA: QuestionMetadata[] = [
@@ -764,4 +765,5 @@ export const QUESTION_METADATA: QuestionMetadata[] = [
     markSchemeConceptIds: ["ms-general-linked-explanation"],
   },
   ...TEACHING_PACK_QUESTION_METADATA,
+  ...GENERATED_POINT_QUESTION_METADATA,
 ];
