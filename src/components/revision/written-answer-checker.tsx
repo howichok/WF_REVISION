@@ -291,6 +291,10 @@ export function WrittenAnswerChecker({
   }, [question?.id]);
 
   const insertedCueCount = useMemo(() => countInsertedCueTokens(answer), [answer]);
+  const answerWordCount = useMemo(
+    () => answer.trim().split(/\s+/).filter(Boolean).length,
+    [answer]
+  );
 
   useEffect(() => {
     if (!question) {
@@ -301,6 +305,8 @@ export function WrittenAnswerChecker({
       surfaceId: overlaySurfaceId,
       topicId,
       topicLabel,
+      modeGroup: "Exam conditions",
+      modeLabel: "Final written answer",
       prompt: question.prompt,
       anchorRef: responseSurfaceRef,
       scanRef: textareaRef,
@@ -857,12 +863,32 @@ export function WrittenAnswerChecker({
       : improvementResult
         ? buildImprovementMisconceptionCueItems(improvementResult)
         : [];
+  const visibleImprovementFocusItems = improvementResult
+    ? uniqueCueItems(
+        [
+          ...visibleImprovementPrecisionCues,
+          ...visibleImprovementMisconceptionCues,
+          ...improvementResult.commentator,
+        ],
+        4
+      )
+    : [];
+  const primaryImprovementChanges = improvementResult?.changes.slice(0, 3) ?? [];
+
+  useEffect(() => {
+    const shouldSuppressOverlay = Boolean(improvementResult) && !isImproving;
+    overlay.setOverlaySuppressed(shouldSuppressOverlay);
+
+    return () => {
+      overlay.setOverlaySuppressed(false);
+    };
+  }, [improvementResult, isImproving, overlay]);
 
   return (
     <ActiveLearningLayout
       backHref={`/revision/${topicId}/practice`}
-      railTitle={`${topicLabel} answer check`}
-      railSubtitle="Structured written response against the deterministic mark-scheme checker."
+      railTitle={`${topicLabel} exam conditions`}
+      railSubtitle="Plan the wording in your head, write one fuller response, then let the deterministic checker mark it."
       railIcon={
         <span className="flex items-center gap-2 text-foreground">
           {topicIcon ? <span className="text-lg leading-none">{topicIcon}</span> : null}
@@ -871,10 +897,10 @@ export function WrittenAnswerChecker({
       }
       railItems={railItems}
       railSummary={railSummary}
-      mobileSummaryLabel="Answer check"
+      mobileSummaryLabel="Exam conditions"
       contextStrip={
         <TaskContextStrip
-          eyebrow="Answer Check"
+          eyebrow="Exam conditions"
           breadcrumb={
             <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
               {topicIcon ? <span>{topicIcon}</span> : null}
@@ -887,7 +913,7 @@ export function WrittenAnswerChecker({
               ) : null}
             </div>
           }
-          meta="Compare your written explanation against the deterministic rubric checker."
+          meta="This is the full written-response route. Use it when you want proper rubric-style checking, not just a quick Q/A pass."
           status={
             <span className="tabular-nums text-xs font-medium uppercase tracking-[0.18em] text-muted">
               {stageLabel}
@@ -901,7 +927,7 @@ export function WrittenAnswerChecker({
               </Badge>
             ) : null}
             <Badge variant="accent">{question.maxScore} marks</Badge>
-            <Badge variant="default">Written response</Badge>
+            <Badge variant="default">Final written answer</Badge>
           </div>
         </TaskContextStrip>
       }
@@ -909,7 +935,7 @@ export function WrittenAnswerChecker({
         (
           <TaskPanel
             title={question.prompt}
-            subtitle="Write a short structured answer. The checker looks for the key ideas, how clearly you explain them, and how well you link them to the scenario."
+            subtitle="Write one fuller exam-style answer. The checker looks for key ideas, explanation quality, and how well you link them to the scenario."
             commandWord={commandWord}
           />
         )
@@ -922,7 +948,7 @@ export function WrittenAnswerChecker({
           return (
             <TaskResponsePanel
               label="Your response"
-              description="Type your answer first, then run the checker to see score, matched ideas, missing concepts, and misconceptions."
+              description="Type the full response first, then run the checker to see marks, matched ideas, missing concepts, and misconceptions."
             >
               <div ref={responseSurfaceRef} className="space-y-3">
                 {commandWord ? (
@@ -1176,21 +1202,21 @@ export function WrittenAnswerChecker({
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="accent">{improvementResult.outputMode}</Badge>
-                    {improvementResult.provider ? (
-                      <Badge variant="default">
-                        {improvementResult.provider.replace(/-/g, " ")}
-                      </Badge>
-                    ) : null}
-                    {improvementResult.model ? (
-                      <Badge variant="default">{improvementResult.model}</Badge>
+                    <Badge variant="default">
+                      {improvementResult.provider === "gemini-coach"
+                        ? "AI wording polish"
+                        : "Local only"}
+                    </Badge>
+                    {improvementResult.provider !== "gemini-coach" && answerWordCount < 40 ? (
+                      <Badge variant="default">Short draft: token-safe mode</Badge>
                     ) : null}
                     <Badge variant="default">
-                      {improvementResult.weakSpans.length} weak phrase
+                      {improvementResult.weakSpans.length} weak spot
                       {improvementResult.weakSpans.length === 1 ? "" : "s"}
                     </Badge>
                     <Badge variant="default">
-                      {improvementResult.changes.length} suggestion
-                      {improvementResult.changes.length === 1 ? "" : "s"}
+                      {primaryImprovementChanges.length} next edit
+                      {primaryImprovementChanges.length === 1 ? "" : "s"}
                     </Badge>
                   </div>
                 </div>
@@ -1201,44 +1227,24 @@ export function WrittenAnswerChecker({
                   </div>
                 ) : null}
 
-                {visibleImprovementPrecisionCues.length > 0 || visibleImprovementMisconceptionCues.length > 0 ? (
-                  <div className="mt-4 grid gap-3 lg:grid-cols-2">
-                    {visibleImprovementPrecisionCues.length > 0 ? (
-                      <div className="rounded-2xl border border-accent/20 bg-accent/8 p-4">
-                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
-                          <Lightbulb size={12} />
-                          Fast precision cues
+                {visibleImprovementFocusItems.length > 0 ? (
+                  <div className="mt-4 rounded-2xl border border-accent/20 bg-accent/8 p-4">
+                    <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-accent">
+                      <Lightbulb size={12} />
+                      What to change next
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {visibleImprovementFocusItems.map((item) => (
+                        <div
+                          key={item}
+                          className="rounded-2xl border border-white/8 bg-background/30 px-3 py-3 text-sm text-foreground/90"
+                        >
+                          {item}
                         </div>
-                        <div className="mt-3 space-y-2">
-                          {visibleImprovementPrecisionCues.map((item) => (
-                            <p key={item} className="text-sm text-foreground/90">
-                              {item}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
-                    {visibleImprovementMisconceptionCues.length > 0 ? (
-                      <div className="rounded-2xl border border-warning/20 bg-warning/8 p-4">
-                        <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-warning">
-                          <AlertCircle size={12} />
-                          Confusion to fix
-                        </div>
-                        <div className="mt-3 space-y-2">
-                          {visibleImprovementMisconceptionCues.map((item) => (
-                            <p key={item} className="text-sm text-foreground/90">
-                              {item}
-                            </p>
-                          ))}
-                        </div>
-                      </div>
-                    ) : null}
+                      ))}
+                    </div>
                   </div>
                 ) : null}
-
-                <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-xs text-muted-foreground">
-                  Inline apply uses bracketed cues inside your draft, so it helps you edit faster without writing the final sentence for you.
-                </div>
 
                 <div className="mt-4 rounded-3xl border border-white/8 bg-black/18 p-4">
                   <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
@@ -1250,139 +1256,99 @@ export function WrittenAnswerChecker({
                   </div>
                 </div>
 
-                <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_260px]">
-                  <div className="space-y-3">
-                    {improvementResult.outputMode === "commentator" ? (
-                      <div className="space-y-3">
-                        <div className="space-y-2">
-                          {improvementResult.commentator.map((item) => (
-                            <div
-                              key={item}
-                              className="rounded-2xl border border-border bg-card/30 px-3 py-3 text-sm text-foreground/90"
-                            >
+                <div className="mt-4 rounded-2xl border border-white/8 bg-white/[0.03] px-3 py-3 text-xs text-muted-foreground">
+                  Insert cue adds a bracketed reminder into your draft. Accept rewrite only swaps a very short phrase, not a full sentence.
+                </div>
+
+                <div className="mt-4 space-y-3">
+                  {primaryImprovementChanges.map((change) => (
+                    <div
+                      key={change.id}
+                      className="rounded-2xl border border-border bg-card/30 px-4 py-4"
+                    >
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant={change.kind === "replace" ? "warning" : "accent"}
+                        >
+                          {change.kind === "replace" ? "Tighten phrase" : "Add missing point"}
+                        </Badge>
+                        <p className="text-sm font-medium text-foreground">
+                          {change.label}
+                        </p>
+                      </div>
+                      {change.targetText ? (
+                        <p className="mt-2 text-xs text-muted-foreground">
+                          Current phrase: "{change.targetText}"
+                        </p>
+                      ) : null}
+                      <p className="mt-2 text-sm text-foreground/90">
+                        {change.replacementText}
+                      </p>
+                      {change.microRewriteText ? (
+                        <p className="mt-2 text-xs text-accent">
+                          Safe short rewrite: "{change.microRewriteText}"
+                        </p>
+                      ) : null}
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="secondary"
+                          disabled={isImprovementStale || isImproving}
+                          onClick={() => handleInsertChangeCue(change)}
+                        >
+                          Insert cue
+                        </Button>
+                        {canAcceptMicroRewrite(change) ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="ghost"
+                            disabled={isImprovementStale || isImproving}
+                            onClick={() => handleAcceptRewrite(change)}
+                          >
+                            Accept rewrite
+                          </Button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <details className="mt-4 rounded-2xl border border-border bg-card/20 p-4">
+                  <summary className="cursor-pointer list-none text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                    See checklist and marking reasons
+                  </summary>
+
+                  <div className="mt-4 grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)]">
+                    <div className="space-y-3">
+                      <div className="rounded-2xl border border-border bg-card/30 p-4">
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                          Improvement checklist
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {improvementResult.checklist.map((item) => (
+                            <Badge key={item} variant="default">
                               {item}
-                            </div>
+                            </Badge>
                           ))}
                         </div>
+                      </div>
 
-                        <div className="rounded-2xl border border-border bg-card/20 p-4">
+                      {improvementResult.commentator.length > 0 ? (
+                        <div className="rounded-2xl border border-border bg-card/30 p-4">
                           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                            Quick insert cues
+                            Coach notes
                           </p>
                           <div className="mt-3 space-y-2">
-                            {improvementResult.changes.slice(0, 3).map((change) => (
-                              <div
-                                key={`comment-mode-${change.id}`}
-                                className="rounded-2xl border border-border bg-card/30 px-3 py-3"
-                              >
-                                <div className="flex flex-wrap items-center justify-between gap-3">
-                                  <div className="min-w-0">
-                                    <p className="text-sm font-medium text-foreground">
-                                      {change.label}
-                                    </p>
-                                    <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
-                                      {change.replacementText}
-                                    </p>
-                                  </div>
-                                  <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    disabled={isImprovementStale || isImproving}
-                                    onClick={() => handleInsertChangeCue(change)}
-                                  >
-                                    Insert cue
-                                  </Button>
-                                  {canAcceptMicroRewrite(change) ? (
-                                    <Button
-                                      type="button"
-                                      size="sm"
-                                      variant="ghost"
-                                      disabled={isImprovementStale || isImproving}
-                                      onClick={() => handleAcceptRewrite(change)}
-                                    >
-                                      Accept rewrite
-                                    </Button>
-                                  ) : null}
-                                </div>
-                              </div>
+                            {improvementResult.commentator.map((item) => (
+                              <p key={item} className="text-sm text-foreground/90">
+                                {item}
+                              </p>
                             ))}
                           </div>
                         </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {improvementResult.changes.map((change) => (
-                          <div
-                            key={change.id}
-                            className="rounded-2xl border border-border bg-card/30 px-3 py-3"
-                          >
-                            <div className="flex flex-wrap items-center gap-2">
-                              <Badge
-                                variant={change.kind === "replace" ? "warning" : "accent"}
-                              >
-                                {change.kind}
-                              </Badge>
-                              <p className="text-sm font-medium text-foreground">
-                                {change.label}
-                              </p>
-                            </div>
-                            {change.targetText ? (
-                              <p className="mt-2 text-xs text-muted-foreground">
-                                Target: "{change.targetText}"
-                              </p>
-                            ) : null}
-                            <p className="mt-2 text-sm text-foreground/90">
-                              {change.replacementText}
-                            </p>
-                            {change.microRewriteText ? (
-                              <p className="mt-2 text-xs text-accent">
-                                Short rewrite: "{change.microRewriteText}"
-                              </p>
-                            ) : null}
-                            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                              {change.rationale}
-                            </p>
-                            <div className="mt-3 flex flex-wrap gap-2">
-                              <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                disabled={isImprovementStale || isImproving}
-                                onClick={() => handleInsertChangeCue(change)}
-                              >
-                                Insert cue
-                              </Button>
-                              {canAcceptMicroRewrite(change) ? (
-                                <Button
-                                  type="button"
-                                  size="sm"
-                                  variant="ghost"
-                                  disabled={isImprovementStale || isImproving}
-                                  onClick={() => handleAcceptRewrite(change)}
-                                >
-                                  Accept rewrite
-                                </Button>
-                              ) : null}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    <div className="rounded-2xl border border-border bg-card/30 p-4">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
-                        Improvement checklist
-                      </p>
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        {improvementResult.checklist.map((item) => (
-                          <Badge key={item} variant="default">
-                            {item}
-                          </Badge>
-                        ))}
-                      </div>
+                      ) : null}
                     </div>
 
                     <div className="rounded-2xl border border-border bg-card/30 p-4">
@@ -1434,7 +1400,7 @@ export function WrittenAnswerChecker({
                       </div>
                     </div>
                   </div>
-                </div>
+                </details>
               </div>
             ) : null}
           </div>

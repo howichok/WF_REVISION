@@ -27,9 +27,9 @@ export default function TopicRecallPage() {
     <TopicRouteShell
       topicId={topicId}
       activeMode="recall"
-      eyebrow="Recall"
+      eyebrow="Simple revision"
       title={topicInfo.label}
-      description="Short retrieval prompts to strengthen fluency before longer written work."
+      description="Recall key terms and curriculum points before you try longer written answers under Exam conditions."
     >
       <RecallPanel
         topicId={topicId}

@@ -52,7 +52,8 @@ test("applies Gemini polish without changing deterministic weak spans", async ()
     {
       mode: "revision-improve",
       questionId: schema.id,
-      answer: "Confidentiality is important because it keeps data safe.",
+      answer:
+        "Confidentiality is important because it keeps data safe for users, but my answer is still vague and does not name a control, the impact on the system, or the difference between privacy, authentication, and access control in the scenario clearly.",
       outputMode: "diff",
     },
     {
@@ -116,4 +117,29 @@ test("falls back to local improvement when Gemini polish is out of scope", async
   assert.equal(response.provider, "local-rule-engine");
   assert.equal(response.model, undefined);
   assert.ok(response.commentator.length > 0);
+});
+
+test("keeps short answers local-only and skips Gemini polish", async () => {
+  const schema = REVISION_QUESTION_SCHEMAS.find((item) => item.topicId === "security");
+  assert.ok(schema, "Expected at least one security revision schema.");
+
+  let called = false;
+  const response = await generateRevisionImprovementResponse(
+    {
+      mode: "revision-improve",
+      questionId: schema.id,
+      answer: "Confidentiality keeps data safe and private for users.",
+      outputMode: "commentator",
+    },
+    {
+      polishResolver: async () => {
+        called = true;
+        throw new Error("This resolver should not run for short answers.");
+      },
+    }
+  );
+
+  assert.equal(called, false);
+  assert.equal(response.provider, "local-rule-engine");
+  assert.equal(response.model, undefined);
 });

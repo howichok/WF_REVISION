@@ -29,9 +29,9 @@ export default function TopicExamDrillPage() {
     <TopicRouteShell
       topicId={topicId}
       activeMode="exam-drill"
-      eyebrow="Exam drill"
+      eyebrow="Exam conditions"
       title={topicInfo.label}
-      description="Timed exam-style tasks with planning space and self-check prompts."
+      description="Step 1 of the exam route: plan the answer, use hints only if needed, then move into the final written response."
     >
       <ExamDrillPanel
         topicId={topicId}

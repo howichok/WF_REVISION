@@ -4,8 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
-import { RevisionSubnav } from "@/components/revision/revision-subnav";
-import { getTopicRouteItems, type TopicLearningMode } from "@/lib/revision-routes";
+import { getTopicNavMode, getTopicRouteItems, type TopicLearningMode } from "@/lib/revision-routes";
 import { getTopicById } from "@/lib/types";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { getSubtopicProgressForTopic } from "@/lib/progress";
@@ -44,11 +43,10 @@ export function TopicRouteShell({
     : null;
   const progress = getSubtopicProgressForTopic(revisionProgress, topicId);
   const topicRoutes = getTopicRouteItems(topicId);
+  const activeNavMode = getTopicNavMode(activeMode);
 
   return (
     <div className="space-y-5">
-      <RevisionSubnav activeRoute="topics" />
-
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-3">
           <Link href="/revision/topics" className="mt-1">
@@ -81,7 +79,7 @@ export function TopicRouteShell({
       <nav className="overflow-x-auto">
         <div className="flex min-w-max gap-1 rounded-xl border border-border bg-card/40 p-1">
           {topicRoutes.map((item) => {
-            const isActive = item.id === activeMode || pathname === item.href;
+            const isActive = item.id === activeNavMode || pathname === item.href;
 
             return (
               <Link

@@ -22,8 +22,8 @@ export default function RevisionTopicsPage() {
   const topics = TOPICS.filter((topic) => topic.id !== "esp");
 
   return (
-    <PageContainer size="lg">
-      <div className="space-y-6">
+    <PageContainer size="xl">
+      <div className="space-y-8">
         <RevisionSubnav activeRoute="topics" />
 
         <Card variant="navigation" className="p-5 sm:p-6">
@@ -39,7 +39,7 @@ export default function RevisionTopicsPage() {
           </p>
         </Card>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
           {topics.map((topic) => {
             const tree = getTopicTree(topic.id);
             const content = getTopicContentBundle(topic.id, sharedCurriculum);

@@ -1,4 +1,4 @@
-import { buildTopicMaterialPack } from "@/lib/research/topic-material-pack";
+import { buildCompactTopicMaterialPack } from "@/lib/research/topic-material-pack";
 import {
   buildGeminiCacheKey,
   createGeminiTimeoutSignal,
@@ -70,6 +70,10 @@ function trimWords(value: string, maxWords = 24) {
   return `${words.slice(0, maxWords).join(" ")}...`;
 }
 
+function countWords(value: string) {
+  return value.trim().split(/\s+/).filter(Boolean).length;
+}
+
 function normaliseList(values: string[], maxItems: number, maxWords: number) {
   return values
     .map((value) => trimWords(value.replace(/\s+/g, " ").trim(), maxWords))
@@ -85,33 +89,63 @@ function extractResponseText(payload: GeminiGenerateContentResponse) {
 }
 
 function buildPrompt(request: GeminiRevisionPolishRequest) {
-  const { topic, materialPack } = buildTopicMaterialPack(request.topicId);
+  const { topic, materialPack } = buildCompactTopicMaterialPack(
+    request.topicId,
+    request.questionPrompt
+  );
+  const answerWordCount = countWords(request.learnerAnswer);
+  const weakSpanLines = request.localImprovement.weakSpans
+    .slice(0, 3)
+    .map(
+      (span) =>
+        `- ${span.label}: ${trimWords(span.reason, 14)}${
+          span.replacementHint ? ` (${trimWords(span.replacementHint, 14)})` : ""
+        }`
+    )
+    .join("\n");
+  const localChangeLines = request.localImprovement.changes
+    .slice(0, 3)
+    .map((change) =>
+      [
+        `- ${change.id}: ${change.label}`,
+        change.targetText ? `target="${trimWords(change.targetText, 8)}"` : null,
+        `hint="${trimWords(change.replacementText, 12)}"`,
+        `why="${trimWords(change.rationale, 12)}"`,
+      ]
+        .filter(Boolean)
+        .join(" | ")
+    )
+    .join("\n");
 
   return {
     systemInstruction: [
       "You polish short exam-coaching guidance inside a T Level Digital Software Development revision website.",
-      "You are not allowed to rewrite the learner's full answer.",
-      "You must keep the deterministic weak spans, counts, and ids unchanged; you may only tighten the wording of summary, checklist items, commentator bullets, and diff hints.",
-      "Do not repeat the learner answer back.",
-      "Do not output paragraphs that could replace the learner's own response.",
+      "You are not allowed to rewrite the learner's full answer or produce a copyable sentence.",
+      "You must keep the deterministic weak spans, counts, and ids unchanged.",
+      "You may only tighten the wording of summary, checklist items, commentator bullets, and diff hints.",
+      "Do not repeat or reconstruct the learner answer.",
+      "Keep every field lean and low-token.",
       "Stay strictly inside the supplied topic pack and question.",
       "Return JSON only and follow the schema exactly.",
     ].join(" "),
     userPrompt: [
       `Topic: ${topic.label}`,
       `Question: ${request.questionPrompt}`,
+      `Learner answer length: ${answerWordCount} words`,
       `Output mode: ${request.localImprovement.outputMode}`,
-      `Learner answer: ${request.learnerAnswer}`,
       `Local summary: ${request.localImprovement.summary}`,
-      `Local commentator:\n${request.localImprovement.commentator.map((item) => `- ${item}`).join("\n")}`,
-      `Local checklist:\n${request.localImprovement.checklist.map((item) => `- ${item}`).join("\n")}`,
-      `Deterministic weak spans:\n${request.localImprovement.weakSpans
-        .map((span) => `- ${span.label}: ${span.reason}${span.replacementHint ? ` (${span.replacementHint})` : ""}`)
+      `Local commentator:\n${request.localImprovement.commentator
+        .slice(0, 3)
+        .map((item) => `- ${trimWords(item, 14)}`)
         .join("\n")}`,
-      `Local change hints:\n${request.localImprovement.changes
-        .map((change) => `- ${change.id}: ${change.label}. ${change.replacementText}. ${change.rationale}`)
+      `Local checklist:\n${request.localImprovement.checklist
+        .slice(0, 4)
+        .map((item) => `- ${trimWords(item, 12)}`)
         .join("\n")}`,
+      weakSpanLines ? `Weak spots:\n${weakSpanLines}` : null,
+      localChangeLines ? `Deterministic change hints:\n${localChangeLines}` : null,
       "The ids in changes must stay exactly the same.",
+      "Summary must stay under 24 words.",
       "Commentator must stay concise and exam-safe.",
       "Checklist must stay short and actionable.",
       "Replacement text must stay as a hint, not a finished answer sentence.",

@@ -20,27 +20,27 @@ interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const variantStyles: Record<CardVariant, string> = {
-  default: "bg-card border-border",
+  default: "bg-card border-border shadow-sm",
   navigation:
-    "border-white/5 bg-[linear-gradient(180deg,rgba(255,255,255,0.03),rgba(17,17,19,0.88))] shadow-[0_10px_40px_-28px_rgba(0,0,0,0.8)]",
+    "border-[var(--card-nav-border)] bg-[var(--card-nav-bg)] shadow-[var(--card-nav-shadow)]",
   task:
-    "border-white/8 bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(11,11,15,0.97))] shadow-[0_18px_40px_-30px_rgba(0,0,0,0.85)]",
+    "border-white/8 dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.035),rgba(11,11,15,0.97))] bg-card shadow-[0_18px_40px_-30px_rgba(0,0,0,0.85)] dark:shadow-[0_18px_40px_-30px_rgba(0,0,0,0.85)] shadow-md",
   input:
-    "border-border-light bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(9,9,11,0.98))] shadow-[inset_0_1px_0_rgba(255,255,255,0.03)]",
+    "border-border-light bg-card shadow-[inset_0_1px_0_rgba(255,255,255,0.03)] dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.025),rgba(9,9,11,0.98))]",
   support:
-    "border-border/80 bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(15,15,18,0.95))]",
+    "border-border/80 bg-card dark:bg-[linear-gradient(180deg,rgba(255,255,255,0.02),rgba(15,15,18,0.95))]",
   accent:
-    "border-accent/20 bg-[linear-gradient(145deg,rgba(139,92,246,0.14),rgba(17,17,19,0.96)_48%,rgba(17,17,19,1))] shadow-[0_20px_45px_-32px_rgba(139,92,246,0.5)]",
+    "border-accent/20 bg-[linear-gradient(145deg,rgba(139,92,246,0.08),rgba(255,255,255,0.95)_48%,rgba(255,255,255,1))] dark:bg-[linear-gradient(145deg,rgba(139,92,246,0.14),rgba(17,17,19,0.96)_48%,rgba(17,17,19,1))] shadow-[0_20px_45px_-32px_rgba(139,92,246,0.3)] dark:shadow-[0_20px_45px_-32px_rgba(139,92,246,0.5)]",
   success:
-    "border-success/20 bg-[linear-gradient(145deg,rgba(34,197,94,0.10),rgba(13,16,15,0.97)_50%,rgba(13,16,15,1))]",
+    "border-success/20 bg-[linear-gradient(145deg,rgba(34,197,94,0.06),rgba(255,255,255,0.97)_50%)] dark:bg-[linear-gradient(145deg,rgba(34,197,94,0.10),rgba(13,16,15,0.97)_50%,rgba(13,16,15,1))]",
   warning:
-    "border-warning/20 bg-[linear-gradient(145deg,rgba(245,158,11,0.12),rgba(18,15,10,0.97)_50%,rgba(18,15,10,1))]",
+    "border-warning/20 bg-[linear-gradient(145deg,rgba(245,158,11,0.06),rgba(255,255,255,0.97)_50%)] dark:bg-[linear-gradient(145deg,rgba(245,158,11,0.12),rgba(18,15,10,0.97)_50%,rgba(18,15,10,1))]",
   danger:
-    "border-danger/18 bg-[linear-gradient(145deg,rgba(239,68,68,0.10),rgba(18,13,13,0.97)_52%,rgba(18,13,13,1))]",
+    "border-danger/18 bg-[linear-gradient(145deg,rgba(239,68,68,0.06),rgba(255,255,255,0.97)_52%)] dark:bg-[linear-gradient(145deg,rgba(239,68,68,0.10),rgba(18,13,13,0.97)_52%,rgba(18,13,13,1))]",
   "paper-1":
-    "border-accent/22 bg-[linear-gradient(145deg,rgba(99,102,241,0.15),rgba(17,17,19,0.95)_44%,rgba(17,17,19,1))] shadow-[0_18px_42px_-30px_rgba(99,102,241,0.45)]",
+    "border-accent/22 bg-[linear-gradient(145deg,rgba(99,102,241,0.08),rgba(255,255,255,0.95)_44%)] dark:bg-[linear-gradient(145deg,rgba(99,102,241,0.15),rgba(17,17,19,0.95)_44%,rgba(17,17,19,1))] shadow-[0_18px_42px_-30px_rgba(99,102,241,0.25)] dark:shadow-[0_18px_42px_-30px_rgba(99,102,241,0.45)]",
   "paper-2":
-    "border-warning/22 bg-[linear-gradient(145deg,rgba(245,158,11,0.14),rgba(17,17,19,0.95)_44%,rgba(17,17,19,1))] shadow-[0_18px_42px_-30px_rgba(245,158,11,0.42)]",
+    "border-warning/22 bg-[linear-gradient(145deg,rgba(245,158,11,0.08),rgba(255,255,255,0.95)_44%)] dark:bg-[linear-gradient(145deg,rgba(245,158,11,0.14),rgba(17,17,19,0.95)_44%,rgba(17,17,19,1))] shadow-[0_18px_42px_-30px_rgba(245,158,11,0.22)] dark:shadow-[0_18px_42px_-30px_rgba(245,158,11,0.42)]",
 };
 
 function Card({
@@ -64,7 +64,7 @@ function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border p-6",
+        "rounded-3xl border p-6",
         "transition-all duration-300",
         variantStyles[variant],
         hoverStyles,

@@ -244,6 +244,8 @@ export function TopicIntelligenceAssistant({
       surfaceId: overlaySurfaceId,
       topicId,
       topicLabel,
+      modeGroup: "Simple revision",
+      modeLabel: "Ask coach",
       prompt: overlayPrompt,
       anchorRef: surfaceRef,
     });
@@ -520,10 +522,10 @@ export function TopicIntelligenceAssistant({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
-              Universal Ask DSD
+              Simple revision coach
             </p>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              One exam-safe coach for hints, short explanations, official sources, answer-check routing, and the next best question.
+              Use this when you need a fast hint, short explanation, official source, or the next best question before you switch into Exam conditions.
             </p>
           </div>
           <Badge variant="accent">Official-first</Badge>
@@ -590,7 +592,7 @@ export function TopicIntelligenceAssistant({
             </div>
           ) : (
             <p className="text-xs leading-relaxed text-muted-foreground">
-              The router is local-first. It only treats web grounding as authoritative when the answer is backed by Pearson or T Levels allowlisted sources.
+              This mode stays local-first and exam-safe. It only treats web grounding as authoritative when the answer is backed by Pearson or T Levels allowlisted sources.
             </p>
           )}
         </div>

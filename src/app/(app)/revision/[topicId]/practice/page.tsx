@@ -20,20 +20,18 @@ export default async function TopicPracticePage({
     <TopicRouteShell
       topicId={topicId}
       activeMode="practice"
-      eyebrow="Topic practice hub"
+      eyebrow="Two-mode practice hub"
       title={`Practice ${topicInfo.label}`}
-      description="Choose one clear study mode for this topic. Each route now has a single purpose and a clearer outcome."
+      description="Everything in this topic now sits under two routes: Simple revision for fast Q/A, and Exam conditions for planning plus one fuller written answer."
       aside={
         <Card className="p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-            How to use this
+            How this topic works now
           </p>
           <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-            <p>Start with Universal Ask DSD when you are not sure which mode you need.</p>
-            <p>Use recall when you need retrieval.</p>
-            <p>Use exam drill when you need planning and self-checking.</p>
-            <p>Use answer check when you want rubric-based feedback.</p>
-            <p>Use quick quiz when you want fast correction and score.</p>
+            <p>Simple revision is for quick Q/A, retrieval, and short AI help while you are still learning the topic.</p>
+            <p>Exam conditions is for planning first, then finishing with a longer written answer that the AI checker marks.</p>
+            <p>If you are not sure where to start, begin in Simple revision and only switch once the core idea feels stable.</p>
           </div>
         </Card>
       }

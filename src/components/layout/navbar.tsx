@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, Library, Home, LogOut, Settings2, CalendarDays } from "lucide-react";
+import { BookOpen, Library, Home, LogOut, Settings2, CalendarDays, Sun, Moon } from "lucide-react";
 import { useAppData } from "@/components/providers/app-data-provider";
+import { useTheme } from "@/components/providers/theme-provider";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
@@ -16,11 +17,12 @@ const navLinks = [
 export function Navbar() {
   const pathname = usePathname();
   const { signOut, user } = useAppData();
+  const { theme, toggleTheme } = useTheme();
   const isSettingsActive = pathname.startsWith("/settings");
 
   return (
     <nav className="sticky top-0 z-50 glass">
-      <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 sm:px-8 h-16 flex items-center justify-between">
         {/* Logo */}
         <Link href="/home" className="flex items-center gap-2.5 group">
           <div className="w-8 h-8 rounded-lg bg-accent/20 flex items-center justify-center">
@@ -58,8 +60,15 @@ export function Navbar() {
           })}
         </div>
 
-        {/* User section — always renders same structure; nickname populates after mount */}
-        <div className="flex items-center gap-3">
+        {/* User section */}
+        <div className="flex items-center gap-2">
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-card transition-colors cursor-pointer"
+            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          >
+            {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          </button>
           <Link
             href="/settings"
             className={cn(

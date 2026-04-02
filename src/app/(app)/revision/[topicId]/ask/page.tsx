@@ -27,17 +27,17 @@ export default async function TopicAskPage({
     <TopicRouteShell
       topicId={topicId}
       activeMode="ask"
-      eyebrow="Universal Ask DSD"
+      eyebrow="Simple revision"
       title={`Ask ${topicInfo.label}`}
-      description="One entrypoint for hints, direct explanations, official sources, answer-check routing, and the next best practice prompt."
+      description="The fast revision route for hints, short explanations, official sources, and quick next-step guidance before you move into Exam conditions."
       aside={
         <Card className="p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">
             How it works
           </p>
           <div className="mt-4 space-y-2 text-sm text-muted-foreground">
-            <p>The router checks local DSD content first.</p>
-            <p>Grounded web is only treated as authoritative with Pearson or T Levels allowlisted sources.</p>
+            <p>This sits inside Simple revision, so it should help you think faster rather than replace your answer for you.</p>
+            <p>The router checks local DSD content first and only treats grounded web as authoritative with Pearson or T Levels allowlisted sources.</p>
             <p>Hints stay scaffold-only and do not turn into full model answers.</p>
           </div>
         </Card>

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter";
 import { AppDataProvider } from "@/components/providers/app-data-provider";
 import { AiOverlayProvider } from "@/components/providers/ai-overlay-provider";
+import { ThemeProvider } from "@/components/providers/theme-provider";
 import { loadSharedCurriculumSnapshotFromDatabase } from "@/lib/curriculum-database";
 import { loadAppState } from "@/lib/app-data";
 import { getLocalSharedCurriculumSnapshot } from "@/lib/shared-curriculum";
@@ -64,7 +65,15 @@ export default async function RootLayout({
   }
 
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" suppressHydrationWarning>
+      <head>
+        {/* Anti-FOUC: set theme class before first paint */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("wf-revision-theme");if(t==="light"){document.documentElement.classList.remove("dark")}else if(!t&&window.matchMedia("(prefers-color-scheme:light)").matches){document.documentElement.classList.remove("dark")}}catch(e){}})();`,
+          }}
+        />
+      </head>
       <body className={`${inter.variable} antialiased relative`}>
         {/* Ambient violet light — fixed, non-interactive */}
         <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden>
@@ -78,12 +87,14 @@ export default async function RootLayout({
           />
         </div>
         <div className="relative z-10">
-          <AppDataProvider initialState={initialState}>
-            <AiOverlayProvider>
-              <WebVitalsReporter />
-              {children}
-            </AiOverlayProvider>
-          </AppDataProvider>
+          <ThemeProvider>
+            <AppDataProvider initialState={initialState}>
+              <AiOverlayProvider>
+                <WebVitalsReporter />
+                {children}
+              </AiOverlayProvider>
+            </AppDataProvider>
+          </ThemeProvider>
         </div>
       </body>
     </html>

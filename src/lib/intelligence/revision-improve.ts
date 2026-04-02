@@ -84,6 +84,7 @@ const GENERIC_WEAK_PHRASES: Array<{
 ];
 
 const REVISION_IMPROVEMENT_CACHE = new Map<string, RevisionImprovementResponse>();
+const MIN_WORDS_FOR_GEMINI_POLISH = 40;
 
 function getRevisionSchema(questionId: string): RevisionQuestionSchema | null {
   return REVISION_QUESTION_SCHEMAS.find((schema) => schema.id === questionId) ?? null;
@@ -123,6 +124,10 @@ function clampWords(value: string, maxWords = 24) {
   }
 
   return `${words.slice(0, maxWords).join(" ")}...`;
+}
+
+function countWords(value: string) {
+  return value.trim().split(/\s+/).filter(Boolean).length;
 }
 
 function buildImprovementCacheKey(request: RevisionImprovementRequest) {
@@ -431,7 +436,14 @@ export function generateRevisionImprovement(
   };
 }
 
-function shouldUseGeminiPolish(response: RevisionImprovementResponse) {
+function shouldUseGeminiPolish(
+  response: RevisionImprovementResponse,
+  learnerAnswer: string
+) {
+  if (countWords(learnerAnswer) < MIN_WORDS_FOR_GEMINI_POLISH) {
+    return false;
+  }
+
   return response.changes.length > 0 || response.commentator.length > 0;
 }
 
@@ -477,7 +489,7 @@ export async function generateRevisionImprovementResponse(
 
   const local = generateRevisionImprovement(request);
 
-  if (!shouldUseGeminiPolish(local)) {
+  if (!shouldUseGeminiPolish(local, request.answer)) {
     REVISION_IMPROVEMENT_CACHE.set(cacheKey, local);
     return local;
   }

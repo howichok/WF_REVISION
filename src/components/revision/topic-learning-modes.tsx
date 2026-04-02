@@ -294,6 +294,8 @@ export function RecallPanel({
       surfaceId: overlaySurfaceId,
       topicId,
       topicLabel,
+      modeGroup: "Simple revision",
+      modeLabel: "Recall card",
       prompt: currentCard.prompt,
       anchorRef: surfaceRef,
     });
@@ -772,6 +774,8 @@ export function ExamDrillPanel({
       surfaceId: overlaySurfaceId,
       topicId,
       topicLabel,
+      modeGroup: "Exam conditions",
+      modeLabel: "Planned exam response",
       prompt: currentDrill.prompt,
       anchorRef: surfaceRef,
     });
@@ -851,7 +855,7 @@ export function ExamDrillPanel({
         lastRating === "ready"
           ? "Drill complete. You are ready to step up to the next same-topic task."
           : "Drill complete. Stay in the same topic and replay the weaker area once more.",
-      note: "Exam drill mode keeps the feedback lightweight and routes you into the next best same-topic action.",
+      note: "This is the planning stage inside Exam conditions, so the feedback stays lightweight and routes you into the next same-topic action.",
       primaryAction: nextSteps.primary
         ? {
             label: nextSteps.primary.label,
@@ -935,7 +939,7 @@ export function ExamDrillPanel({
         setError(
           saveError instanceof Error
             ? saveError.message
-            : "Unable to save exam drill progress."
+            : "Unable to save exam-conditions planning progress."
         );
       } finally {
         setIsSaving(false);
@@ -965,7 +969,7 @@ export function ExamDrillPanel({
     return (
       <Card className="p-5">
         <p className="text-sm text-muted-foreground">
-          No mapped exam-style drills are available for this topic yet.
+          No mapped exam-conditions planning prompts are available for this topic yet.
         </p>
       </Card>
     );
@@ -974,9 +978,9 @@ export function ExamDrillPanel({
   if (sessionComplete) {
     return (
       <LearningOutcomePanel
-        eyebrow="Guided Exam Practice"
-        title="Exam drill round complete"
-        summary={`You worked through ${drills.length} exam prompts. Use the readiness signal to decide whether to move into answer checking or repeat more guided planning.`}
+        eyebrow="Exam conditions"
+        title="Planning round complete"
+        summary={`You worked through ${drills.length} planned exam prompts. Use the readiness signal to decide whether to move into the final written answer or repeat guided planning.`}
         tone={getPercentTone(readinessPercent)}
         progressLabel="Readiness signal"
         progressValue={readinessPercent}
@@ -999,7 +1003,7 @@ export function ExamDrillPanel({
         }
         secondaryAction={
           toLearningAction(nextSteps.secondary, "secondary") ?? {
-            label: "Run another exam drill round",
+            label: "Run another planning round",
             onClick: handleRestart,
             variant: "secondary",
           }
@@ -1010,7 +1014,7 @@ export function ExamDrillPanel({
             <ErrorMessage message={error} />
           ) : (
             <p className="text-sm text-muted-foreground">
-              Use the readiness signal to decide whether to move into rubric-based answer checking or spend another round planning exam responses.
+              Use the readiness signal to decide whether to move into the final written answer or spend another round planning exam responses.
             </p>
           )}
           <TopicNextSteps
@@ -1047,15 +1051,15 @@ export function ExamDrillPanel({
     <div ref={surfaceRef}>
       <ActiveLearningLayout
       backHref={`/revision/${topicId}/practice`}
-      railTitle={`${topicLabel} exam drill`}
-      railSubtitle="Plan the answer first, then compare it with the checklist and decide whether you are ready for exam wording."
+      railTitle={`${topicLabel} exam conditions`}
+      railSubtitle="Step 1: plan the answer first, then compare it with the checklist and decide whether you are ready for the final written response."
       railIcon={<span className="text-lg">{topicIcon}</span>}
       railItems={railItems}
       railSummary={railSummary}
-      mobileSummaryLabel="Exam drill"
+      mobileSummaryLabel="Exam conditions"
       contextStrip={
         <TaskContextStrip
-          eyebrow="Guided exam practice"
+          eyebrow="Exam conditions"
           breadcrumb={topicLabel}
           meta={`Prompt ${currentIndex + 1} of ${drills.length}`}
           status={

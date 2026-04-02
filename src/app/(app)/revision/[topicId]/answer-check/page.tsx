@@ -1,8 +1,7 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { TopicRouteShell } from "@/components/revision/topic-route-shell";
-import { WrittenAnswerChecker } from "@/components/revision/written-answer-checker";
+import { ExamConditionsWorkspace } from "@/components/revision/exam-conditions-workspace";
 import { getTopicById } from "@/lib/types";
 
 export default function TopicAnswerCheckPage() {
@@ -17,19 +16,11 @@ export default function TopicAnswerCheckPage() {
   }
 
   return (
-    <TopicRouteShell
+    <ExamConditionsWorkspace
       topicId={topicId}
-      activeMode="answer-check"
-      eyebrow="Answer check"
-      title={topicInfo.label}
-      description="Written prompts with mark-style feedback on coverage and misconceptions."
-    >
-      <WrittenAnswerChecker
-        topicId={topicId}
-        topicLabel={topicInfo.label}
-        topicIcon={topicInfo.icon}
-        preferredQuestionId={preferredQuestionId}
-      />
-    </TopicRouteShell>
+      topicLabel={topicInfo.label}
+      topicIcon={topicInfo.icon}
+      preferredQuestionId={preferredQuestionId}
+    />
   );
 }

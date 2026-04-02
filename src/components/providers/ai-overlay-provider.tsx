@@ -17,6 +17,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   Bot,
+  ChevronDown,
   Crosshair,
   GripHorizontal,
   Maximize2,
@@ -39,12 +40,15 @@ type OverlayPhase =
   | "error";
 
 type DockMode = "float" | "snap";
+type RevisionModeGroup = "Exam conditions" | "Simple revision";
 
 interface RevisionSurfaceRegistration {
   surfaceId: string;
   topicId: string;
   topicLabel: string;
   prompt: string;
+  modeGroup?: RevisionModeGroup;
+  modeLabel?: string;
   anchorRef: RefObject<HTMLElement | null>;
   scanRef?: RefObject<HTMLElement | null>;
   onUndoLastEdit?: () => void;
@@ -133,6 +137,8 @@ interface SurfaceRecommendationsInput {
 interface OverlaySessionState {
   topicId?: string;
   topicLabel: string;
+  modeGroup?: RevisionModeGroup;
+  modeLabel?: string;
   prompt: string;
   answerPreview: string;
   wordCount: number;
@@ -148,6 +154,8 @@ interface OverlaySurfaceMeta {
   surfaceId: string;
   topicId: string;
   topicLabel: string;
+  modeGroup: RevisionModeGroup;
+  modeLabel: string;
   prompt: string;
   answerPreview: string;
   wordCount: number;
@@ -173,6 +181,7 @@ interface AiOverlayContextValue {
   setSurfaceRecommendations: (input: SurfaceRecommendationsInput) => void;
   undoLastEdit: (surfaceId: string) => void;
   clearInsertedCues: (surfaceId: string) => void;
+  setOverlaySuppressed: (suppressed: boolean) => void;
 }
 
 const AiOverlayContext = createContext<AiOverlayContextValue | null>(null);
@@ -327,7 +336,11 @@ function getCheckingStatusLine(meta?: OverlaySurfaceMeta | null) {
     return "Scanning the response against the mark scheme...";
   }
 
-  return `Scanning ${meta.topicLabel} against the written-response rubric...`;
+  if (meta.modeGroup === "Exam conditions") {
+    return `Scanning ${meta.topicLabel} against the exam-conditions rubric...`;
+  }
+
+  return `Scanning ${meta.topicLabel} inside the current simple-revision task...`;
 }
 
 function buildScoreLabel(score: number, maxScore: number, scorePercent: number) {
@@ -361,6 +374,60 @@ function getRectFromRef(ref?: RefObject<HTMLElement | null>) {
   return element.getBoundingClientRect();
 }
 
+function getDefaultModeLabel(modeGroup: RevisionModeGroup) {
+  return modeGroup === "Exam conditions" ? "Written response" : "Revision task";
+}
+
+function getReadyStatusLine(surface: OverlaySurfaceMeta) {
+  switch (surface.modeLabel) {
+    case "Final written answer":
+      return `Exam conditions are live for ${surface.topicLabel}. Write the full answer, then run the checker.`;
+    case "Planned exam response":
+      return `Exam conditions are live for ${surface.topicLabel}. Plan the answer first, then reveal the checklist.`;
+    case "Quick written check":
+      return `Simple revision is live for ${surface.topicLabel}. This is a fast written check, not the full exam-conditions marker.`;
+    case "Fast Q/A":
+      return `Simple revision is live for ${surface.topicLabel}. Use this route for quick correction and retrieval.`;
+    case "Ask coach":
+      return `Simple revision is live for ${surface.topicLabel}. Ask for hints, short explanations, or the next question.`;
+    case "Recall card":
+      return `Simple revision is live for ${surface.topicLabel}. Try to retrieve the answer before you reveal it.`;
+    default:
+      return `${surface.modeGroup} is live for ${surface.topicLabel}.`;
+  }
+}
+
+function getReadyNote(surface: OverlaySurfaceMeta) {
+  if (surface.modeGroup === "Exam conditions") {
+    return "This mode is for structured exam work: planning first, then a fuller written response and AI checking.";
+  }
+
+  if (surface.modeLabel === "Quick written check") {
+    return "Simple revision stays fast here. If you want full rubric-style AI feedback, switch to Exam conditions.";
+  }
+
+  return "The overlay stays global and follows whichever revision mode is currently active.";
+}
+
+function getBlankResponseHint(surface: OverlaySurfaceMeta) {
+  switch (surface.modeLabel) {
+    case "Final written answer":
+      return "Start writing a full exam-style answer and the overlay will track it live.";
+    case "Planned exam response":
+      return "Add a short plan or note structure here. This mode is for planning, not full marking.";
+    case "Quick written check":
+      return "Type a short response for a fast cue-based check.";
+    case "Fast Q/A":
+      return "Pick or type a quick answer and the overlay will stay with this revision route.";
+    case "Ask coach":
+      return "Submit one focused prompt and the overlay will track the streamed answer.";
+    case "Recall card":
+      return "Use the prompt first, then reveal the answer when you are ready.";
+    default:
+      return "Start working and the overlay will track this revision task live.";
+  }
+}
+
 function getSnapPosition(
   anchorRect: DOMRect | null,
   viewportWidth: number,
@@ -389,11 +456,13 @@ function getSnapPosition(
 function getInitialSessionState(): OverlaySessionState {
   return {
     topicLabel: "Revision AI",
-    prompt: "Open a written-answer task to wake the overlay.",
+    modeLabel: "Waiting for a task",
+    prompt: "Open any revision task to wake the overlay.",
     answerPreview: "",
     wordCount: 0,
     phase: "idle",
-    statusLine: "Hovering until you open a DSD written response task.",
+    statusLine: "Hovering until you open a DSD simple-revision or exam-conditions task.",
+    note: "The overlay follows the active mode and only turns into full writing AI on exam-conditions tasks.",
     primaryAction: null,
     secondaryAction: null,
   };
@@ -424,6 +493,16 @@ function AiRevisionOverlay({
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const [scanRect, setScanRect] = useState<DOMRect | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  // Auto-expand on active phases, auto-collapse on idle/ready
+  useEffect(() => {
+    if (session.phase === "checking" || session.phase === "fail" || session.phase === "merit" || session.phase === "distinction" || session.phase === "error") {
+      setIsCollapsed(false);
+    } else if (session.phase === "idle" || session.phase === "ready") {
+      setIsCollapsed(true);
+    }
+  }, [session.phase]);
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -544,7 +623,60 @@ function AiRevisionOverlay({
         ) : null}
       </AnimatePresence>
 
+      {/* Collapsed: small icon pill */}
+      <AnimatePresence>
+        {isCollapsed ? (
+          <motion.div
+            key="collapsed-pill"
+            drag
+            dragMomentum={false}
+            onDragEnd={(_event, info) => {
+              if (typeof window === "undefined") return;
+              setFloatingPosition({
+                x: clamp(floatingPosition.x + info.offset.x, VIEWPORT_PADDING, window.innerWidth - 64 - VIEWPORT_PADDING),
+                y: clamp(floatingPosition.y + info.offset.y, 72, window.innerHeight - 64 - VIEWPORT_PADDING),
+              });
+            }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1, x: floatingPosition.x, y: floatingPosition.y }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ type: "spring", stiffness: 320, damping: 26, mass: 0.8 }}
+            className="pointer-events-auto fixed left-0 top-0 z-[60]"
+          >
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(false)}
+              className={cn(
+                "flex h-12 w-12 items-center justify-center rounded-2xl border backdrop-blur-xl cursor-pointer transition-all duration-300 hover:scale-110",
+                tone.className
+              )}
+              style={{
+                borderColor: tone.border,
+                background: tone.surface,
+                boxShadow: `0 8px 24px -8px rgba(0,0,0,0.5), 0 0 0 1px ${tone.border}, 0 0 18px -8px ${tone.glow}`,
+                color: tone.text,
+              }}
+              title={session.statusLine}
+            >
+              {session.phase === "checking" ? (
+                <ScanSearch size={20} />
+              ) : session.phase === "distinction" ? (
+                <Trophy size={20} />
+              ) : session.phase === "fail" || session.phase === "error" ? (
+                <AlertCircle size={20} />
+              ) : (
+                <Bot size={20} />
+              )}
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* Expanded: full panel */}
+      <AnimatePresence>
+        {!isCollapsed ? (
       <motion.div
+        key="expanded-panel"
         drag={dockMode === "float"}
         dragMomentum={false}
         onDragEnd={(_event, info) => {
@@ -565,6 +697,8 @@ function AiRevisionOverlay({
             ),
           });
         }}
+        initial={{ opacity: 0, scale: 0.9 }}
+        exit={{ opacity: 0, scale: 0.9 }}
         transition={{
           type: "spring",
           stiffness: dockMode === "snap" ? 280 : 320,
@@ -572,6 +706,7 @@ function AiRevisionOverlay({
           mass: 0.8,
         }}
         animate={{
+          opacity: 1,
           x: currentPosition.x,
           y: currentPosition.y,
           width: panelWidth,
@@ -594,7 +729,7 @@ function AiRevisionOverlay({
             className="pointer-events-none absolute inset-0 opacity-70"
             style={{
               background:
-                "radial-gradient(circle at top right, rgba(255,255,255,0.11), transparent 36%)",
+                "radial-gradient(circle at top right, var(--overlay-specular), transparent 36%)",
             }}
           />
 
@@ -620,9 +755,6 @@ function AiRevisionOverlay({
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/60">
-                    Interactive AI
-                  </p>
                   <p className="truncate text-sm font-semibold text-foreground">
                     {activeSurface?.topicLabel ?? session.topicLabel}
                   </p>
@@ -630,7 +762,15 @@ function AiRevisionOverlay({
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsCollapsed(true)}
+                className="rounded-full border border-white/10 bg-white/5 p-2 text-white/55 transition-colors hover:bg-white/10 hover:text-white/80 cursor-pointer"
+                title="Minimize"
+              >
+                <ChevronDown size={14} />
+              </button>
               <div className="cursor-grab rounded-full border border-white/10 bg-white/5 p-2 text-white/55 active:cursor-grabbing">
                 <GripHorizontal size={14} />
               </div>
@@ -676,7 +816,7 @@ function AiRevisionOverlay({
                   </p>
                 ) : (
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-                    Start writing and the overlay will track this response live.
+                    {activeSurface ? getBlankResponseHint(activeSurface) : "Open a revision task and the overlay will attach to it."}
                   </p>
                 )}
               </div>
@@ -747,6 +887,8 @@ function AiRevisionOverlay({
           </div>
         </div>
       </motion.div>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }
@@ -757,6 +899,7 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<OverlaySessionState>(getInitialSessionState);
   const [dockMode, setDockMode] = useState<DockMode>("float");
   const [floatingPosition, setFloatingPositionState] = useState(getDefaultFloatingPosition);
+  const [overlaySuppressed, setOverlaySuppressed] = useState(false);
 
   useEffect(() => {
     setFloatingPositionState(readStoredPosition());
@@ -775,6 +918,8 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
       ...current,
       topicId: surface.topicId,
       topicLabel: surface.topicLabel,
+      modeGroup: surface.modeGroup,
+      modeLabel: surface.modeLabel,
       prompt: surface.prompt,
       answerPreview: surface.answerPreview,
       wordCount: surface.wordCount,
@@ -782,11 +927,11 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
       statusLine:
         current.phase === "checking"
           ? current.statusLine
-          : `Ready to scan ${surface.topicLabel}. Press check and I will lock onto the answer.`,
+          : getReadyStatusLine(surface),
       note:
         current.phase === "checking"
           ? current.note
-          : "The overlay stays global and can snap back to the editor whenever you run a new check.",
+          : getReadyNote(surface),
       primaryAction: current.primaryAction ?? null,
       secondaryAction: current.secondaryAction ?? null,
     }));
@@ -799,6 +944,8 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
         surfaceId: surface.surfaceId,
         topicId: surface.topicId,
         topicLabel: surface.topicLabel,
+        modeGroup: surface.modeGroup ?? "Simple revision",
+        modeLabel: surface.modeLabel ?? getDefaultModeLabel(surface.modeGroup ?? "Simple revision"),
         prompt: surface.prompt,
         answerPreview: "",
         wordCount: 0,
@@ -811,6 +958,8 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
         ...current,
         topicId: nextMeta.topicId,
         topicLabel: nextMeta.topicLabel,
+        modeGroup: nextMeta.modeGroup,
+        modeLabel: nextMeta.modeLabel,
         prompt: nextMeta.prompt,
         answerPreview: "",
         wordCount: 0,
@@ -818,11 +967,11 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
         statusLine:
           current.phase === "checking"
             ? current.statusLine
-            : `Ready to scan ${nextMeta.topicLabel}. Press check and I will lock onto the answer.`,
+            : getReadyStatusLine(nextMeta),
         note:
           current.phase === "checking"
             ? current.note
-            : "The overlay stays global and can snap back to the editor whenever you run a new check.",
+            : getReadyNote(nextMeta),
         scoreLabel: current.phase === "checking" ? current.scoreLabel : undefined,
         primaryAction: null,
         secondaryAction: null,
@@ -844,7 +993,11 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
       statusLine:
         current.phase === "checking"
           ? current.statusLine
-          : "Detached from the editor. Open any written-answer task to snap back in.",
+          : "Detached from the current task. Open any simple-revision or exam-conditions route to snap back in.",
+      note:
+        current.phase === "checking"
+          ? current.note
+          : "The overlay is global, but it only becomes active when a revision surface registers itself.",
       primaryAction: null,
       secondaryAction: null,
     }));
@@ -1219,6 +1372,7 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
       setSurfaceRecommendations,
       undoLastEdit,
       clearInsertedCues,
+      setOverlaySuppressed,
     }),
     [
       completeGuidedSession,
@@ -1229,6 +1383,7 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
       failRevisionCheck,
       failRevisionImprove,
       registerRevisionSurface,
+      setOverlaySuppressed,
       setRevisionPrediction,
       setSurfaceRecommendations,
       startGuidedSession,
@@ -1244,25 +1399,27 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
   return (
     <AiOverlayContext.Provider value={value}>
       {children}
-      <AiRevisionOverlay
-        dockMode={dockMode}
-        setDockMode={setDockMode}
-        floatingPosition={floatingPosition}
-        setFloatingPosition={setFloatingPosition}
-        activeSurface={activeSurface}
-        activeSurfaceRef={activeSurfaceRef}
-        session={session}
-        onUndoLastEdit={() => {
-          if (activeSurface) {
-            undoLastEdit(activeSurface.surfaceId);
-          }
-        }}
-        onClearInsertedCues={() => {
-          if (activeSurface) {
-            clearInsertedCues(activeSurface.surfaceId);
-          }
-        }}
-      />
+      {!overlaySuppressed ? (
+        <AiRevisionOverlay
+          dockMode={dockMode}
+          setDockMode={setDockMode}
+          floatingPosition={floatingPosition}
+          setFloatingPosition={setFloatingPosition}
+          activeSurface={activeSurface}
+          activeSurfaceRef={activeSurfaceRef}
+          session={session}
+          onUndoLastEdit={() => {
+            if (activeSurface) {
+              undoLastEdit(activeSurface.surfaceId);
+            }
+          }}
+          onClearInsertedCues={() => {
+            if (activeSurface) {
+              clearInsertedCues(activeSurface.surfaceId);
+            }
+          }}
+        />
+      ) : null}
     </AiOverlayContext.Provider>
   );
 }

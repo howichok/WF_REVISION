@@ -17,7 +17,7 @@ const GEMINI_MODE_POLICIES: Record<GeminiPolicyMode, GeminiModePolicy> = {
   },
   "improve-polish": {
     timeoutMs: 7_500,
-    maxOutputTokens: 700,
+    maxOutputTokens: 280,
     cacheTtlMs: 15 * 60_000,
   },
   "grounded-official": {

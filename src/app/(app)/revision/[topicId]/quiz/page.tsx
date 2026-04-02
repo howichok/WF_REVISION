@@ -28,9 +28,9 @@ export default function TopicQuizPage() {
     <TopicRouteShell
       topicId={topicId}
       activeMode="quiz"
-      eyebrow="Topic quiz"
+      eyebrow="Simple revision"
       title={topicInfo.label}
-      description="Mixed question types with instant checking for this topic."
+      description="Fast Q/A for this topic. Use it to warm up retrieval and short written checks before you switch into Exam conditions."
     >
       <QuickQuiz topicId={topicId} />
     </TopicRouteShell>
