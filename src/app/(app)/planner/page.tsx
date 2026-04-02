@@ -27,7 +27,7 @@ function kindLabel(m: ExamMilestone) {
 
 export default function PlannerPage() {
   return (
-    <div className="max-w-3xl mx-auto px-6 py-10 space-y-8">
+    <div className="mx-auto max-w-3xl space-y-8 py-10">
       <div className="space-y-2">
         <div className="inline-flex items-center gap-2 text-muted text-sm">
           <CalendarDays size={16} className="text-accent" />
