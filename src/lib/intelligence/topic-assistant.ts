@@ -526,15 +526,15 @@ function toRelatedResources(
 }
 
 function toRevisionQuestionHref(topicId: string, questionId: string) {
-  return `/revision/${topicId}/answer-check?questionId=${encodeURIComponent(questionId)}`;
+  return `/revision/${topicId}/exam-conditions?questionId=${encodeURIComponent(questionId)}`;
 }
 
 function toExamDrillHref(topicId: string, drillId?: string) {
   if (!drillId) {
-    return `/revision/${topicId}/exam-drill`;
+    return `/revision/${topicId}/exam-conditions`;
   }
 
-  return `/revision/${topicId}/exam-drill?drillId=${encodeURIComponent(drillId)}`;
+  return `/revision/${topicId}/exam-conditions?drillId=${encodeURIComponent(drillId)}`;
 }
 
 function toExamQuestionsHref(topicId: string) {
@@ -828,11 +828,11 @@ function buildGroundedSources(grounded: GroundedResearchResponse): TopicIntellig
 function buildAnswerCheckSuggestion(summary: LocalTopicMatchSummary): TopicIntelligenceNextAction {
   const question = summary.rankedRevisionQuestions[0]?.value;
   if (!question) {
-    return buildAction("Open answer check", `/revision/${summary.topicId}/answer-check`, "route");
+    return buildAction("Open exam conditions", `/revision/${summary.topicId}/exam-conditions`, "route");
   }
 
   return buildAction(
-    "Open answer check",
+    "Open exam conditions",
     toRevisionQuestionHref(summary.topicId, question.id),
     "route"
   );
@@ -1110,7 +1110,7 @@ function buildLocalResponse(
       suggestedNextAction:
         drill
           ? buildAction("Try a practice question", toExamDrillHref(summary.topicId, drill.id), "route")
-          : buildAction("Open answer check", `/revision/${summary.topicId}/answer-check`, "route"),
+          : buildAction("Open exam conditions", `/revision/${summary.topicId}/exam-conditions`, "route"),
       sources,
       relatedQuestions,
       relatedResources,

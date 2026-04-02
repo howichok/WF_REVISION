@@ -31,10 +31,10 @@ function progressDot(percent: number) {
 
 function buildAnswerCheckHref(topicId: string, questionId?: string) {
   if (!questionId) {
-    return `/revision/${topicId}/answer-check`;
+    return `/revision/${topicId}/exam-conditions`;
   }
 
-  return `/revision/${topicId}/answer-check?questionId=${encodeURIComponent(questionId)}`;
+  return `/revision/${topicId}/exam-conditions?questionId=${encodeURIComponent(questionId)}`;
 }
 
 type StudioLane = "simple" | "exam";
@@ -240,23 +240,12 @@ export function TopicPracticeStudio({
 
   const examItems: StudioLinkItem[] = [
     {
-      id: "exam-drill",
-      href: `/revision/${topicId}/exam-drill`,
-      title: "Plan under exam conditions",
-      description: `Work through ${bundle.examDrills.length} exam-style prompts with checklist support before you write the final answer.`,
+      id: "exam-conditions",
+      href: `${finalAnswerHref}${finalAnswerHref.includes("?") ? "&" : "?"}autoStart=1`,
+      title: "Launch exam conditions",
+      description: `Start a separate timed session with ${bundle.examDrills.length} possible prompts, one question on screen, and end-of-session marking.`,
       progress: examProgress,
-      suggested: suggested === "exam-drill",
-    },
-    {
-      id: "answer-check",
-      href: finalAnswerHref,
-      title: highestMarkQuestion
-        ? `Final ${highestMarkQuestion.maxScore}-mark answer`
-        : "Final written answer",
-      description: highestMarkQuestion
-        ? "Finish the exam route with one full written response that the AI checker marks against the rubric."
-        : "Finish the exam route with one full written response that the AI checker marks against the rubric.",
-      suggested: suggested === "answer-check",
+      suggested: suggested === "exam-drill" || suggested === "answer-check",
     },
   ];
 
@@ -265,7 +254,7 @@ export function TopicPracticeStudio({
   const examFeatured =
     examItems.find((item) => item.id === suggested) ?? examItems[0];
   const simpleSecondary = simpleItems.find((item) => item.id !== simpleFeatured.id) ?? null;
-  const examSecondary = examItems.find((item) => item.id !== examFeatured.id) ?? null;
+  const examSecondary = null;
   const simpleRecommended = suggested === "ask" || suggested === "recall" || suggested === "quiz";
   const examRecommended = suggested === "exam-drill" || suggested === "answer-check";
   const avgSimpleProgress = Math.round((recallProgress + quizProgress) / 2);
@@ -301,7 +290,7 @@ export function TopicPracticeStudio({
         <FocusLaneCard
           lane="exam"
           title="Exam conditions"
-          description="Plan first, then finish with a real written answer. This is where the AI checker should be trusted to mark your response."
+          description="A separate full-screen exam feature with timer, one question at a time, and final checking only at the end."
           statLabel="Exam route"
           statValue={highestMarkQuestion ? `${highestMarkQuestion.maxScore}-mark finish` : `${examProgress}% ready`}
           icon={<ClipboardList size={18} className="text-warning" />}
@@ -329,7 +318,7 @@ export function TopicPracticeStudio({
             <p className="text-sm font-semibold text-foreground">When to switch to Exam conditions</p>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            Switch once you can explain the core idea and want to test a longer 6/8/12-mark style response against the rubric.
+            Switch once you can explain the core idea and want a timed one-question-at-a-time session instead of guided revision widgets.
           </p>
         </div>
 

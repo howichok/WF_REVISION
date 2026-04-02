@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { ArrowRight, BookOpen, Target } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
 import { RevisionSubnav } from "@/components/revision/revision-subnav";
@@ -17,9 +19,12 @@ function getScoreVariant(pct: number): "success" | "warning" | "danger" {
   return "danger";
 }
 
-export default function RevisionTopicsPage() {
+function RevisionTopicsPageContent() {
+  const searchParams = useSearchParams();
   const { diagnostic, revisionProgress, sharedCurriculum } = useAppData();
   const topics = TOPICS.filter((topic) => topic.id !== "esp");
+  const mode = searchParams.get("mode");
+  const examMode = mode === "exam-conditions";
 
   return (
     <PageContainer size="xl">
@@ -31,11 +36,12 @@ export default function RevisionTopicsPage() {
             Practice by topic
           </p>
           <h1 className="mt-1 text-2xl font-bold text-foreground sm:text-3xl">
-            Open one topic and stay in that lane
+            {examMode ? "Choose one topic and launch exam conditions" : "Open one topic and stay in that lane"}
           </h1>
           <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-            Use this route when you already know which topic you want to revise. Each topic now has
-            its own overview, practice hub, recall mode, exam drill, answer checker, quiz, resources, and progress page.
+            {examMode
+              ? "Pick the topic you want, then go straight into the separate timed exam feature instead of passing through the normal practice hub."
+              : "Use this route when you already know which topic you want to revise. Each topic now has its own overview, practice hub, recall mode, exam route, quiz, resources, and progress page."}
           </p>
         </Card>
 
@@ -130,10 +136,16 @@ export default function RevisionTopicsPage() {
                       Overview
                     </span>
                   </Link>
-                  <Link href={`/revision/${topic.id}/practice`}>
+                  <Link
+                    href={
+                      examMode
+                        ? `/revision/${topic.id}/exam-conditions?autoStart=1`
+                        : `/revision/${topic.id}/practice`
+                    }
+                  >
                     <span className="inline-flex items-center gap-1 rounded-xl bg-accent px-3 py-2 text-sm font-medium text-white transition-colors hover:bg-accent-soft">
                       <Target size={14} />
-                      Open topic
+                      {examMode ? "Launch exam conditions" : "Open topic"}
                       <ArrowRight size={14} />
                     </span>
                   </Link>
@@ -144,5 +156,13 @@ export default function RevisionTopicsPage() {
         </div>
       </div>
     </PageContainer>
+  );
+}
+
+export default function RevisionTopicsPage() {
+  return (
+    <Suspense fallback={null}>
+      <RevisionTopicsPageContent />
+    </Suspense>
   );
 }

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlarmClock,
   ArrowLeft,
@@ -29,6 +30,7 @@ interface ExamConditionsWorkspaceProps {
   topicLabel: string;
   topicIcon?: string;
   preferredQuestionId?: string;
+  autoStart?: boolean;
 }
 
 function formatTime(totalSeconds: number) {
@@ -64,6 +66,7 @@ export function ExamConditionsWorkspace({
   topicLabel,
   topicIcon,
   preferredQuestionId,
+  autoStart = false,
 }: ExamConditionsWorkspaceProps) {
   const overlay = useAiOverlay();
   const { sharedCurriculum } = useAppData();
@@ -73,6 +76,7 @@ export function ExamConditionsWorkspace({
   const [results, setResults] = useState<ExamConditionsSessionResult | null>(null);
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
+  const [isLaunching, setIsLaunching] = useState(false);
 
   const currentQuestion = session?.questions[currentIndex] ?? null;
   const totalSeconds = (session?.estimatedMinutes ?? 0) * 60;
@@ -93,6 +97,14 @@ export function ExamConditionsWorkspace({
       overlay.setOverlaySuppressed(false);
     };
   }, [overlay, session]);
+
+  useEffect(() => {
+    if (!autoStart || session || isLaunching) {
+      return;
+    }
+
+    startSession();
+  }, [autoStart, isLaunching, session]);
 
   useEffect(() => {
     if (!session || !startedAt || results) {
@@ -117,7 +129,7 @@ export function ExamConditionsWorkspace({
     };
   }, [answers, results, session, startedAt, totalSeconds]);
 
-  function startSession() {
+  function activateSession() {
     const nextSession = generateExamConditionsSession(topicId, {
       preferredQuestionId,
       snapshot: sharedCurriculum,
@@ -131,6 +143,14 @@ export function ExamConditionsWorkspace({
     setSecondsLeft(nextSession.estimatedMinutes * 60);
   }
 
+  function startSession() {
+    setIsLaunching(true);
+    window.setTimeout(() => {
+      activateSession();
+      setIsLaunching(false);
+    }, 520);
+  }
+
   function resetSession() {
     setSession(null);
     setAnswers({});
@@ -138,6 +158,7 @@ export function ExamConditionsWorkspace({
     setResults(null);
     setStartedAt(null);
     setSecondsLeft(0);
+    setIsLaunching(false);
   }
 
   function finishSession() {
@@ -155,7 +176,52 @@ export function ExamConditionsWorkspace({
     });
 
     return (
-      <div className="space-y-6">
+      <div className="relative min-h-screen overflow-hidden bg-[#09090f] text-white">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(245,158,11,0.14),transparent_35%),radial-gradient(circle_at_bottom_left,rgba(139,92,246,0.12),transparent_35%)]" />
+        <AnimatePresence>
+          {isLaunching ? (
+            <motion.div
+              key="exam-launch-overlay"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 z-20 flex items-center justify-center bg-[#09090f]"
+            >
+              <motion.div
+                initial={{ opacity: 0, y: 28 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="w-full max-w-xl px-6 text-center"
+              >
+                <div className="mx-auto flex h-18 w-18 items-center justify-center rounded-full border border-warning/30 bg-warning/10">
+                  <AlarmClock size={28} className="text-warning" />
+                </div>
+                <p className="mt-6 text-[11px] font-semibold uppercase tracking-[0.3em] text-warning">
+                  Entering exam conditions
+                </p>
+                <h2 className="mt-3 text-3xl font-bold text-white">
+                  Everything else drops away now
+                </h2>
+                <p className="mt-3 text-sm leading-relaxed text-white/70">
+                  Loading the timed session, pinning the timer, and surfacing the first question.
+                </p>
+                <motion.div
+                  className="mx-auto mt-8 h-1.5 w-full max-w-md overflow-hidden rounded-full bg-white/10"
+                  initial={{ opacity: 0.6 }}
+                  animate={{ opacity: 1 }}
+                >
+                  <motion.div
+                    className="h-full rounded-full bg-gradient-to-r from-warning via-accent to-warning"
+                    initial={{ width: "0%" }}
+                    animate={{ width: "100%" }}
+                    transition={{ duration: 0.48, ease: "easeInOut" }}
+                  />
+                </motion.div>
+              </motion.div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
+
+        <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-6 py-10 sm:px-8">
         <div className="flex items-center gap-3">
           <Link href={`/revision/${topicId}/practice`}>
             <Button variant="ghost" size="sm">
@@ -171,21 +237,21 @@ export function ExamConditionsWorkspace({
               {topicIcon ? `${topicIcon} ` : ""}{topicLabel}
             </h1>
             <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
-              This mode strips the topic page back to the essentials: timer, question, answer box, then one end-of-session AI check across the full paper run.
+              This is a separate exam feature, not a topic widget. Once it launches, the normal revision UI drops away and you only keep the timer, the current question, and your answer box.
             </p>
           </div>
         </div>
 
-        <Card variant="warning" className="rounded-[28px] p-6">
+        <Card variant="warning" className="mt-6 rounded-[32px] p-6 sm:p-8">
           <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
             <div className="space-y-4">
               <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="warning">Real exam flow</Badge>
+                <Badge variant="warning">Separate exam feature</Badge>
                 <Badge variant="default">Random 10-20 questions</Badge>
                 {preferredQuestionId ? <Badge variant="accent">Pinned first prompt</Badge> : null}
               </div>
               <h2 className="text-xl font-semibold text-foreground">
-                One clean session, then the checker runs at the end
+                One clean timed session, then the checker runs once at the end
               </h2>
               <div className="space-y-2 text-sm leading-relaxed text-muted-foreground">
                 <p>When the session starts, the extra interface gets out of the way and you only see the timer, the current question, and the answer area.</p>
@@ -221,6 +287,8 @@ export function ExamConditionsWorkspace({
             </div>
           </div>
         </Card>
+
+        </div>
       </div>
     );
   }
@@ -357,33 +425,41 @@ export function ExamConditionsWorkspace({
   }
 
   return (
-    <div className="min-h-[calc(100vh-7rem)] bg-background">
-      <div className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between gap-4 px-4 py-4 sm:px-6">
+    <motion.div
+      initial={{ opacity: 0, scale: 0.985 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.28, ease: "easeOut" }}
+      className="min-h-screen bg-[#09090f] text-white"
+    >
+      <div className="sticky top-0 z-20 border-b border-white/10 bg-[#09090f]/90 backdrop-blur">
+        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
           <div className="min-w-0">
             <div className="flex items-center gap-3">
-              <Button variant="ghost" size="sm" onClick={finishSession}>
-                Finish now
-              </Button>
+              <Link href={`/revision/${topicId}/practice`}>
+                <Button variant="ghost" size="sm">
+                  <ArrowLeft size={14} />
+                  Exit
+                </Button>
+              </Link>
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-warning">
                   Exam conditions
                 </p>
-                <p className="text-sm font-semibold text-foreground">
+                <p className="text-sm font-semibold text-white">
                   {topicIcon ? `${topicIcon} ` : ""}{topicLabel}
                 </p>
               </div>
             </div>
-            <p className="mt-2 text-xs text-muted-foreground">
+            <p className="mt-2 text-xs text-white/60">
               Question {currentIndex + 1} of {session.questionCount}. Answer first; checking only happens after the session ends.
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="hidden min-w-[160px] sm:block">
+            <div className="hidden min-w-[180px] sm:block">
               <ProgressBar value={completionPercent} />
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3 text-right">
+            <div className="rounded-2xl border border-warning/20 bg-white/5 px-4 py-3 text-right shadow-[0_18px_45px_-28px_rgba(245,158,11,0.45)]">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
                 Time left
               </p>
@@ -396,10 +472,11 @@ export function ExamConditionsWorkspace({
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-4xl px-4 py-8 sm:px-6">
+      <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8">
         {currentQuestion ? (
-          <div className="space-y-6">
-            <div className="rounded-[28px] border border-border bg-card/50 p-6 shadow-[0_18px_60px_-38px_rgba(0,0,0,0.65)]">
+          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.12fr)_340px]">
+            <div className="space-y-6">
+            <div className="rounded-[32px] border border-white/10 bg-white/[0.04] p-7 shadow-[0_28px_80px_-44px_rgba(0,0,0,0.8)]">
               <div className="flex flex-wrap items-center gap-2">
                 <Badge variant="default">
                   <FileText size={12} className="mr-1" />
@@ -412,24 +489,24 @@ export function ExamConditionsWorkspace({
                 {currentQuestion.paper ? <Badge variant="default">{currentQuestion.paper}</Badge> : null}
               </div>
 
-              <h2 className="mt-4 text-3xl font-bold leading-tight text-foreground">
+              <h2 className="mt-5 text-4xl font-bold leading-tight text-white">
                 {currentQuestion.prompt}
               </h2>
 
               {commandWord ? (
-                <p className="mt-4 text-sm leading-relaxed text-muted-foreground">
+                <p className="mt-4 text-sm leading-relaxed text-white/65">
                   Command word: <span className="font-medium text-accent">{commandWord.word.toLowerCase()}</span>. {commandWord.guidance}
                 </p>
               ) : null}
             </div>
 
-            <div className="rounded-[28px] border border-accent/20 bg-accent/[0.04] p-6">
+            <div className="rounded-[32px] border border-accent/20 bg-accent/[0.05] p-7 shadow-[0_24px_70px_-40px_rgba(139,92,246,0.42)]">
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
                     Your answer
                   </p>
-                  <p className="mt-2 text-sm text-muted-foreground">
+                  <p className="mt-2 text-sm text-white/65">
                     Write the full response here. Nothing gets checked until you finish the session.
                   </p>
                 </div>
@@ -444,14 +521,14 @@ export function ExamConditionsWorkspace({
                     [currentQuestion.id]: event.target.value,
                   }))
                 }
-                rows={16}
+                rows={18}
                 placeholder="Write your exam answer here..."
-                className="mt-5 min-h-[320px] w-full rounded-[24px] border border-border bg-background/80 px-5 py-4 text-base leading-relaxed text-foreground placeholder:text-muted-foreground/55 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
+                className="mt-5 min-h-[420px] w-full rounded-[28px] border border-white/10 bg-black/30 px-6 py-5 text-[17px] leading-8 text-white placeholder:text-white/30 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
               />
             </div>
 
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 text-xs text-white/55">
                 <CheckCircle2 size={14} className="text-success" />
                 {answeredCount} / {session.questionCount} questions answered
               </div>
@@ -478,9 +555,41 @@ export function ExamConditionsWorkspace({
                 )}
               </div>
             </div>
+            </div>
+
+            <aside className="space-y-4">
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-warning">
+                  Session focus
+                </p>
+                <p className="mt-3 text-sm leading-relaxed text-white/72">
+                  No hints, no overlay coaching, no checklist reveal. Answer the question as if this were the real paper, then check everything at the end.
+                </p>
+              </div>
+
+              <div className="rounded-[28px] border border-white/10 bg-white/[0.04] p-5">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
+                  Session stats
+                </p>
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-white/60">Questions</span>
+                    <span className="font-semibold text-white">{session.questionCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-white/60">Answered</span>
+                    <span className="font-semibold text-white">{answeredCount}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-white/60">Estimated time</span>
+                    <span className="font-semibold text-white">{session.estimatedMinutes} min</span>
+                  </div>
+                </div>
+              </div>
+            </aside>
           </div>
         ) : null}
       </div>
-    </div>
+    </motion.div>
   );
 }

@@ -861,7 +861,7 @@ export function QuickQuiz({
   }
   const TypeIcon = typeIcon[currentQuestion.type];
   const topicInfo = TOPICS.find((topic) => topic.id === currentQuestion.topicId);
-  const examConditionsHref = `/revision/${currentQuestion.topicId}/answer-check`;
+  const examConditionsHref = `/revision/${currentQuestion.topicId}/exam-conditions`;
   const acceptedAnswerCues =
     currentQuestion.type === "short-answer"
       ? getAcceptedAnswerCues(currentQuestion)

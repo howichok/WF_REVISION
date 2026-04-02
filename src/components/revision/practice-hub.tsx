@@ -3,173 +3,190 @@
 import Link from "next/link";
 import {
   ArrowRight,
-  BrainCircuit,
-  ClipboardCheck,
-  Layers3,
+  ClipboardList,
+  FilePenLine,
+  MessageSquare,
   Search,
+  Sparkles,
   Target,
-  TrendingUp,
+  Zap,
 } from "lucide-react";
-import { useAppData } from "@/components/providers/app-data-provider";
+import { motion } from "framer-motion";
 import { Badge } from "@/components/ui";
-import { getWeakestTopics } from "@/lib/progress";
+import { cn } from "@/lib/utils";
 
 interface PracticeHubProps {
   onOpenDiagnostic?: () => void;
   compact?: boolean;
 }
 
-const supportLinks = [
-  {
-    href: "/revision/diagnostic",
-    icon: BrainCircuit,
-    label: "Diagnostic",
-    description: "Map weak points before you choose a mode.",
-  },
-  {
-    href: "/revision/paper-1",
-    icon: ClipboardCheck,
-    label: "Paper 1 quick route",
-    description: "Fast theory retrieval inside Simple revision.",
-  },
-  {
-    href: "/revision/paper-2",
-    icon: Layers3,
-    label: "Paper 2 quick route",
-    description: "Applied prompts before you move into full Exam conditions.",
-  },
-];
+const fadeUp = {
+  initial: { opacity: 0, y: 16 },
+  animate: { opacity: 1, y: 0 },
+};
 
 export function PracticeHub({ compact = false }: PracticeHubProps) {
-  const { diagnostic } = useAppData();
-  const weakestTopics = getWeakestTopics(diagnostic, compact ? 2 : 3);
-
   return (
-    <div className="space-y-5">
-      <div>
-        <h2 className="text-lg font-semibold text-foreground">Choose a revision mode</h2>
-        <p className="mt-1 text-sm text-muted-foreground">
-          The site now works best when you think in two routes: quick learning first, full exam writing second.
+    <div className={cn("mx-auto w-full", compact ? "max-w-4xl" : "max-w-5xl")}>
+      <motion.header
+        className="mb-10 text-center sm:mb-12"
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+      >
+        <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-accent/90">
+          Revision
         </p>
-      </div>
+        <h1 className="mt-3 text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+          Choose your route
+        </h1>
+        <p className="mx-auto mt-3 max-w-lg text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Quick retrieval and coaching first, then full exam-style writing when you are ready.
+        </p>
+      </motion.header>
 
-      <div className="grid gap-4 xl:grid-cols-2">
-        <Link
-          href="/revision/topics"
-          className="group rounded-[28px] border border-accent/20 bg-accent/10 p-5 shadow-[0_18px_50px_-32px_rgba(139,92,246,0.38)] transition-transform hover:-translate-y-0.5"
+      <div className="grid gap-5 sm:gap-6 lg:grid-cols-2">
+        <motion.div
+          variants={fadeUp}
+          initial="initial"
+          animate="animate"
+          transition={{ duration: 0.4, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20">
-                <Search size={18} className="text-accent" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-lg font-semibold text-foreground">Simple revision</p>
-                  <Badge variant="accent">Fast Q/A</Badge>
+          <Link
+            href="/revision/topics?mode=exam-conditions"
+            className={cn(
+              "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-accent/25 bg-gradient-to-br from-accent/15 via-accent/8 to-transparent p-6 shadow-[0_24px_64px_-28px_rgba(139,92,246,0.45)] transition-all duration-300",
+              "hover:-translate-y-1 hover:border-accent/40 hover:shadow-[0_32px_72px_-24px_rgba(139,92,246,0.5)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              compact ? "p-5" : "sm:p-8"
+            )}
+          >
+            <div
+              className="pointer-events-none absolute -right-8 -top-8 h-40 w-40 rounded-full bg-accent/25 blur-3xl"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute -bottom-12 -left-8 h-36 w-36 rounded-full bg-violet-400/10 blur-3xl dark:bg-violet-500/15"
+              aria-hidden
+            />
+
+            <div className="relative flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-accent/20 bg-gradient-to-br from-accent/30 to-accent/5 shadow-inner">
+                  <Search size={22} className="text-accent" strokeWidth={2} />
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Use Ask DSD, recall, and quick Q/A while you are still learning or warming up a topic.
-                </p>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                      Simple revision
+                    </h2>
+                    <Badge variant="accent" className="font-medium">
+                      Fast Q/A
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Ask for hints, run recall, and do quick checks while you are still learning the topic.
+                  </p>
+                </div>
               </div>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-accent/20 bg-accent/10 text-accent transition-transform duration-300 group-hover:translate-x-0.5">
+                <ArrowRight size={18} strokeWidth={2} />
+              </span>
             </div>
-            <ArrowRight size={16} className="shrink-0 text-accent transition-transform group-hover:translate-x-0.5" />
-          </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-black/18 px-4 py-3">
-              <p className="text-xs font-semibold text-foreground">Ask coach</p>
-              <p className="mt-1 text-xs text-muted-foreground">Hints, short explanations, source picks.</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-black/18 px-4 py-3">
-              <p className="text-xs font-semibold text-foreground">Recall</p>
-              <p className="mt-1 text-xs text-muted-foreground">Retrieve terms and points from memory.</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-black/18 px-4 py-3">
-              <p className="text-xs font-semibold text-foreground">Quick Q/A</p>
-              <p className="mt-1 text-xs text-muted-foreground">Fast checks before you write full answers.</p>
-            </div>
-          </div>
-        </Link>
+            <ul className="relative mt-6 grid gap-2 sm:mt-8">
+              {[
+                { icon: Sparkles, label: "Ask coach", hint: "Hints and short explanations" },
+                { icon: Zap, label: "Recall", hint: "Terms and points from memory" },
+                { icon: MessageSquare, label: "Quick Q/A", hint: "Fast checks before long answers" },
+              ].map(({ icon: Icon, label, hint }) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/[0.12] px-4 py-3 backdrop-blur-sm transition-colors duration-200 group-hover:border-accent/15 group-hover:bg-black/[0.16] dark:bg-white/[0.04] dark:group-hover:bg-white/[0.06]"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                    <Icon size={16} strokeWidth={2} />
+                  </span>
+                  <div className="min-w-0 text-left">
+                    <p className="text-sm font-medium text-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground">{hint}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Link>
+        </motion.div>
 
-        <Link
-          href="/revision/topics"
-          className="group rounded-[28px] border border-warning/20 bg-warning/10 p-5 shadow-[0_18px_50px_-32px_rgba(245,158,11,0.38)] transition-transform hover:-translate-y-0.5"
+        <motion.div
+          variants={fadeUp}
+          initial="initial"
+          animate="animate"
+          transition={{ duration: 0.4, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
         >
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-black/20">
-                <Target size={18} className="text-warning" />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="text-lg font-semibold text-foreground">Exam conditions</p>
-                  <Badge variant="warning">Plan + write</Badge>
+          <Link
+            href="/revision/topics"
+            className={cn(
+              "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-warning/30 bg-gradient-to-br from-warning/18 via-amber-500/8 to-transparent p-6 shadow-[0_24px_64px_-28px_rgba(245,158,11,0.38)] transition-all duration-300",
+              "hover:-translate-y-1 hover:border-warning/45 hover:shadow-[0_32px_72px_-24px_rgba(245,158,11,0.42)]",
+              "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-warning/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+              compact ? "p-5" : "sm:p-8"
+            )}
+          >
+            <div
+              className="pointer-events-none absolute -right-6 -top-10 h-44 w-44 rounded-full bg-amber-400/20 blur-3xl dark:bg-amber-500/15"
+              aria-hidden
+            />
+            <div
+              className="pointer-events-none absolute bottom-0 left-0 h-32 w-32 rounded-full bg-orange-400/10 blur-3xl"
+              aria-hidden
+            />
+
+            <div className="relative flex items-start justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl border border-warning/25 bg-gradient-to-br from-warning/35 to-warning/5 shadow-inner">
+                  <Target size={22} className="text-warning" strokeWidth={2} />
                 </div>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  Plan the answer first, then finish with one fuller written response that the AI checks against the rubric.
-                </p>
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h2 className="text-xl font-semibold tracking-tight text-foreground">
+                      Exam conditions
+                    </h2>
+                    <Badge variant="warning" className="font-medium">
+                      Plan + write
+                    </Badge>
+                  </div>
+                  <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+                    Jump straight into the separate timed exam feature for one topic, with full-screen focus and end-of-session checking.
+                  </p>
+                </div>
               </div>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-warning/25 bg-warning/10 text-warning transition-transform duration-300 group-hover:translate-x-0.5">
+                <ArrowRight size={18} strokeWidth={2} />
+              </span>
             </div>
-            <ArrowRight size={16} className="shrink-0 text-warning transition-transform group-hover:translate-x-0.5" />
-          </div>
 
-          <div className="mt-5 grid gap-3 md:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/18 px-4 py-3">
-              <p className="text-xs font-semibold text-foreground">Exam drill</p>
-              <p className="mt-1 text-xs text-muted-foreground">Plan structure, checklist, and exam focus before you write.</p>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-black/18 px-4 py-3">
-              <p className="text-xs font-semibold text-foreground">Final written answer</p>
-              <p className="mt-1 text-xs text-muted-foreground">Use answer-check for the longer 6/8/12-mark style response.</p>
-            </div>
-          </div>
-        </Link>
+            <ul className="relative mt-6 grid gap-2 sm:mt-8">
+              {[
+                { icon: ClipboardList, label: "Separate exam mode", hint: "Dedicated full-screen session with timer" },
+                { icon: FilePenLine, label: "Final marking at the end", hint: "Write first, then run the checker once" },
+              ].map(({ icon: Icon, label, hint }) => (
+                <li
+                  key={label}
+                  className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/[0.12] px-4 py-3 backdrop-blur-sm transition-colors duration-200 group-hover:border-warning/20 group-hover:bg-black/[0.16] dark:bg-white/[0.04] dark:group-hover:bg-white/[0.06]"
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-warning/15 text-warning">
+                    <Icon size={16} strokeWidth={2} />
+                  </span>
+                  <div className="min-w-0 text-left">
+                    <p className="text-sm font-medium text-foreground">{label}</p>
+                    <p className="text-xs text-muted-foreground">{hint}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Link>
+        </motion.div>
       </div>
-
-      <div className="divide-y divide-border rounded-2xl border border-border">
-        {supportLinks.map((row) => {
-          const Icon = row.icon;
-
-          return (
-            <Link
-              key={row.href}
-              href={row.href}
-              className="group flex items-center gap-4 px-4 py-4 transition-colors first:rounded-t-2xl last:rounded-b-2xl hover:bg-card/60"
-            >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-accent/10">
-                <Icon size={16} className="text-accent" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <span className="text-sm font-semibold text-foreground">{row.label}</span>
-                <p className="mt-0.5 text-xs text-muted-foreground">{row.description}</p>
-              </div>
-              <ArrowRight size={14} className="shrink-0 text-muted-foreground transition-colors group-hover:text-accent" />
-            </Link>
-          );
-        })}
-      </div>
-
-      {weakestTopics.length > 0 ? (
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <TrendingUp size={14} className="text-warning" />
-            <p className="text-sm font-medium text-foreground">Weakest topics</p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {weakestTopics.map((topic) => {
-              const pct = Math.round((topic.score / topic.maxScore) * 100);
-              return (
-                <Link key={topic.category} href={`/revision/${topic.category}/practice`}>
-                  <Badge variant={pct >= 50 ? "warning" : "danger"}>
-                    {topic.topic} {pct}%
-                  </Badge>
-                </Link>
-              );
-            })}
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

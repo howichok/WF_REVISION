@@ -13,6 +13,7 @@ export type TopicLearningMode =
   | "overview"
   | "ask"
   | "practice"
+  | "exam-conditions"
   | "recall"
   | "exam-drill"
   | "answer-check"
@@ -24,7 +25,7 @@ export type TopicLearningMode =
 type TopicRouteNavMode =
   | "overview"
   | "practice"
-  | "answer-check"
+  | "exam-conditions"
   | "exam-questions"
   | "resources"
   | "progress";
@@ -79,9 +80,9 @@ export const TOPIC_ROUTE_ITEMS: Array<{
   { id: "overview", label: "Overview", description: "What this topic covers" },
   { id: "practice", label: "Simple revision", description: "Ask coach, recall, and quick Q/A" },
   {
-    id: "answer-check",
+    id: "exam-conditions",
     label: "Exam conditions",
-    description: "Plan first, then finish with a full written answer",
+    description: "Separate full-screen exam mode with timer and final marking",
   },
   { id: "exam-questions", label: "Exam questions", description: "Past-style prompts" },
   { id: "resources", label: "Resources", description: "Notes and references" },
@@ -104,8 +105,8 @@ export function getTopicNavMode(mode: TopicLearningMode): TopicRouteNavMode {
     return "practice";
   }
 
-  if (mode === "exam-drill" || mode === "answer-check") {
-    return "answer-check";
+  if (mode === "exam-drill" || mode === "answer-check" || mode === "exam-conditions") {
+    return "exam-conditions";
   }
 
   return mode;

@@ -53,7 +53,7 @@ const QUICK_ACTIONS: Array<{
   {
     intent: "answer-check",
     label: "Check my answer",
-    description: "Route into answer-check style help.",
+    description: "Route into exam-conditions style help.",
   },
   {
     intent: "resource-pick",
@@ -121,7 +121,7 @@ function getIntentLabel(intent: TopicIntelligenceIntent) {
     case "grounded-answer":
       return "Grounded answer";
     case "answer-check":
-      return "Answer-check route";
+      return "Exam conditions route";
     case "practice-question":
       return "Practice question";
     case "resource-pick":

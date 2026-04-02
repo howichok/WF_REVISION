@@ -492,7 +492,7 @@ export function RecallPanel({
               }
             : {
                 label: "Check this topic against the mark scheme",
-                href: `/revision/${topicId}/answer-check`,
+                href: `/revision/${topicId}/exam-conditions`,
               }
         }
         secondaryAction={
@@ -998,7 +998,7 @@ export function ExamDrillPanel({
         primaryAction={
           toLearningAction(nextSteps.primary) ?? {
             label: "Check this topic against the mark scheme",
-            href: `/revision/${topicId}/answer-check`,
+            href: `/revision/${topicId}/exam-conditions`,
           }
         }
         secondaryAction={

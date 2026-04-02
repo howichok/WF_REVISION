@@ -147,19 +147,22 @@ function buildAskHref(topicId: string, intent: string, query: string) {
 }
 
 function buildExamDrillHref(topicId: string, drillId?: string) {
-  if (!drillId) {
-    return `/revision/${topicId}/exam-drill`;
+  const params = new URLSearchParams();
+  if (drillId) {
+    params.set("drillId", drillId);
   }
 
-  return `/revision/${topicId}/exam-drill?drillId=${encodeURIComponent(drillId)}`;
+  return params.size
+    ? `/revision/${topicId}/exam-conditions?${params.toString()}`
+    : `/revision/${topicId}/exam-conditions`;
 }
 
 function buildAnswerCheckHref(topicId: string, questionId?: string) {
   if (!questionId) {
-    return `/revision/${topicId}/answer-check`;
+    return `/revision/${topicId}/exam-conditions`;
   }
 
-  return `/revision/${topicId}/answer-check?questionId=${encodeURIComponent(questionId)}`;
+  return `/revision/${topicId}/exam-conditions?questionId=${encodeURIComponent(questionId)}`;
 }
 
 function getCommandWordId(value?: string | null) {
