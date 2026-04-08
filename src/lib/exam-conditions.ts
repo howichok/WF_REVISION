@@ -7,6 +7,12 @@ import {
 import { extractCommandWord } from "@/lib/command-words";
 import type { SharedCurriculumSnapshot } from "@/lib/shared-curriculum";
 import type { PracticePaper } from "@/lib/practice";
+import {
+  ensureCompleteGeminiItems,
+  geminiVsLocalLowConfidence,
+  parseItemLevel,
+  reconcileOverallBand,
+} from "@/lib/exam-conditions-marking-post";
 
 export type ExamConditionsDifficulty = "easy" | "medium" | "hard";
 
@@ -35,14 +41,7 @@ export interface ExamConditionsSession {
   pinnedQuestionId?: string;
 }
 
-export interface ExamConditionsReview {
-  question: ExamConditionsQuestion;
-  answer: string;
-  evaluation: PracticeShortAnswerEvaluation;
-  score: number;
-  maxScore: number;
-  scorePercent: number;
-}
+export type ExamGeminiItemLevel = "none" | "basic" | "clear" | "detailed";
 
 export interface ExamConditionsSessionResult {
   reviews: ExamConditionsReview[];
@@ -54,6 +53,26 @@ export interface ExamConditionsSessionResult {
   /** Short overall judgement, e.g. Pass / Merit / Strong */
   overallBand?: string;
   overallSummary?: string;
+  /** When true, overallBand was derived from the numeric score because the model band diverged. */
+  bandOverriddenToMatchMarks?: boolean;
+  /** Optional note from the model about limitations of AI marking. */
+  examinerNote?: string;
+}
+
+export interface ExamConditionsReview {
+  question: ExamConditionsQuestion;
+  answer: string;
+  evaluation: PracticeShortAnswerEvaluation;
+  score: number;
+  maxScore: number;
+  scorePercent: number;
+  /** Extra examiner-style fields when markingProvider is gemini. */
+  geminiMarking?: {
+    why: string;
+    evidence: string[];
+    level: ExamGeminiItemLevel;
+    lowConfidence: boolean;
+  };
 }
 
 /** Parsed from Gemini JSON (one batch response). */
@@ -63,12 +82,16 @@ export interface GeminiExamMarkItem {
   hit: string[];
   miss: string[];
   fb: string;
+  why?: string;
+  evidence?: string[];
+  level?: ExamGeminiItemLevel;
 }
 
 export interface GeminiExamMarkResponse {
   band: string;
   oneLiner: string;
   items: GeminiExamMarkItem[];
+  examinerNote?: string;
 }
 
 function uniqueStrings(values: Array<string | null | undefined>) {
@@ -444,7 +467,8 @@ export function mergeGeminiExamMarking(
   answers: Record<string, string>,
   gemini: GeminiExamMarkResponse
 ): ExamConditionsSessionResult {
-  const byId = new Map(gemini.items.map((item) => [item.id, item]));
+  const completeItems = ensureCompleteGeminiItems(gemini, questions, answers, evaluateExamConditionsQuestion);
+  const byId = new Map(completeItems.map((item) => [item.id, item]));
 
   const reviews: ExamConditionsReview[] = questions.map((question) => {
     const answer = answers[question.id] ?? "";
@@ -475,12 +499,17 @@ export function mergeGeminiExamMarking(
       };
     }
 
-    const score = clampMarksAwarded(g.m, maxScore);
+    const localSnapshot = evaluateExamConditionsQuestion(question, answer);
+    const rawGeminiMark = typeof g.m === "number" ? g.m : Number(g.m) || 0;
+    const score = clampMarksAwarded(rawGeminiMark, maxScore);
     const ratio = score / maxScore;
     const { verdict, verdictLabel } = verdictFromRatio(ratio);
     const hit = (g.hit ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 5);
     const miss = (g.miss ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 5);
     const fb = (g.fb ?? "").replace(/\s+/g, " ").trim().slice(0, 520);
+    const why = (g.why ?? "").replace(/\s+/g, " ").trim().slice(0, 520);
+    const evidence = (g.evidence ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 3);
+    const level = parseItemLevel(g.level);
 
     const evaluation: PracticeShortAnswerEvaluation = {
       isCorrect: ratio >= 0.85,
@@ -493,9 +522,11 @@ export function mergeGeminiExamMarking(
       matchedSlots: hit,
       partialSlots: [],
       missingSlots: miss.length > 0 ? miss : ["Gap vs mark scheme"],
-      feedback: fb.length > 0 ? fb : "Marked against the supplied scheme.",
+      feedback: fb.length > 0 ? fb : why.length > 0 ? why : "Marked against the supplied scheme.",
       slotBreakdown: [],
     };
+
+    const lowConfidence = geminiVsLocalLowConfidence(score, localSnapshot.score, maxScore);
 
     return {
       question,
@@ -504,6 +535,12 @@ export function mergeGeminiExamMarking(
       score,
       maxScore,
       scorePercent: Math.round((score / maxScore) * 100),
+      geminiMarking: {
+        why: why.length > 0 ? why : fb,
+        evidence,
+        level,
+        lowConfidence,
+      },
     };
   });
 
@@ -512,6 +549,9 @@ export function mergeGeminiExamMarking(
   const answeredCount = reviews.filter((review) => review.answer.trim().length > 0).length;
   const scorePercent = totalMaxScore > 0 ? Math.round((totalScore / totalMaxScore) * 100) : 0;
 
+  const bandDecision = reconcileOverallBand(gemini.band ?? "", scorePercent, 1);
+  const examinerNote = (gemini.examinerNote ?? "").replace(/\s+/g, " ").trim().slice(0, 280);
+
   return {
     reviews,
     totalScore,
@@ -519,10 +559,12 @@ export function mergeGeminiExamMarking(
     scorePercent,
     answeredCount,
     markingProvider: "gemini",
-    overallBand: (gemini.band ?? bandFromPercent(scorePercent)).replace(/\s+/g, " ").trim().slice(0, 48),
+    overallBand: bandDecision.displayBand,
+    bandOverriddenToMatchMarks: bandDecision.overridden,
     overallSummary: (gemini.oneLiner ?? localOverallSummary(scorePercent, answeredCount, questions.length))
       .replace(/\s+/g, " ")
       .trim()
       .slice(0, 320),
+    examinerNote: examinerNote.length > 0 ? examinerNote : undefined,
   };
 }

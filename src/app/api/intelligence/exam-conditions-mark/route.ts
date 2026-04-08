@@ -5,6 +5,12 @@ import {
   type ExamConditionsQuestion,
 } from "@/lib/exam-conditions";
 import {
+  buildServerMarkSchemeSummary,
+  compactCommandWordForMarking,
+  getCanonicalExpectation,
+} from "@/lib/exam-marking-rubric";
+import { getLocalSharedCurriculumSnapshot } from "@/lib/shared-curriculum";
+import {
   generateExamSessionGeminiMarks,
   isGeminiExamMarkingConfigured,
 } from "@/lib/research/gemini-exam-session-mark";
@@ -101,12 +107,14 @@ export async function POST(request: Request) {
   }
 
   try {
+    const snapshot = getLocalSharedCurriculumSnapshot();
     const geminiRows = questions.map((q) => ({
       id: q.id,
       marks: q.marks,
       prompt: q.prompt,
-      expectation: q.expectation,
-      markSchemeSummary: q.markSchemeSummary,
+      expectation: getCanonicalExpectation(q.id, q.expectation, snapshot),
+      markSchemeSummary: buildServerMarkSchemeSummary(q.id, q.expectation, snapshot),
+      commandWord: compactCommandWordForMarking(q.prompt),
       answer: answers[q.id] ?? "",
     }));
 

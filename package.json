@@ -19,6 +19,7 @@
     "test:revision-sync": "node --test --import tsx src/lib/intelligence/revision-catalog-sync.test.ts",
     "test:topic-progression": "node --test --import tsx src/lib/topic-progression.test.ts",
     "test:topic-intelligence": "node --test --import tsx src/lib/intelligence/topic-assistant.test.ts",
+    "test:exam-marking": "node --test --import tsx src/lib/exam-conditions-marking-post.test.ts",
     "perf:lighthouse": "node -e \"console.log('With dev server running: npx lighthouse http://localhost:3000 --only-categories=performance --view')\""
   },
   "dependencies": {

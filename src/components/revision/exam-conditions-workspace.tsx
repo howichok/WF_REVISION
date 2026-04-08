@@ -102,7 +102,7 @@ export function ExamConditionsWorkspace({
       }
     : null;
   const pageRootClass =
-    "relative min-h-screen overflow-hidden bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.99),rgba(250,247,242,1)_40%,rgba(244,239,230,1))] text-slate-900";
+    "relative flex min-h-screen flex-col bg-[#faf9f7] text-slate-900";
 
   useEffect(() => {
     const shouldSuppress = Boolean(session);
@@ -214,7 +214,6 @@ export function ExamConditionsWorkspace({
 
     return (
       <div className={pageRootClass}>
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(255,255,255,0.8),transparent_36%),radial-gradient(circle_at_20%_80%,rgba(251,191,36,0.07),transparent_40%),radial-gradient(circle_at_80%_70%,rgba(129,140,248,0.06),transparent_35%)]" />
 
         <AnimatePresence>
           {isLaunching ? (
@@ -411,6 +410,25 @@ export function ExamConditionsWorkspace({
                 {results.overallSummary ? (
                   <p className="mt-4 max-w-lg text-[13px] leading-relaxed text-slate-600">{results.overallSummary}</p>
                 ) : null}
+
+                {results.markingProvider === "gemini" ? (
+                  <div className="mt-4 max-w-2xl space-y-2 rounded-2xl border border-slate-200/80 bg-slate-50/80 px-4 py-3 text-[12px] leading-relaxed text-slate-600">
+                    <p>
+                      <span className="font-semibold text-slate-700">How to read this:</span> Percentages and marks are
+                      what we keep; the band label is examiner-style guidance. It is an approximation, not a replacement
+                      for a real examiner.
+                    </p>
+                    {results.bandOverriddenToMatchMarks ? (
+                      <p className="text-amber-800">
+                        The overall band was adjusted to match your numeric score because the model band and marks did
+                        not line up.
+                      </p>
+                    ) : null}
+                    {results.examinerNote ? (
+                      <p className="text-slate-500 italic">{results.examinerNote}</p>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
 
               <div className="min-w-[200px] space-y-2.5 lg:min-w-[240px]">
@@ -512,6 +530,41 @@ export function ExamConditionsWorkspace({
                     <p className="mt-2.5 text-[13px] leading-relaxed text-slate-700">
                       {review.evaluation.feedback}
                     </p>
+
+                    {results.markingProvider === "gemini" && review.geminiMarking && review.answer.trim() ? (
+                      <div className="mt-4 space-y-3 rounded-xl border border-slate-200/70 bg-slate-50/60 px-3 py-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                            Examiner-style detail
+                          </span>
+                          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-medium capitalize text-slate-600 ring-1 ring-slate-200/80">
+                            {review.geminiMarking.level}
+                          </span>
+                          {review.geminiMarking.lowConfidence ? (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200/80">
+                              Review — differs from quick local check
+                            </span>
+                          ) : null}
+                        </div>
+                        <p className="text-[12px] leading-relaxed text-slate-700">
+                          <span className="font-semibold text-slate-800">Why this mark: </span>
+                          {review.geminiMarking.why}
+                        </p>
+                        {review.geminiMarking.evidence.length > 0 ? (
+                          <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                              Evidence from your answer
+                            </p>
+                            <ul className="mt-1.5 list-disc space-y-1 pl-4 text-[12px] text-slate-600">
+                              {review.geminiMarking.evidence.map((line, evIndex) => (
+                                <li key={`${review.question.id}-ev-${evIndex}`}>{line}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
+                      </div>
+                    ) : null}
+
                     {(review.evaluation.matchedSlots.length > 0 || review.evaluation.missingSlots.length > 0) ? (
                       <div className="mt-5 grid gap-4 sm:grid-cols-2">
                         <div>
@@ -605,57 +658,43 @@ export function ExamConditionsWorkspace({
         ) : null}
       </AnimatePresence>
 
-      {/* Sticky header */}
-      <div className="sticky top-0 z-20 bg-white/80 backdrop-blur-2xl">
-        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-4 px-5 py-3.5 sm:px-8">
-          <div className="flex min-w-0 items-center gap-3">
+      {/* Compact sticky header */}
+      <div className="sticky top-0 z-20 border-b border-slate-200/60 bg-white/92 backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-2.5 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2.5">
             <Link href={EXAM_TOPIC_LIST_HREF}>
-              <Button variant="ghost" size="sm" className="shrink-0 gap-1 px-2.5">
-                <ArrowLeft size={14} />
-                <span className="hidden text-[13px] sm:inline">Exit</span>
-              </Button>
+              <button type="button" className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
+                <ArrowLeft size={15} />
+                <span className="hidden text-[13px] font-medium sm:inline">Exit</span>
+              </button>
             </Link>
-            <div className="min-w-0">
-              <p className="truncate text-[13px] font-semibold text-slate-950">
-                {topicIcon ? `${topicIcon} ` : ""}
-                {topicLabel}
-              </p>
-              <p className="text-[11px] text-slate-400">
-                {currentIndex + 1}/{session.questionCount} · {answeredCount} answered · {session.estimatedMinutes} min session
-              </p>
-            </div>
+            <div className="hidden h-4 w-px bg-slate-200 sm:block" />
+            <p className="truncate text-[13px] font-semibold text-slate-800">
+              {topicIcon ? `${topicIcon} ` : ""}{topicLabel}
+            </p>
+            <span className="hidden text-[11px] text-slate-400 sm:inline">
+              {currentIndex + 1}/{session.questionCount} · {answeredCount} answered · {session.estimatedMinutes} min session
+            </span>
           </div>
 
           <div
-            className={`shrink-0 rounded-2xl border px-4 py-2.5 transition-all duration-300 ${
+            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 transition-all duration-300 ${
               timerTone === "danger"
-                ? "exam-timer-danger border-red-200/80 bg-red-50/80"
+                ? "exam-timer-danger bg-red-50 text-red-600"
                 : timerTone === "warning"
-                  ? "exam-timer-warning border-amber-200/80 bg-amber-50/80"
-                  : "border-slate-200/60 bg-slate-50/60"
+                  ? "exam-timer-warning bg-amber-50 text-amber-600"
+                  : "bg-slate-50 text-slate-600"
             }`}
           >
-            <p className={`text-[9px] font-semibold uppercase tracking-[0.15em] ${
-              timerTone === "danger" ? "text-red-500" : timerTone === "warning" ? "text-amber-600" : "text-slate-400"
-            }`}>Time</p>
-            <div className="mt-0.5 flex items-center gap-1.5">
-              <Clock3
-                size={13}
-                className={
-                  timerTone === "danger" ? "text-red-500" : timerTone === "warning" ? "text-amber-500" : "text-accent"
-                }
-              />
-              <span className={`text-[15px] font-semibold tabular-nums leading-none ${
-                timerTone === "danger" ? "text-red-600" : "text-slate-900"
-              }`}>{formatTime(secondsLeft)}</span>
-            </div>
+            <Clock3 size={13} className="opacity-60" />
+            <span className="text-sm font-semibold tabular-nums">{formatTime(secondsLeft)}</span>
           </div>
         </div>
 
-        {/* Progress strip */}
-        <div className="h-[2px] bg-slate-100/80">
+        {/* Thin progress */}
+        <div className="h-[2px] bg-slate-100">
           <motion.div
-            className="exam-nav-progress h-full bg-gradient-to-r from-accent/80 via-indigo-400 to-accent/80"
+            className="h-full bg-gradient-to-r from-accent via-indigo-400 to-accent"
             initial={false}
             animate={{ width: `${((currentIndex + 1) / session.questionCount) * 100}%` }}
             transition={{ duration: 0.4, ease: "easeInOut" }}
@@ -663,125 +702,120 @@ export function ExamConditionsWorkspace({
         </div>
       </div>
 
-      {/* Main content area */}
-      <div className="mx-auto w-full max-w-2xl px-5 pb-10 pt-8 sm:px-8 sm:pb-12 sm:pt-10">
+      {/* Main workspace — single unified card */}
+      <div className="mx-auto w-full max-w-[680px] flex-1 px-4 py-5 sm:px-6 sm:py-7">
         {currentQuestion ? (
           <motion.div
             key={currentQuestion.id}
-            initial={{ opacity: 0, y: 12 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="space-y-5"
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04),0_12px_40px_-20px_rgba(80,60,30,0.1)]"
           >
-            {/* Question card */}
-            <div className="relative overflow-hidden rounded-[24px] border border-slate-200/70 bg-white/95 shadow-[0_28px_72px_-44px_rgba(80,60,30,0.14)] backdrop-blur-xl">
-              {/* Accent strip */}
-              <div className="h-[2.5px] bg-gradient-to-r from-transparent via-accent/35 to-transparent" />
-
-              <div className="px-7 pb-7 pt-6 sm:px-9 sm:pb-8 sm:pt-7">
-                <div className="flex flex-wrap items-center gap-1.5">
-                  <span className="rounded-full bg-slate-100/80 px-2.5 py-[3px] text-[10px] font-semibold text-slate-500">
-                    Question {currentIndex + 1} of {session.questionCount}
-                  </span>
-                  <span className="rounded-full bg-amber-50/80 px-2.5 py-[3px] text-[10px] font-semibold text-amber-600">
-                    {currentQuestion.marks} marks
-                  </span>
-                  <span className={`rounded-full px-2.5 py-[3px] text-[10px] font-semibold ${
-                    currentQuestion.difficulty === "hard"
-                      ? "bg-red-50/80 text-red-600"
-                      : currentQuestion.difficulty === "medium"
-                        ? "bg-amber-50/80 text-amber-600"
-                        : "bg-emerald-50/80 text-emerald-600"
-                  }`}>
-                    {currentQuestion.difficulty}
-                  </span>
-                </div>
-
-                <h2 className="mt-5 text-lg font-semibold leading-snug tracking-tight text-slate-950 sm:text-[1.35rem]">
-                  {promptParts ? (
-                    <>
-                      <span className="command-word-highlight">{promptParts.highlighted}</span>
-                      {promptParts.rest}
-                    </>
-                  ) : (
-                    currentQuestion.prompt
-                  )}
-                </h2>
-
-                {commandWord ? (
-                  <div className="mt-5 flex items-center gap-3 rounded-2xl border border-accent/10 bg-accent/[0.03] px-4 py-3">
-                    <span className="command-word-badge">
-                      <span className="command-word-highlight text-[13px]">{commandWord.word}</span>
-                    </span>
-                    <p className="text-[13px] italic leading-relaxed text-slate-500">
-                      {commandWord.guidance}
-                    </p>
-                  </div>
-                ) : null}
+            {/* Question section */}
+            <div className="border-b border-slate-100 px-6 pb-5 pt-5 sm:px-8 sm:pb-6 sm:pt-6">
+              <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
+                <span className="text-slate-400">
+                  Question {currentIndex + 1} of {session.questionCount}
+                </span>
+                <span className="text-slate-300">·</span>
+                <span className="text-amber-500">{currentQuestion.marks} marks</span>
+                <span className="text-slate-300">·</span>
+                <span className={
+                  currentQuestion.difficulty === "hard"
+                    ? "text-red-500"
+                    : currentQuestion.difficulty === "medium"
+                      ? "text-amber-500"
+                      : "text-emerald-500"
+                }>
+                  {currentQuestion.difficulty}
+                </span>
               </div>
+
+              <h2 className="mt-3.5 text-[1.15rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-xl">
+                {promptParts ? (
+                  <>
+                    <span className="command-word-highlight">{promptParts.highlighted}</span>
+                    {promptParts.rest}
+                  </>
+                ) : (
+                  currentQuestion.prompt
+                )}
+              </h2>
+
+              {commandWord ? (
+                <div className="mt-3.5 inline-flex items-center gap-2.5 rounded-xl bg-accent/[0.04] px-3.5 py-2">
+                  <span className="command-word-badge !py-1 !px-2.5">
+                    <span className="command-word-highlight text-[12px]">{commandWord.word}</span>
+                  </span>
+                  <p className="text-[12px] italic text-slate-500">
+                    {commandWord.guidance}
+                  </p>
+                </div>
+              ) : null}
             </div>
 
-            {/* Answer card */}
-            <div className="rounded-[24px] border border-slate-200/70 bg-white shadow-[0_20px_52px_-40px_rgba(80,60,30,0.1)]">
-              <div className="flex items-center justify-between px-7 pt-6 sm:px-9 sm:pt-7">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-400">Your answer</p>
-                <span className="rounded-full bg-slate-50 px-2.5 py-[3px] text-[11px] tabular-nums text-slate-400">
+            {/* Answer section */}
+            <div className="px-6 pb-5 pt-4 sm:px-8 sm:pb-6 sm:pt-5">
+              <div className="mb-2.5 flex items-center justify-between">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Your answer</p>
+                <span className="text-[11px] tabular-nums text-slate-300">
                   {(answers[currentQuestion.id] ?? "").trim().split(/\s+/).filter(Boolean).length} words
                 </span>
               </div>
 
-              <div className="px-5 pb-5 pt-3 sm:px-7 sm:pb-7 sm:pt-4">
-                <textarea
-                  value={answers[currentQuestion.id] ?? ""}
-                  onChange={(event) =>
-                    setAnswers((current) => ({
-                      ...current,
-                      [currentQuestion.id]: event.target.value,
-                    }))
-                  }
-                  rows={12}
-                  placeholder="Write here…"
-                  className="exam-textarea-focus min-h-[260px] w-full resize-none rounded-2xl border border-slate-200/60 bg-slate-50/40 px-5 py-4 text-[15px] leading-7 text-slate-900 placeholder:text-slate-300 focus:bg-white focus:outline-none"
-                />
-              </div>
-            </div>
-
-            {/* Bottom bar */}
-            <div className="flex items-center justify-between gap-3 rounded-2xl border border-slate-200/50 bg-white/60 px-5 py-3.5 backdrop-blur-sm sm:px-7">
-              <p className="flex items-center gap-1.5 text-[12px] text-slate-400">
-                <CheckCircle2 size={13} className="text-emerald-500" />
-                {answeredCount} / {session.questionCount} with text
-              </p>
-
-              <div className="flex items-center gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setCurrentIndex((current) => Math.max(0, current - 1))}
-                  disabled={currentIndex === 0 || isMarking}
-                >
-                  Back
-                </Button>
-                {currentIndex + 1 >= session.questionCount ? (
-                  <Button size="sm" onClick={finishSession} disabled={isMarking}>
-                    Finish &amp; check
-                    <Trophy size={14} />
-                  </Button>
-                ) : (
-                  <Button
-                    size="sm"
-                    disabled={isMarking}
-                    onClick={() => setCurrentIndex((current) => Math.min(session.questionCount - 1, current + 1))}
-                  >
-                    Next
-                    <ArrowRight size={14} />
-                  </Button>
-                )}
-              </div>
+              <textarea
+                value={answers[currentQuestion.id] ?? ""}
+                onChange={(event) =>
+                  setAnswers((current) => ({
+                    ...current,
+                    [currentQuestion.id]: event.target.value,
+                  }))
+                }
+                rows={10}
+                placeholder="Write here…"
+                className="exam-textarea-focus w-full resize-none rounded-xl border border-slate-200/70 bg-slate-50/50 px-4 py-3.5 text-[15px] leading-7 text-slate-900 placeholder:text-slate-300 focus:bg-white focus:outline-none sm:min-h-[240px]"
+              />
             </div>
           </motion.div>
         ) : null}
+      </div>
+
+      {/* Sticky bottom bar */}
+      <div className="sticky bottom-0 z-20 border-t border-slate-200/60 bg-white/92 backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-[680px] items-center justify-between px-4 py-2.5 sm:px-6">
+          <p className="flex items-center gap-1.5 text-[12px] text-slate-400">
+            <CheckCircle2 size={13} className="text-emerald-500" />
+            {answeredCount} / {session.questionCount} with text
+          </p>
+
+          <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCurrentIndex((current) => Math.max(0, current - 1))}
+              disabled={currentIndex === 0 || isMarking}
+            >
+              Back
+            </Button>
+            {currentIndex + 1 >= session.questionCount ? (
+              <Button size="sm" onClick={finishSession} disabled={isMarking}>
+                Finish &amp; check
+                <Trophy size={14} />
+              </Button>
+            ) : (
+              <Button
+                size="sm"
+                disabled={isMarking}
+                onClick={() => setCurrentIndex((current) => Math.min(session.questionCount - 1, current + 1))}
+              >
+                Next
+                <ArrowRight size={14} />
+              </Button>
+            )}
+          </div>
+        </div>
       </div>
     </motion.div>
   );
