@@ -35,6 +35,10 @@ interface ExamConditionsWorkspaceProps {
   topicIcon?: string;
   preferredQuestionId?: string;
   autoStart?: boolean;
+  /** From URL when opening via topics wizard (`?count=`). */
+  launchQuestionCount?: number;
+  /** From URL when opening via topics wizard (`?difficulty=`). */
+  launchDifficultyMode?: ExamConditionsDifficultyMode;
 }
 
 function formatTime(totalSeconds: number) {
@@ -111,6 +115,8 @@ export function ExamConditionsWorkspace({
   topicIcon,
   preferredQuestionId,
   autoStart = false,
+  launchQuestionCount,
+  launchDifficultyMode,
 }: ExamConditionsWorkspaceProps) {
   const overlay = useAiOverlay();
   const { sharedCurriculum } = useAppData();
@@ -119,8 +125,16 @@ export function ExamConditionsWorkspace({
     () => getExamConditionsPoolStats(topicId, sharedCurriculum),
     [topicId, sharedCurriculum]
   );
-  const [userQuestionCount, setUserQuestionCount] = useState<number | undefined>(undefined);
-  const [difficultyMode, setDifficultyMode] = useState<ExamConditionsDifficultyMode>("mixed");
+  const [userQuestionCount, setUserQuestionCount] = useState<number | undefined>(() =>
+    typeof launchQuestionCount === "number" &&
+    Number.isFinite(launchQuestionCount) &&
+    launchQuestionCount > 0
+      ? launchQuestionCount
+      : undefined
+  );
+  const [difficultyMode, setDifficultyMode] = useState<ExamConditionsDifficultyMode>(
+    () => launchDifficultyMode ?? "mixed"
+  );
 
   const modeMaxQuestions = useMemo(() => {
     switch (difficultyMode) {
@@ -158,6 +172,7 @@ export function ExamConditionsWorkspace({
   const sessionRef = useRef<ExamConditionsSession | null>(null);
   const answersRef = useRef<Record<string, string>>({});
   const markingSentRef = useRef(false);
+  const autoStartConsumedRef = useRef(false);
 
   sessionRef.current = session;
   answersRef.current = answers;
@@ -213,9 +228,16 @@ export function ExamConditionsWorkspace({
     "relative flex min-h-screen flex-col bg-gradient-to-b from-slate-100/95 via-[#f6f4f1] to-slate-200/35 text-slate-900";
 
   useEffect(() => {
-    setUserQuestionCount(undefined);
-    setDifficultyMode("mixed");
-  }, [topicId]);
+    autoStartConsumedRef.current = false;
+    setUserQuestionCount(
+      typeof launchQuestionCount === "number" &&
+        Number.isFinite(launchQuestionCount) &&
+        launchQuestionCount > 0
+        ? launchQuestionCount
+        : undefined
+    );
+    setDifficultyMode(launchDifficultyMode ?? "mixed");
+  }, [topicId, launchQuestionCount, launchDifficultyMode]);
 
   useEffect(() => {
     if (userQuestionCount === undefined || modeMaxQuestions === 0) {
@@ -236,12 +258,16 @@ export function ExamConditionsWorkspace({
   }, [overlay, session]);
 
   useEffect(() => {
-    if (!autoStart || session || isLaunching) {
+    if (!autoStart || session || isLaunching || autoStartConsumedRef.current) {
+      return;
+    }
+    if (modeMaxQuestions === 0) {
       return;
     }
 
+    autoStartConsumedRef.current = true;
     startSession();
-  }, [autoStart, isLaunching, session]);
+  }, [autoStart, isLaunching, session, modeMaxQuestions]);
 
   const runMarking = useCallback(async (active: ExamConditionsSession, ans: Record<string, string>) => {
     setIsMarking(true);

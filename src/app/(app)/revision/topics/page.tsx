@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Check, Sparkles, Target } from "lucide-react";
+import { ArrowRight, Check, Sparkles } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
+import { ExamConditionsLaunchWizard } from "@/components/revision/exam-conditions-launch-wizard";
 import { RevisionFocusNav } from "@/components/revision/revision-focus-nav";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Button, Card } from "@/components/ui";
+import type { ExamConditionsDifficultyMode } from "@/lib/exam-conditions";
 import { getPracticeSetId } from "@/lib/practice";
 import { getPracticeSetProgress, getSubtopicProgressForTopic } from "@/lib/progress";
 import { TOPICS, getTopicTree } from "@/lib/types";
@@ -77,11 +79,22 @@ function RevisionTopicsPageContent() {
     router.push(`/revision/quick-quiz?topics=${q}&autoStart=1`);
   }, [router, selectedIds]);
 
-  const openExamForSelection = useCallback(() => {
-    const id = [...selectedIds][0];
-    if (!id) return;
-    router.push(`/revision/${id}/exam-conditions?autoStart=1`);
-  }, [router, selectedIds]);
+  const selectedExamTopicId = examMode && selectedCount === 1 ? [...selectedIds][0] : null;
+
+  const openExamWithConfig = useCallback(
+    (options: { questionCount: number; difficultyMode: ExamConditionsDifficultyMode }) => {
+      if (!selectedExamTopicId) {
+        return;
+      }
+      const params = new URLSearchParams({
+        autoStart: "1",
+        count: String(options.questionCount),
+        difficulty: options.difficultyMode,
+      });
+      router.push(`/revision/${selectedExamTopicId}/exam-conditions?${params.toString()}`);
+    },
+    [router, selectedExamTopicId]
+  );
 
   const titleSubtitle = useMemo(() => {
     if (examMode) {
@@ -119,7 +132,7 @@ function RevisionTopicsPageContent() {
             {!examMode && selectedCount > 0
               ? `${selectedCount} / ${maxTopics} selected`
               : examMode && selectedCount === 1
-                ? "Ready to start"
+                ? "Choose difficulty and number of questions below."
                 : examMode
                   ? "Choose one topic"
                   : "Select topics or open a single hub below"}
@@ -144,18 +157,11 @@ function RevisionTopicsPageContent() {
                   Quick Q/A
                 </Button>
               </>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                className="gap-1.5"
-                disabled={selectedCount !== 1}
-                onClick={openExamForSelection}
-              >
-                <Target size={14} />
-                Start exam
+            ) : selectedCount === 1 ? (
+              <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
+                Change topic
               </Button>
-            )}
+            ) : null}
           </div>
         </div>
 
@@ -241,6 +247,15 @@ function RevisionTopicsPageContent() {
             );
           })}
         </div>
+
+        {examMode && selectedExamTopicId ? (
+          <ExamConditionsLaunchWizard
+            topicId={selectedExamTopicId}
+            onStart={({ questionCount, difficultyMode }) =>
+              openExamWithConfig({ questionCount, difficultyMode })
+            }
+          />
+        ) : null}
       </div>
     </PageContainer>
   );

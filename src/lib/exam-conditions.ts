@@ -19,6 +19,19 @@ export type ExamConditionsDifficulty = "easy" | "medium" | "hard";
 /** Session mix: all difficulties balanced vs single level only. */
 export type ExamConditionsDifficultyMode = "mixed" | ExamConditionsDifficulty;
 
+export function parseExamConditionsDifficultyParam(
+  raw: string | null | undefined
+): ExamConditionsDifficultyMode | undefined {
+  if (raw == null || raw === "") {
+    return undefined;
+  }
+  const value = raw.trim().toLowerCase();
+  if (value === "mixed" || value === "easy" || value === "medium" || value === "hard") {
+    return value;
+  }
+  return undefined;
+}
+
 export interface ExamConditionsQuestion {
   id: string;
   topicId: string;
