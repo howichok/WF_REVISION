@@ -467,6 +467,126 @@ html {
   }
 }
 
+/* ── Exam conditions ────────────────────────────────────────── */
+@keyframes command-word-shimmer {
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+}
+
+@keyframes command-word-glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px -2px rgba(103, 92, 241, 0.25), 0 0 0 0 rgba(103, 92, 241, 0.08); }
+  50% { box-shadow: 0 0 16px -2px rgba(103, 92, 241, 0.35), 0 0 24px -4px rgba(103, 92, 241, 0.12); }
+}
+
+@keyframes exam-timer-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
+}
+
+@keyframes exam-timer-urgent {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(194, 65, 12, 0.3); }
+  50% { transform: scale(1.06); box-shadow: 0 0 18px -4px rgba(194, 65, 12, 0.4); }
+}
+
+@keyframes exam-progress-fill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+
+@keyframes exam-question-enter {
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes exam-textarea-border-flow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.command-word-highlight {
+  display: inline;
+  background: linear-gradient(
+    110deg,
+    var(--color-accent) 0%,
+    #a78bfa 20%,
+    #c4b5fd 40%,
+    var(--color-accent) 60%,
+    #818cf8 80%,
+    var(--color-accent) 100%
+  );
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: command-word-shimmer 3s ease-in-out infinite;
+  font-weight: 700;
+}
+
+.command-word-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.75rem;
+  border-radius: 9999px;
+  background: linear-gradient(
+    135deg,
+    rgba(103, 92, 241, 0.1) 0%,
+    rgba(129, 140, 248, 0.14) 50%,
+    rgba(167, 139, 250, 0.1) 100%
+  );
+  border: 1px solid rgba(103, 92, 241, 0.2);
+  animation: command-word-glow-pulse 2.8s ease-in-out infinite;
+  transition: transform 0.2s ease;
+}
+.command-word-badge:hover {
+  transform: scale(1.05);
+}
+
+.exam-timer-warning {
+  animation: exam-timer-pulse 1.5s ease-in-out infinite;
+}
+.exam-timer-danger {
+  animation: exam-timer-urgent 0.8s ease-in-out infinite;
+}
+
+.exam-question-card {
+  animation: exam-question-enter 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94) both;
+}
+
+.exam-textarea-focus {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+.exam-textarea-focus:focus {
+  border-color: var(--color-accent);
+  box-shadow:
+    0 0 0 3px rgba(103, 92, 241, 0.1),
+    0 0 20px -8px rgba(103, 92, 241, 0.15);
+}
+
+.exam-nav-progress {
+  position: relative;
+  overflow: hidden;
+}
+.exam-nav-progress::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 100%;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+  animation: command-word-shimmer 2s ease-in-out infinite;
+  background-size: 200% auto;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .command-word-highlight { animation: none !important; }
+  .command-word-badge { animation: none !important; }
+  .exam-timer-warning, .exam-timer-danger { animation: none !important; }
+  .exam-question-card { animation: none !important; }
+}
+
 /* ── Noise texture overlay ───────────────────────────────────── */
 .noise::before {
   content: ""; position: absolute; inset: 0;
