@@ -1,7 +1,8 @@
 export type GeminiPolicyMode =
   | "coach"
   | "improve-polish"
-  | "grounded-official";
+  | "grounded-official"
+  | "exam-session-mark";
 
 interface GeminiModePolicy {
   timeoutMs: number;
@@ -12,18 +13,24 @@ interface GeminiModePolicy {
 const GEMINI_MODE_POLICIES: Record<GeminiPolicyMode, GeminiModePolicy> = {
   coach: {
     timeoutMs: 8_000,
-    maxOutputTokens: 500,
+    maxOutputTokens: 400,
     cacheTtlMs: 10 * 60_000,
   },
   "improve-polish": {
     timeoutMs: 7_500,
-    maxOutputTokens: 280,
+    maxOutputTokens: 240,
     cacheTtlMs: 15 * 60_000,
   },
   "grounded-official": {
     timeoutMs: 10_000,
-    maxOutputTokens: 900,
+    maxOutputTokens: 720,
     cacheTtlMs: 10 * 60_000,
+  },
+  /** One JSON object for a whole exam session — keep output cap tight; prompt is pre-truncated. */
+  "exam-session-mark": {
+    timeoutMs: 55_000,
+    maxOutputTokens: 3072,
+    cacheTtlMs: 0,
   },
 };
 
@@ -60,8 +67,12 @@ export function writeGeminiCachedResponse<T>(
   cacheKey: string,
   payload: T
 ) {
+  const ttl = getGeminiModePolicy(mode).cacheTtlMs;
+  if (ttl <= 0) {
+    return;
+  }
   GEMINI_RESPONSE_CACHE.set(cacheKey, {
-    expiresAt: Date.now() + getGeminiModePolicy(mode).cacheTtlMs,
+    expiresAt: Date.now() + ttl,
     payload,
   });
 }

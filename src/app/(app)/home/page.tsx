@@ -1,23 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  BrainCircuit,
-  ClipboardCheck,
-  Flame,
-  Layers3,
-  Sparkles,
-  Target,
-  Zap,
-} from "lucide-react";
+import { ArrowRight, Flame, Sparkles, Target } from "lucide-react";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Button, Card } from "@/components/ui";
 import { PageContainer } from "@/components/layout/page-container";
-import {
-  getRevisitQueue,
-  getWeakestTopics,
-} from "@/lib/progress";
 
 function getLondonGreeting(): string {
   const now = new Date();
@@ -33,14 +20,7 @@ function getLondonGreeting(): string {
 }
 
 export default function HomePage() {
-  const {
-    activityHistory,
-    diagnostic,
-    isHydrating,
-    onboarding,
-    revisionProgress,
-    user,
-  } = useAppData();
+  const { isHydrating, user } = useAppData();
 
   if (isHydrating && !user) {
     return (
@@ -52,41 +32,28 @@ export default function HomePage() {
 
   if (!user) return null;
 
-  const hasDiagnostic = Boolean(diagnostic);
   const greeting = getLondonGreeting();
-  const weakestTopics = getWeakestTopics(diagnostic, 1);
-  const revisitQueue = getRevisitQueue(
-    diagnostic,
-    onboarding,
-    revisionProgress,
-    activityHistory,
-    1
-  );
-  const nextQueueItem = revisitQueue[0] ?? null;
 
-  const primaryHref = hasDiagnostic ? "/revision/weak-areas" : "/revision/diagnostic";
-  const primaryLabel = hasDiagnostic ? "Continue weak-topic practice" : "Start diagnostic";
-  const primaryDescription = hasDiagnostic && nextQueueItem
-    ? `${nextQueueItem.topicLabel} is due next.`
-    : hasDiagnostic && weakestTopics[0]
-      ? `${weakestTopics[0].topic} still needs work.`
-      : "Map your weak points so the site can guide you.";
-
-  const quickLinks = [
-    { href: "/revision/topics", label: "Topic practice", icon: Target },
-    { href: "/revision/quick-quiz", label: "Quick quiz", icon: Zap },
-    { href: "/revision/paper-1", label: "Paper 1", icon: ClipboardCheck },
-    { href: "/revision/paper-2", label: "Paper 2", icon: Layers3 },
-    ...(hasDiagnostic
-      ? []
-      : [{ href: "/revision/diagnostic", label: "Diagnostic", icon: BrainCircuit }]),
+  const shortcuts = [
+    {
+      href: "/revision/topics?mode=simple",
+      label: "Simple revision",
+      hint: "Topics, quick Q/A, coach",
+      icon: Sparkles,
+    },
+    {
+      href: "/revision/topics?mode=exam-conditions",
+      label: "Exam conditions",
+      hint: "Timed topic session",
+      icon: Target,
+    },
   ];
 
   return (
     <PageContainer size="md">
       <div className="space-y-8">
         <div className="perf-fade-up" style={{ animationDelay: "0ms" }}>
-          <div className="flex items-center gap-2 mb-2">
+          <div className="mb-2 flex items-center gap-2">
             <Flame size={13} className="text-accent" />
             <span className="text-xs font-medium text-accent">3 day streak</span>
           </div>
@@ -94,9 +61,7 @@ export default function HomePage() {
             {greeting}, {user.nickname}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            {hasDiagnostic
-              ? "Pick a revision path and keep moving."
-              : "Start with a diagnostic, then the site can guide the rest."}
+            Same flow every time: pick a mode, pick topics, repeat.
           </p>
         </div>
 
@@ -104,25 +69,20 @@ export default function HomePage() {
           <Card hover className="relative overflow-hidden">
             <div className="absolute inset-0 bg-gradient-to-r from-accent/4 via-transparent to-transparent" />
             <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="w-11 h-11 rounded-2xl bg-accent/10 flex items-center justify-center shrink-0">
+              <div className="flex min-w-0 flex-1 items-center gap-4">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-accent/10">
                   <Sparkles size={20} className="text-accent" />
                 </div>
                 <div className="min-w-0">
-                  <h2 className="font-semibold text-base">
-                    {hasDiagnostic ? "Your next step" : "Start with a diagnostic"}
-                  </h2>
-                  <p className="mt-0.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground/90">
-                    {hasDiagnostic ? "Revision path — step 2 of 6" : "Revision path — step 1 of 6"}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {primaryDescription}
+                  <h2 className="text-base font-semibold">Repeat revision</h2>
+                  <p className="mt-0.5 text-sm text-muted-foreground">
+                    Simple revision or exam conditions — then your topics.
                   </p>
                 </div>
               </div>
-              <Link href={primaryHref} className="shrink-0">
+              <Link href="/revision" className="shrink-0">
                 <Button size="sm" className="group">
-                  {primaryLabel}
+                  Go
                   <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
                 </Button>
               </Link>
@@ -131,7 +91,10 @@ export default function HomePage() {
         </div>
 
         <div className="perf-fade-up space-y-2" style={{ animationDelay: "120ms" }}>
-          {quickLinks.map((link) => {
+          <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+            Jump in
+          </p>
+          {shortcuts.map((link) => {
             const Icon = link.icon;
             return (
               <Link
@@ -142,18 +105,17 @@ export default function HomePage() {
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent/8">
                   <Icon size={14} className="text-accent" />
                 </div>
-                <span className="flex-1 text-sm text-foreground">{link.label}</span>
-                <ArrowRight size={13} className="text-muted-foreground transition-colors group-hover:text-accent" />
+                <div className="min-w-0 flex-1">
+                  <span className="block text-sm text-foreground">{link.label}</span>
+                  <span className="block text-xs text-muted-foreground">{link.hint}</span>
+                </div>
+                <ArrowRight
+                  size={13}
+                  className="shrink-0 text-muted-foreground transition-colors group-hover:text-accent"
+                />
               </Link>
             );
           })}
-          <Link
-            href="/revision/progress"
-            className="mt-2 inline-flex items-center gap-1 px-3 text-xs text-muted-foreground hover:text-accent transition-colors"
-          >
-            View progress
-            <ArrowRight size={11} />
-          </Link>
         </div>
       </div>
     </PageContainer>

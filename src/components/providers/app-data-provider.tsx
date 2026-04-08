@@ -451,7 +451,7 @@ export function AppDataProvider({
 
     return {
       requiresEmailVerification: false,
-      nextPath: nextState ? getAuthRedirectPath(nextState) : "/home",
+      nextPath: nextState ? getAuthRedirectPath(nextState) : "/revision",
     };
   }
 

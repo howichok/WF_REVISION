@@ -1,9 +1,10 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useState } from "react";
+import { Suspense, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
-import { RevisionSubnav } from "@/components/revision/revision-subnav";
+import { RevisionFocusNav } from "@/components/revision/revision-focus-nav";
 import type { QuickQuizStage } from "@/components/revision/quick-quiz";
 
 const QuickQuiz = dynamic(
@@ -19,15 +20,35 @@ const QuickQuiz = dynamic(
   }
 );
 
-export default function QuickQuizPage() {
+function QuickQuizPageInner() {
+  const searchParams = useSearchParams();
   const [stage, setStage] = useState<QuickQuizStage>("launcher");
 
+  const topicsParam = searchParams.get("topics");
+  const topicIds = useMemo(() => {
+    if (!topicsParam?.trim()) return undefined;
+    const ids = topicsParam
+      .split(",")
+      .map((t) => t.trim())
+      .filter(Boolean);
+    return ids.length ? ids : undefined;
+  }, [topicsParam]);
+  const autoStart = searchParams.get("autoStart") === "1";
+
+  return (
+    <div className={stage === "launcher" ? "space-y-6" : undefined}>
+      {stage === "launcher" ? <RevisionFocusNav activeMode="simple" /> : null}
+      <QuickQuiz topicIds={topicIds} autoStart={autoStart} onStageChange={setStage} />
+    </div>
+  );
+}
+
+export default function QuickQuizPage() {
   return (
     <PageContainer size="lg">
-      <div className={stage === "launcher" ? "space-y-6" : undefined}>
-        {stage === "launcher" ? <RevisionSubnav activeRoute="quick-quiz" /> : null}
-        <QuickQuiz onStageChange={setStage} />
-      </div>
+      <Suspense fallback={null}>
+        <QuickQuizPageInner />
+      </Suspense>
     </PageContainer>
   );
 }

@@ -1,6 +1,9 @@
 import type { QuestionMetadata } from "@/data/curriculum";
 import { getMarkSchemeConceptsForQuestion, getTopicContentBundle } from "@/lib/content";
-import { evaluatePracticeShortAnswer, type PracticeShortAnswerEvaluation } from "@/lib/practice-evaluator";
+import {
+  evaluatePracticeShortAnswer,
+  type PracticeShortAnswerEvaluation,
+} from "@/lib/practice-evaluator";
 import { extractCommandWord } from "@/lib/command-words";
 import type { SharedCurriculumSnapshot } from "@/lib/shared-curriculum";
 import type { PracticePaper } from "@/lib/practice";
@@ -20,6 +23,8 @@ export interface ExamConditionsQuestion {
   expectation: string;
   acceptableAnswers: string[];
   evaluationProfile?: QuestionMetadata["evaluationProfile"];
+  /** Condensed mark-scheme cues for end-of-session AI marking (single request). */
+  markSchemeSummary: string;
 }
 
 export interface ExamConditionsSession {
@@ -45,6 +50,25 @@ export interface ExamConditionsSessionResult {
   totalMaxScore: number;
   scorePercent: number;
   answeredCount: number;
+  markingProvider?: "gemini" | "local";
+  /** Short overall judgement, e.g. Pass / Merit / Strong */
+  overallBand?: string;
+  overallSummary?: string;
+}
+
+/** Parsed from Gemini JSON (one batch response). */
+export interface GeminiExamMarkItem {
+  id: string;
+  m: number;
+  hit: string[];
+  miss: string[];
+  fb: string;
+}
+
+export interface GeminiExamMarkResponse {
+  band: string;
+  oneLiner: string;
+  items: GeminiExamMarkItem[];
 }
 
 function uniqueStrings(values: Array<string | null | undefined>) {
@@ -112,6 +136,19 @@ function extractCues(question: QuestionMetadata, snapshot?: SharedCurriculumSnap
   return uniqueStrings([...markSchemeCues, ...expectationCues]);
 }
 
+function buildMarkSchemeSummary(question: QuestionMetadata, snapshot?: SharedCurriculumSnapshot | null) {
+  const concepts = getMarkSchemeConceptsForQuestion(question.id, snapshot);
+  if (concepts.length === 0) {
+    return question.expectation.replace(/\s+/g, " ").trim().slice(0, 420);
+  }
+
+  return concepts
+    .slice(0, 4)
+    .map((c) => `${c.title}: ${c.summary.replace(/\s+/g, " ").trim().slice(0, 140)}`)
+    .join(" | ")
+    .slice(0, 480);
+}
+
 function toExamConditionsQuestion(
   topicId: string,
   question: QuestionMetadata,
@@ -132,6 +169,7 @@ function toExamConditionsQuestion(
     expectation: question.expectation,
     acceptableAnswers,
     evaluationProfile: question.evaluationProfile,
+    markSchemeSummary: buildMarkSchemeSummary(question, snapshot),
   };
 }
 
@@ -353,12 +391,138 @@ export function evaluateExamConditionsSession(
   const totalScore = roundToTenth(reviews.reduce((sum, review) => sum + review.score, 0));
   const totalMaxScore = reviews.reduce((sum, review) => sum + review.maxScore, 0);
   const answeredCount = reviews.filter((review) => review.answer.trim().length > 0).length;
+  const scorePercent = totalMaxScore > 0 ? Math.round((totalScore / totalMaxScore) * 100) : 0;
 
   return {
     reviews,
     totalScore,
     totalMaxScore,
-    scorePercent: totalMaxScore > 0 ? Math.round((totalScore / totalMaxScore) * 100) : 0,
+    scorePercent,
     answeredCount,
+    markingProvider: "local",
+    overallBand: bandFromPercent(scorePercent),
+    overallSummary: localOverallSummary(scorePercent, answeredCount, questions.length),
+  };
+}
+
+function bandFromPercent(pct: number): string {
+  if (pct >= 75) return "Strong";
+  if (pct >= 55) return "Merit";
+  if (pct >= 35) return "Pass";
+  return "Build up";
+}
+
+function localOverallSummary(pct: number, answered: number, total: number): string {
+  return `${pct}% · ${answered}/${total} attempted · local cue-based marker.`;
+}
+
+function verdictFromRatio(ratio: number): {
+  verdict: PracticeShortAnswerEvaluation["verdict"];
+  verdictLabel: string;
+} {
+  if (ratio >= 0.82) {
+    return { verdict: "strong", verdictLabel: "Strong" };
+  }
+  if (ratio >= 0.55) {
+    return { verdict: "mostly-correct", verdictLabel: "Mostly there" };
+  }
+  if (ratio >= 0.28) {
+    return { verdict: "partial", verdictLabel: "Partial" };
+  }
+  return { verdict: "not-quite", verdictLabel: "Needs work" };
+}
+
+function clampMarksAwarded(value: number, max: number) {
+  if (!Number.isFinite(value)) {
+    return 0;
+  }
+  return roundToTenth(Math.max(0, Math.min(max, value)));
+}
+
+export function mergeGeminiExamMarking(
+  questions: ExamConditionsQuestion[],
+  answers: Record<string, string>,
+  gemini: GeminiExamMarkResponse
+): ExamConditionsSessionResult {
+  const byId = new Map(gemini.items.map((item) => [item.id, item]));
+
+  const reviews: ExamConditionsReview[] = questions.map((question) => {
+    const answer = answers[question.id] ?? "";
+    const maxScore = Math.max(1, question.marks);
+
+    if (!answer.trim()) {
+      const empty = evaluateExamConditionsQuestion(question, answer);
+      return {
+        question,
+        answer,
+        evaluation: empty.evaluation,
+        score: empty.score,
+        maxScore: empty.maxScore,
+        scorePercent: empty.scorePercent,
+      };
+    }
+
+    const g = byId.get(question.id);
+    if (!g) {
+      const local = evaluateExamConditionsQuestion(question, answer);
+      return {
+        question,
+        answer,
+        evaluation: local.evaluation,
+        score: local.score,
+        maxScore: local.maxScore,
+        scorePercent: local.scorePercent,
+      };
+    }
+
+    const score = clampMarksAwarded(g.m, maxScore);
+    const ratio = score / maxScore;
+    const { verdict, verdictLabel } = verdictFromRatio(ratio);
+    const hit = (g.hit ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 5);
+    const miss = (g.miss ?? []).map((s) => s.trim()).filter(Boolean).slice(0, 5);
+    const fb = (g.fb ?? "").replace(/\s+/g, " ").trim().slice(0, 520);
+
+    const evaluation: PracticeShortAnswerEvaluation = {
+      isCorrect: ratio >= 0.85,
+      matchedCue: hit[0] ?? null,
+      confidence: Math.round(ratio * 100),
+      score,
+      maxScore,
+      verdict,
+      verdictLabel,
+      matchedSlots: hit,
+      partialSlots: [],
+      missingSlots: miss.length > 0 ? miss : ["Gap vs mark scheme"],
+      feedback: fb.length > 0 ? fb : "Marked against the supplied scheme.",
+      slotBreakdown: [],
+    };
+
+    return {
+      question,
+      answer,
+      evaluation,
+      score,
+      maxScore,
+      scorePercent: Math.round((score / maxScore) * 100),
+    };
+  });
+
+  const totalScore = roundToTenth(reviews.reduce((sum, review) => sum + review.score, 0));
+  const totalMaxScore = reviews.reduce((sum, review) => sum + review.maxScore, 0);
+  const answeredCount = reviews.filter((review) => review.answer.trim().length > 0).length;
+  const scorePercent = totalMaxScore > 0 ? Math.round((totalScore / totalMaxScore) * 100) : 0;
+
+  return {
+    reviews,
+    totalScore,
+    totalMaxScore,
+    scorePercent,
+    answeredCount,
+    markingProvider: "gemini",
+    overallBand: (gemini.band ?? bandFromPercent(scorePercent)).replace(/\s+/g, " ").trim().slice(0, 48),
+    overallSummary: (gemini.oneLiner ?? localOverallSummary(scorePercent, answeredCount, questions.length))
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 320),
   };
 }

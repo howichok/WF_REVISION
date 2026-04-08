@@ -12,7 +12,6 @@ import {
   type MutableRefObject,
   type RefObject,
 } from "react";
-import { usePathname } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
@@ -489,7 +488,6 @@ function AiRevisionOverlay({
   onUndoLastEdit: () => void;
   onClearInsertedCues: () => void;
 }) {
-  const pathname = usePathname();
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const [scanRect, setScanRect] = useState<DOMRect | null>(null);
@@ -557,8 +555,9 @@ function AiRevisionOverlay({
     };
   }, [activeSurface, activeSurfaceRef, session.phase]);
 
-  const shouldRender =
-    pathname.startsWith("/revision") || Boolean(activeSurface) || session.phase !== "idle";
+  // Only show the floating overlay when a revision surface is active or a session is in progress.
+  // Listing pages (/revision, /revision/topics, etc.) stay clean until the learner opens a task that registers the overlay.
+  const shouldRender = Boolean(activeSurface) || session.phase !== "idle";
 
   const tone = getToneMeta(session.phase);
   const snappedPosition = useMemo(

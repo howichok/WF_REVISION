@@ -24,7 +24,7 @@ export function Navbar() {
     <nav className="sticky top-0 z-50 border-b border-border/70 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/75">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
         {/* Logo */}
-        <Link href="/home" className="flex items-center gap-2.5 group">
+        <Link href="/revision" className="flex items-center gap-2.5 group">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-border/60 bg-card shadow-sm">
             <span className="text-accent font-bold text-[10px] leading-none">DSD</span>
           </div>

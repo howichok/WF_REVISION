@@ -38,10 +38,10 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
           Revision
         </p>
         <h1 className="mt-3 text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          Choose your route
+          Simple revision or exam conditions
         </h1>
-        <p className="mx-auto mt-3 max-w-lg text-pretty text-sm leading-relaxed text-muted-foreground sm:text-base">
-          Quick retrieval and coaching first, then full exam-style writing when you are ready.
+        <p className="mx-auto mt-3 max-w-md text-pretty text-sm leading-relaxed text-muted-foreground">
+          Then choose your topics. Two modes only: quick Q/A and coaching, or timed exam-style writing.
         </p>
       </motion.header>
 
@@ -53,7 +53,7 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
           transition={{ duration: 0.4, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
         >
           <Link
-            href="/revision/topics?mode=exam-conditions"
+            href="/revision/topics?mode=simple"
             className={cn(
                 "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-accent/25 bg-gradient-to-br from-accent/12 via-card to-background/80 p-6 shadow-[0_24px_64px_-28px_rgba(139,92,246,0.3)] transition-all duration-300",
                 "hover:-translate-y-1 hover:border-accent/35 hover:shadow-[0_28px_64px_-24px_rgba(139,92,246,0.38)]",
@@ -124,7 +124,7 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
           transition={{ duration: 0.4, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
         >
           <Link
-            href="/revision/topics"
+            href="/revision/topics?mode=exam-conditions"
             className={cn(
                 "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-warning/30 bg-gradient-to-br from-warning/14 via-card to-background/80 p-6 shadow-[0_24px_64px_-28px_rgba(245,158,11,0.26)] transition-all duration-300",
               "hover:-translate-y-1 hover:border-warning/40 hover:shadow-[0_28px_64px_-24px_rgba(245,158,11,0.32)]",

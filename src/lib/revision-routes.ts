@@ -54,7 +54,12 @@ export const REVISION_ROUTE_ITEMS: Array<{
     href: "/revision/weak-areas",
     description: "Focus on topics that need work",
   },
-  { id: "topics", label: "Topics", href: "/revision/topics", description: "Browse by topic" },
+  {
+    id: "topics",
+    label: "Topics",
+    href: "/revision/topics?mode=simple",
+    description: "Browse by topic",
+  },
   {
     id: "quick-quiz",
     label: "Quick Q/A",

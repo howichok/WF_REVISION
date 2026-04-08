@@ -626,7 +626,7 @@ export function getNextAppRoute(onboarding: OnboardingData | null) {
     return "/onboarding/focus";
   }
 
-  return "/home";
+  return "/revision";
 }
 
 export async function saveWeakAreas(

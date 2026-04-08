@@ -16,12 +16,13 @@ export function RevisionSubnav({ activeRoute }: RevisionSubnavProps) {
     <nav className="overflow-x-auto">
       <div className="flex min-w-max gap-1.5 rounded-2xl border border-border/70 bg-gradient-to-b from-card/80 to-background/70 p-1.5 shadow-[0_12px_28px_-22px_rgba(15,23,42,0.35)] backdrop-blur">
         {REVISION_ROUTE_ITEMS.map((item) => {
+          const pathForMatch = item.href.split("?")[0];
           const isActive =
             activeRoute
               ? item.id === activeRoute
-              : item.href === "/revision"
+              : pathForMatch === "/revision"
                 ? pathname === "/revision"
-                : pathname.startsWith(item.href);
+                : pathname === pathForMatch || pathname.startsWith(`${pathForMatch}/`);
 
           return (
             <Link

@@ -130,7 +130,7 @@ export default function AuthPage() {
 
   function getRedirectPath(nextPath: string) {
     if (
-      nextPath === "/home" &&
+      (nextPath === "/home" || nextPath === "/revision") &&
       nextPathParam?.startsWith("/") &&
       !nextPathParam.startsWith("//")
     ) {

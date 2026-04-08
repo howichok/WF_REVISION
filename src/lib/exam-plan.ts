@@ -32,7 +32,7 @@ export const EXAM_MILESTONES: ExamMilestone[] = [
     month: 5,
     day: 11,
     focusLabel: "Project brief, requirements, and scenario framing",
-    href: "/revision/topics",
+    href: "/revision/topics?mode=simple",
   },
   {
     paper: "esp",
@@ -42,7 +42,7 @@ export const EXAM_MILESTONES: ExamMilestone[] = [
     month: 5,
     day: 13,
     focusLabel: "Requirements, acceptance criteria, and planning",
-    href: "/revision/topics",
+    href: "/revision/topics?mode=simple",
   },
   {
     paper: "esp",
@@ -52,7 +52,7 @@ export const EXAM_MILESTONES: ExamMilestone[] = [
     month: 5,
     day: 15,
     focusLabel: "Design decisions, structure, and solution communication",
-    href: "/revision/topics",
+    href: "/revision/topics?mode=simple",
   },
   {
     paper: "esp",
@@ -62,7 +62,7 @@ export const EXAM_MILESTONES: ExamMilestone[] = [
     month: 5,
     day: 18,
     focusLabel: "Implementation, testing evidence, and defect fixing",
-    href: "/revision/topics",
+    href: "/revision/topics?mode=simple",
   },
   {
     paper: "esp",
@@ -72,7 +72,7 @@ export const EXAM_MILESTONES: ExamMilestone[] = [
     month: 5,
     day: 20,
     focusLabel: "Evaluation, evidence, and final justification",
-    href: "/revision/topics",
+    href: "/revision/topics?mode=simple",
   },
   {
     paper: "paper-1",

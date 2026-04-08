@@ -38,10 +38,13 @@ type QuickQuizStage = "launcher" | "active" | "results";
 type QuickQuizContext =
   | { kind: "mixed" }
   | { kind: "paper"; paperId: "paper-1" | "paper-2" }
-  | { kind: "topic"; topicId: string };
+  | { kind: "topic"; topicId: string }
+  | { kind: "topics"; topicIds: string[] };
 
 interface QuickQuizProps {
   topicId?: string;
+  /** When set, the quiz pool is limited to these topics (1..n). */
+  topicIds?: string[];
   paperId?: "paper-1" | "paper-2";
   autoStart?: boolean;
   onClose?: () => void;
@@ -71,10 +74,15 @@ const typeIcon = {
 function normalizeContext(
   paperId?: "paper-1" | "paper-2",
   topicId?: string,
-  selectedTopicId?: string | null
+  selectedTopicId?: string | null,
+  topicIds?: string[]
 ): QuickQuizContext {
   if (paperId) {
     return { kind: "paper", paperId };
+  }
+
+  if (topicIds?.length) {
+    return { kind: "topics", topicIds };
   }
 
   const effectiveTopicId = selectedTopicId ?? topicId;
@@ -125,6 +133,22 @@ function getRouteMeta(context: QuickQuizContext) {
     };
   }
 
+  if (context.kind === "topics") {
+    const n = context.topicIds.length;
+    return {
+      badgeVariant: "accent" as const,
+      heroVariant: "accent" as const,
+      taskVariant: "task" as const,
+      routeLabel: n > 1 ? "Multi-topic quiz" : "Topic quiz",
+      routeTitle:
+        n > 1 ? `Fast checks across ${n} topics` : "Fast checks for your selected topic",
+      routeFocus:
+        "Simple revision using only the topics you picked — good for a focused warm-up before deeper practice.",
+      resultSummary:
+        "When you are ready, open one topic for the full practice hub or switch into Exam conditions for timed writing.",
+    };
+  }
+
   return {
     badgeVariant: "accent" as const,
     heroVariant: "accent" as const,
@@ -145,10 +169,17 @@ function getPrimaryResultsAction(context: QuickQuizContext) {
     };
   }
 
+  if (context.kind === "topics") {
+    return {
+      label: "Back to topic list",
+      href: "/revision/topics?mode=simple",
+    };
+  }
+
   if (context.kind === "paper") {
     return {
       label: "Open topic practice",
-      href: "/revision/topics",
+      href: "/revision/topics?mode=simple",
     };
   }
 
@@ -305,6 +336,7 @@ function QuickQuizLauncher({
 function QuickQuizResults({
   context,
   selectedTopicId,
+  progressAnchorTopicId,
   score,
   totalQuestions,
   isSavingProgress,
@@ -316,6 +348,8 @@ function QuickQuizResults({
 }: {
   context: QuickQuizContext;
   selectedTopicId: string | null;
+  /** Topic id used for progress save (e.g. first of a multi-topic set). */
+  progressAnchorTopicId?: string | null;
   score: number;
   totalQuestions: number;
   isSavingProgress: boolean;
@@ -328,6 +362,7 @@ function QuickQuizResults({
   const scorePct = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
   const variant = scorePct >= 70 ? "success" : scorePct >= 40 ? "warning" : "danger";
   const topicInfo = selectedTopicId ? TOPICS.find((topic) => topic.id === selectedTopicId) : null;
+  const showProgressNote = Boolean(progressAnchorTopicId);
   const primaryAction = getPrimaryResultsAction(context);
 
   return (
@@ -386,7 +421,7 @@ function QuickQuizResults({
         </div>
       </Card>
 
-      {selectedTopicId ? (
+      {showProgressNote ? (
         <Card variant="support" className="rounded-3xl px-5 py-4 text-left">
           <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
             Saved progress
@@ -396,7 +431,9 @@ function QuickQuizResults({
               ? "Saving quiz result..."
               : saveError
                 ? saveError
-                : "This quiz score has been recorded in your practice progress."}
+                : context.kind === "topics"
+                  ? "Progress is recorded on your first selected topic as a quick anchor; open each topic for full tracking."
+                  : "This quiz score has been recorded in your practice progress."}
           </p>
         </Card>
       ) : null}
@@ -451,6 +488,7 @@ function QuickQuizResults({
 
 export function QuickQuiz({
   topicId,
+  topicIds,
   paperId,
   autoStart = false,
   onClose,
@@ -479,15 +517,19 @@ export function QuickQuiz({
   const [isSavingProgress, setIsSavingProgress] = useState(false);
   const [rippleState, setRippleState] = useState<"correct" | "incorrect" | null>(null);
 
-  const context = normalizeContext(paperId, topicId, selectedTopicId);
+  const context = normalizeContext(paperId, topicId, selectedTopicId, topicIds);
   const routeMeta = getRouteMeta(context);
   const questions = useMemo(() => {
-    const pool = getFilteredQuickQuizQuestionPool({
-      topicId: selectedTopicId ?? undefined,
-      paper: lockedPaper,
-    });
+    const pool = getFilteredQuickQuizQuestionPool(
+      topicIds?.length
+        ? { topicIds, paper: lockedPaper }
+        : {
+            topicId: selectedTopicId ?? undefined,
+            paper: lockedPaper,
+          }
+    );
     return shuffleArray(pool).slice(0, Math.min(pool.length, 8));
-  }, [lockedPaper, selectedTopicId]);
+  }, [lockedPaper, selectedTopicId, topicIds]);
 
   const availableTopics = useMemo(
     () =>
@@ -502,7 +544,8 @@ export function QuickQuiz({
   );
 
   const currentQuestion = questions[currentIndex];
-  const overlayTopicId = selectedTopicId ?? currentQuestion?.topicId ?? topicId ?? null;
+  const overlayTopicId =
+    selectedTopicId ?? currentQuestion?.topicId ?? topicIds?.[0] ?? topicId ?? null;
   const overlayTopicInfo = overlayTopicId
     ? TOPICS.find((topic) => topic.id === overlayTopicId) ?? null
     : null;
@@ -519,10 +562,12 @@ export function QuickQuiz({
     : quizFinished
       ? "results"
       : "active";
-  const overlaySurfaceId = useMemo(
-    () => `quick-quiz-${selectedTopicId ?? topicId ?? paperId ?? "mixed"}`,
-    [paperId, selectedTopicId, topicId]
-  );
+  const overlaySurfaceId = useMemo(() => {
+    if (topicIds?.length) {
+      return `quick-quiz-topics-${topicIds.slice().sort().join("-")}`;
+    }
+    return `quick-quiz-${selectedTopicId ?? topicId ?? paperId ?? "mixed"}`;
+  }, [paperId, selectedTopicId, topicId, topicIds]);
   const overlayModeLabel =
     currentQuestion?.type === "short-answer" && stage === "active"
       ? "Quick written check"
@@ -686,11 +731,12 @@ export function QuickQuiz({
   }, [overlay, overlaySurfaceId, overlayTopicId, quizNextSteps.primary, quizNextSteps.secondary, scorePercent, stage]);
 
   async function persistTopicQuizProgress(finalScore: number, finalTotal: number) {
-    if (!selectedTopicId || finalTotal === 0) {
+    const progressTopicId = selectedTopicId ?? topicIds?.[0];
+    if (!progressTopicId || finalTotal === 0) {
       return;
     }
 
-    const topicInfo = TOPICS.find((topic) => topic.id === selectedTopicId);
+    const topicInfo = TOPICS.find((topic) => topic.id === progressTopicId);
     const progressPercent = Math.round((finalScore / finalTotal) * 100);
 
     setIsSavingProgress(true);
@@ -698,20 +744,20 @@ export function QuickQuiz({
 
     try {
       await trackPracticeSetProgress({
-        practiceSetId: getPracticeSetId(selectedTopicId, "quiz"),
-        topicId: selectedTopicId,
+        practiceSetId: getPracticeSetId(progressTopicId, "quiz"),
+        topicId: progressTopicId,
         title: `${topicInfo?.label ?? "Topic"} quick quiz`,
         progressPercent,
         minutesSpent: Math.max(8, finalTotal * 2),
       });
       const recommendations = getQuizNextStepRecommendations({
-        topicId: selectedTopicId,
+        topicId: progressTopicId,
         scorePercent: progressPercent,
         revisionProgress,
         coachingMemory: topicCoachingMemory,
       });
       recordQuizCoaching({
-        topicId: selectedTopicId,
+        topicId: progressTopicId,
         scorePercent: progressPercent,
         recommendedAction: recommendations.primary?.reasonCode ?? null,
         recommendedHref: recommendations.primary?.href ?? null,
@@ -803,6 +849,57 @@ export function QuickQuiz({
     : false;
 
   if (stage === "launcher") {
+    if (topicIds?.length) {
+      const lockedMultiCount = getFilteredQuickQuizQuestionPool({
+        topicIds,
+        paper: lockedPaper,
+      }).length;
+      const topicLabels = topicIds
+        .map((id) => TOPICS.find((t) => t.id === id))
+        .filter(Boolean) as (typeof TOPICS)[number][];
+
+      return (
+        <div ref={surfaceRef}>
+          <Card variant="accent" className="rounded-[32px] p-6 sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div className="space-y-4">
+                <div className="inline-flex items-center gap-2 rounded-full border border-accent/20 bg-accent/10 px-3 py-1.5 text-[11px] font-semibold uppercase tracking-[0.22em] text-accent">
+                  <Sparkles size={12} />
+                  Selected topics
+                </div>
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+                    Quick quiz across {topicIds.length} topic{topicIds.length > 1 ? "s" : ""}
+                  </h2>
+                  <p className="mt-2 max-w-xl text-sm leading-relaxed text-muted-foreground">
+                    {routeMeta.routeFocus}
+                  </p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {topicLabels.map((t) => (
+                    <Badge key={t.id} variant="default" className="gap-1.5 py-1.5 pl-2 pr-3">
+                      <span aria-hidden>{t.icon}</span>
+                      {t.label}
+                    </Badge>
+                  ))}
+                  <Badge variant="accent">{lockedMultiCount} questions in pool</Badge>
+                </div>
+              </div>
+              <Button
+                size="lg"
+                className="shrink-0 self-start lg:self-center"
+                disabled={lockedMultiCount === 0}
+                onClick={() => startQuiz(null)}
+              >
+                Start quick quiz
+                <ArrowRight size={14} />
+              </Button>
+            </div>
+          </Card>
+        </div>
+      );
+    }
+
     const lockedTopic = topicId ? TOPICS.find((topic) => topic.id === topicId) ?? null : null;
     const lockedTopicCount = topicId
       ? getFilteredQuickQuizQuestionPool({ topicId, paper: lockedPaper }).length
@@ -832,6 +929,7 @@ export function QuickQuiz({
         <QuickQuizResults
           context={context}
           selectedTopicId={selectedTopicId}
+          progressAnchorTopicId={selectedTopicId ?? topicIds?.[0] ?? null}
           score={score}
         totalQuestions={totalQuestions}
         isSavingProgress={isSavingProgress}
@@ -902,7 +1000,11 @@ export function QuickQuiz({
             ? topicInfo
               ? `${topicInfo.label} quiz`
               : "Topic quiz"
-            : "Quick quiz"
+            : context.kind === "topics"
+              ? context.topicIds.length > 1
+                ? `${context.topicIds.length} topics`
+                : "Topic quiz"
+              : "Quick quiz"
       }
       railSubtitle={routeMeta.routeFocus}
       railIcon={<TypeIcon size={18} className="text-accent" />}

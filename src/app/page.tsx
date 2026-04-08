@@ -146,7 +146,13 @@ export default function WelcomePage() {
   }
 
   function getRedirectPath(nextPath: string) {
-    if (nextPath === "/home" && nextPathParam?.startsWith("/") && !nextPathParam.startsWith("//")) return nextPathParam;
+    if (
+      (nextPath === "/home" || nextPath === "/revision") &&
+      nextPathParam?.startsWith("/") &&
+      !nextPathParam.startsWith("//")
+    ) {
+      return nextPathParam;
+    }
     return nextPath;
   }
 

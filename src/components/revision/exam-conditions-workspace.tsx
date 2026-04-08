@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   AlarmClock,
@@ -9,7 +9,7 @@ import {
   ArrowRight,
   CheckCircle2,
   Clock3,
-  FileText,
+  Loader2,
   RotateCcw,
   Trophy,
 } from "lucide-react";
@@ -51,6 +51,8 @@ function getTimerTone(secondsLeft: number, totalSeconds: number) {
   return "accent";
 }
 
+const EXAM_TOPIC_LIST_HREF = "/revision/topics?mode=exam-conditions";
+
 function getDifficultyBadgeVariant(question: ExamConditionsQuestion) {
   if (question.difficulty === "hard") {
     return "danger" as const;
@@ -77,12 +79,17 @@ export function ExamConditionsWorkspace({
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [isLaunching, setIsLaunching] = useState(false);
+  const [isMarking, setIsMarking] = useState(false);
+
+  const sessionRef = useRef<ExamConditionsSession | null>(null);
+  const answersRef = useRef<Record<string, string>>({});
+  const markingSentRef = useRef(false);
+
+  sessionRef.current = session;
+  answersRef.current = answers;
 
   const currentQuestion = session?.questions[currentIndex] ?? null;
   const totalSeconds = (session?.estimatedMinutes ?? 0) * 60;
-  const completionPercent = session
-    ? Math.round(((currentIndex + 1) / Math.max(session.questionCount, 1)) * 100)
-    : 0;
   const answeredCount = session
     ? session.questions.filter((question) => (answers[question.id] ?? "").trim().length > 0).length
     : 0;
@@ -110,8 +117,32 @@ export function ExamConditionsWorkspace({
     startSession();
   }, [autoStart, isLaunching, session]);
 
+  const runMarking = useCallback(async (active: ExamConditionsSession, ans: Record<string, string>) => {
+    setIsMarking(true);
+    try {
+      const res = await fetch("/api/intelligence/exam-conditions-mark", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          questions: active.questions,
+          answers: ans,
+        }),
+      });
+      const data = (await res.json()) as { result?: ExamConditionsSessionResult };
+      if (res.ok && data.result) {
+        setResults(data.result);
+        return;
+      }
+    } catch {
+      /* fall through */
+    } finally {
+      setIsMarking(false);
+    }
+    setResults(evaluateExamConditionsSession(active.questions, ans));
+  }, []);
+
   useEffect(() => {
-    if (!session || !startedAt || results) {
+    if (!session || !startedAt || results || markingSentRef.current) {
       return;
     }
 
@@ -120,8 +151,13 @@ export function ExamConditionsWorkspace({
       const nextSeconds = Math.max(0, totalSeconds - elapsedSeconds);
       setSecondsLeft(nextSeconds);
 
-      if (nextSeconds === 0) {
-        setResults(evaluateExamConditionsSession(session.questions, answers));
+      if (nextSeconds === 0 && !markingSentRef.current) {
+        markingSentRef.current = true;
+        const s = sessionRef.current;
+        const a = answersRef.current;
+        if (s) {
+          void runMarking(s, a);
+        }
       }
     };
 
@@ -131,7 +167,7 @@ export function ExamConditionsWorkspace({
     return () => {
       window.clearInterval(interval);
     };
-  }, [answers, results, session, startedAt, totalSeconds]);
+  }, [results, runMarking, session, startedAt, totalSeconds]);
 
   function activateSession() {
     const nextSession = generateExamConditionsSession(topicId, {
@@ -143,6 +179,8 @@ export function ExamConditionsWorkspace({
     setAnswers({});
     setCurrentIndex(0);
     setResults(null);
+    markingSentRef.current = false;
+    setIsMarking(false);
     setStartedAt(Date.now());
     setSecondsLeft(nextSession.estimatedMinutes * 60);
   }
@@ -155,22 +193,13 @@ export function ExamConditionsWorkspace({
     }, 520);
   }
 
-  function resetSession() {
-    setSession(null);
-    setAnswers({});
-    setCurrentIndex(0);
-    setResults(null);
-    setStartedAt(null);
-    setSecondsLeft(0);
-    setIsLaunching(false);
-  }
-
   function finishSession() {
-    if (!session) {
+    if (!session || markingSentRef.current) {
       return;
     }
 
-    setResults(evaluateExamConditionsSession(session.questions, answers));
+    markingSentRef.current = true;
+    void runMarking(session, answers);
   }
 
   if (!session) {
@@ -225,73 +254,39 @@ export function ExamConditionsWorkspace({
           ) : null}
         </AnimatePresence>
 
-        <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-center px-6 py-10 sm:px-8">
-          <div className="flex items-center gap-3">
-            <Link href={`/revision/${topicId}/practice`}>
+        <div className="relative z-10 mx-auto flex min-h-screen w-full max-w-2xl flex-col justify-center px-6 py-10 sm:px-8">
+          <div className="mb-6 flex items-center gap-3">
+            <Link href={EXAM_TOPIC_LIST_HREF}>
               <Button variant="ghost" size="sm">
                 <ArrowLeft size={14} />
-                Back
+                Topics
               </Button>
             </Link>
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-warning">
-                Exam conditions
-              </p>
-              <h1 className="mt-1 text-2xl font-bold tracking-tight text-slate-950">
-                {topicIcon ? `${topicIcon} ` : ""}{topicLabel}
-              </h1>
-              <p className="mt-1 max-w-3xl text-sm leading-relaxed text-slate-600">
-                This is a separate exam feature, not a topic widget. Once it launches, the normal revision UI drops away and you only keep the timer, the current question, and your answer box.
-              </p>
-            </div>
           </div>
 
-        <Card variant="warning" className={`mt-6 p-6 sm:p-8 ${strongPanelClass}`}>
-          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant="warning">Separate exam feature</Badge>
-                <Badge variant="default">Random 10-20 questions</Badge>
-                {preferredQuestionId ? <Badge variant="accent">Pinned first prompt</Badge> : null}
-              </div>
-              <h2 className="text-xl font-semibold tracking-tight text-slate-950">
-                One clean timed session, then the checker runs once at the end
-              </h2>
-              <div className="space-y-2 text-sm leading-relaxed text-slate-600">
-                <p>When the session starts, the extra interface gets out of the way and you only see the timer, the current question, and the answer area.</p>
-                <p>The question count is random between 10 and 20. Fewer questions creates a harder overall mix; more questions creates a broader and easier spread.</p>
-                <p>You answer first. The AI-style checker only runs after you finish or the timer expires.</p>
-              </div>
-            </div>
-
-            <div className="min-w-[240px] rounded-3xl border border-amber-200/80 bg-amber-50/70 p-4 shadow-[0_18px_45px_-36px_rgba(180,120,30,0.25)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-                Next generated session
-              </p>
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Questions</span>
-                  <span className="text-sm font-semibold text-slate-900">{previewSession.questionCount}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Timer</span>
-                  <span className="text-sm font-semibold text-slate-900">{previewSession.estimatedMinutes} min</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-slate-500">Finish</span>
-                  <span className="text-sm font-semibold text-slate-900">
-                    {previewSession.questions.at(-1)?.difficulty === "hard" ? "Hard end" : "Mixed end"}
-                  </span>
-                </div>
-              </div>
-              <Button className="mt-5 w-full shadow-[0_16px_35px_-24px_rgba(99,102,241,0.55)]" onClick={startSession}>
-                <AlarmClock size={14} />
-                Start exam conditions
-              </Button>
-            </div>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold tracking-tight text-slate-950 sm:text-3xl">
+              {topicIcon ? `${topicIcon} ` : ""}
+              {topicLabel}
+            </h1>
+            <p className="mt-2 text-sm text-slate-600">
+              Timed session · {previewSession.questionCount} questions · {previewSession.estimatedMinutes} minutes ·
+              marking after you finish.
+            </p>
           </div>
-        </Card>
 
+          <Card variant="warning" className={`p-6 ${strongPanelClass}`}>
+            <p className="text-sm leading-relaxed text-slate-600">
+              No hints during the run. Write answers first; feedback runs once at the end (or when time runs out).
+            </p>
+            {preferredQuestionId ? (
+              <p className="mt-2 text-xs text-slate-500">First question is pinned from your link.</p>
+            ) : null}
+            <Button className="mt-6 w-full" onClick={startSession}>
+              <AlarmClock size={14} />
+              Start
+            </Button>
+          </Card>
         </div>
       </div>
     );
@@ -309,13 +304,16 @@ export function ExamConditionsWorkspace({
               {topicIcon ? `${topicIcon} ` : ""}{topicLabel}
             </h1>
           </div>
-          <div className="flex gap-2">
-            <Button variant="ghost" onClick={resetSession}>
-              Exit
-            </Button>
+          <div className="flex flex-wrap gap-2">
+            <Link
+              href={EXAM_TOPIC_LIST_HREF}
+              className="inline-flex items-center justify-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium text-muted-foreground transition-all hover:bg-card/80 hover:text-foreground"
+            >
+              Topics
+            </Link>
             <Button onClick={startSession}>
               <RotateCcw size={14} />
-              New session
+              Again
             </Button>
           </div>
         </div>
@@ -326,12 +324,27 @@ export function ExamConditionsWorkspace({
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
                 Session result
               </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2">
+                {results.overallBand ? (
+                  <Badge variant={results.scorePercent >= 70 ? "success" : results.scorePercent >= 40 ? "warning" : "default"}>
+                    {results.overallBand}
+                  </Badge>
+                ) : null}
+                {results.markingProvider === "gemini" ? (
+                  <Badge variant="default">Mark scheme check</Badge>
+                ) : (
+                  <Badge variant="default">Local marker</Badge>
+                )}
+              </div>
               <p className="mt-2 text-4xl font-bold tracking-tight text-slate-950">
                 {results.totalScore}/{results.totalMaxScore}
               </p>
               <p className="mt-2 text-sm text-slate-600">
                 {results.answeredCount}/{session.questionCount} questions answered
               </p>
+              {results.overallSummary ? (
+                <p className="mt-3 max-w-xl text-sm leading-relaxed text-slate-700">{results.overallSummary}</p>
+              ) : null}
             </div>
             <div className="min-w-[220px] space-y-3">
               <ProgressBar value={results.scorePercent} className="w-full" />
@@ -359,11 +372,12 @@ export function ExamConditionsWorkspace({
                 </div>
                 <div className="rounded-2xl border border-slate-200/80 bg-slate-50 px-3 py-2 text-right">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Score
+                    Marks
                   </p>
                   <p className="mt-1 text-sm font-semibold text-slate-950">
                     {review.score}/{review.maxScore}
                   </p>
+                  <p className="mt-1 text-[11px] font-medium text-slate-600">{review.evaluation.verdictLabel}</p>
                 </div>
               </div>
 
@@ -378,7 +392,7 @@ export function ExamConditionsWorkspace({
                 </div>
                 <div className="rounded-2xl border border-slate-200/80 bg-white/70 px-4 py-4">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                    Checker feedback
+                    Feedback
                   </p>
                   <p className="mt-2 text-sm leading-relaxed text-slate-800">
                     {review.evaluation.feedback}
@@ -435,162 +449,137 @@ export function ExamConditionsWorkspace({
       transition={{ duration: 0.28, ease: "easeOut" }}
       className={pageRootClass}
     >
-      <div className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/82 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-7xl items-center justify-between gap-4 px-5 py-4 sm:px-8">
-          <div className="min-w-0">
-            <div className="flex items-center gap-3">
-              <Link href={`/revision/${topicId}/practice`}>
-                <Button variant="ghost" size="sm">
-                  <ArrowLeft size={14} />
-                  Exit
-                </Button>
-              </Link>
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-warning">
-                  Exam conditions
-                </p>
-                <p className="text-sm font-semibold text-slate-950">
-                  {topicIcon ? `${topicIcon} ` : ""}{topicLabel}
-                </p>
-              </div>
+      <AnimatePresence>
+        {isMarking ? (
+          <motion.div
+            key="marking-overlay"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center gap-4 bg-white/85 px-6 text-center backdrop-blur-md"
+          >
+            <Loader2 className="h-10 w-10 animate-spin text-amber-600" aria-hidden />
+            <div>
+              <p className="text-base font-semibold text-slate-900">Checking your session</p>
+              <p className="mt-1 max-w-sm text-sm text-slate-600">
+                One Gemini pass against the mark schemes — usually a few seconds.
+              </p>
             </div>
-            <p className="mt-2 text-xs text-slate-500">
-              Question {currentIndex + 1} of {session.questionCount}. Answer first; checking only happens after the session ends.
-            </p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      <div className="sticky top-0 z-20 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
+        <div className="mx-auto flex w-full max-w-3xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+          <div className="flex min-w-0 items-center gap-2 sm:gap-3">
+            <Link href={EXAM_TOPIC_LIST_HREF}>
+              <Button variant="ghost" size="sm" className="shrink-0 px-2 sm:px-3">
+                <ArrowLeft size={14} />
+                <span className="hidden sm:inline">Exit</span>
+              </Button>
+            </Link>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-950">
+                {topicIcon ? `${topicIcon} ` : ""}
+                {topicLabel}
+              </p>
+              <p className="text-xs text-slate-500">
+                {currentIndex + 1}/{session.questionCount} · {answeredCount} answered · {session.estimatedMinutes} min
+                session
+              </p>
+            </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="hidden min-w-[180px] sm:block">
-              <ProgressBar value={completionPercent} />
-            </div>
-            <div className="rounded-2xl border border-amber-200/80 bg-amber-50/80 px-4 py-3 text-right shadow-[0_18px_45px_-28px_rgba(245,158,11,0.2)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-                Time left
-              </p>
-              <div className="mt-1 flex items-center justify-end gap-2">
-                <Clock3 size={14} className={timerTone === "danger" ? "text-danger" : timerTone === "warning" ? "text-warning" : "text-accent"} />
-                <span className="text-lg font-semibold text-slate-950">{formatTime(secondsLeft)}</span>
-              </div>
+          <div className="shrink-0 rounded-xl border border-amber-200/80 bg-amber-50/90 px-3 py-2 text-right">
+            <p className="text-[10px] font-semibold uppercase tracking-wider text-amber-800">Time</p>
+            <div className="flex items-center justify-end gap-1.5">
+              <Clock3
+                size={14}
+                className={
+                  timerTone === "danger" ? "text-danger" : timerTone === "warning" ? "text-warning" : "text-accent"
+                }
+              />
+              <span className="text-base font-semibold tabular-nums text-slate-950">{formatTime(secondsLeft)}</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto w-full max-w-7xl px-5 py-10 sm:px-8">
+      <div className="mx-auto w-full max-w-3xl px-4 py-8 sm:px-6">
         {currentQuestion ? (
-          <div className="grid gap-8 xl:grid-cols-[minmax(0,1.12fr)_340px]">
-            <div className="space-y-6">
-              <div className="rounded-[32px] border border-slate-200/90 bg-white/88 p-7 shadow-[0_28px_80px_-54px_rgba(80,60,30,0.18)] backdrop-blur-xl">
-                <div className="flex flex-wrap items-center gap-2">
-                  <Badge variant="default">
-                    <FileText size={12} className="mr-1" />
-                    Question {currentIndex + 1}
-                  </Badge>
-                  <Badge variant={getDifficultyBadgeVariant(currentQuestion)}>
-                    {currentQuestion.difficulty}
-                  </Badge>
-                  <Badge variant="warning">{currentQuestion.marks} marks</Badge>
-                  {currentQuestion.paper ? <Badge variant="default">{currentQuestion.paper}</Badge> : null}
-                </div>
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-slate-200/90 bg-white/90 p-5 shadow-sm sm:p-6">
+              <p className="text-xs font-medium text-slate-500">
+                Question {currentIndex + 1} of {session.questionCount} · {currentQuestion.marks} marks ·{" "}
+                {currentQuestion.difficulty}
+              </p>
 
-                <h2 className="mt-5 text-4xl font-bold leading-tight tracking-tight text-slate-950">
-                  {currentQuestion.prompt}
-                </h2>
+              <h2 className="mt-4 text-xl font-semibold leading-snug tracking-tight text-slate-950 sm:text-2xl">
+                {currentQuestion.prompt}
+              </h2>
 
-                {commandWord ? (
-                  <p className="mt-4 text-sm leading-relaxed text-slate-600">
-                    Command word: <span className="font-medium text-accent">{commandWord.word.toLowerCase()}</span>. {commandWord.guidance}
-                  </p>
-                ) : null}
-              </div>
-
-              <div className="rounded-[32px] border border-indigo-200/80 bg-indigo-50/50 p-7 shadow-[0_24px_70px_-42px_rgba(99,102,241,0.2)] backdrop-blur-xl">
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
-                      Your answer
-                    </p>
-                    <p className="mt-2 text-sm text-slate-600">
-                      Write the full response here. Nothing gets checked until you finish the session.
-                    </p>
-                  </div>
-                  <Badge variant="default">{(answers[currentQuestion.id] ?? "").trim().split(/\s+/).filter(Boolean).length} words</Badge>
-                </div>
-
-                <textarea
-                  value={answers[currentQuestion.id] ?? ""}
-                  onChange={(event) =>
-                    setAnswers((current) => ({
-                      ...current,
-                      [currentQuestion.id]: event.target.value,
-                    }))
-                  }
-                  rows={18}
-                  placeholder="Write your exam answer here..."
-                  className="mt-5 min-h-[420px] w-full rounded-[28px] border border-slate-200/90 bg-white px-6 py-5 text-[17px] leading-8 text-slate-900 placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/30"
-                />
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex items-center gap-2 text-xs text-slate-500">
-                  <CheckCircle2 size={14} className="text-success" />
-                  {answeredCount} / {session.questionCount} questions answered
-                </div>
-
-                <div className="flex flex-wrap justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setCurrentIndex((current) => Math.max(0, current - 1))}
-                    disabled={currentIndex === 0}
-                  >
-                    Previous
-                  </Button>
-                  {currentIndex + 1 >= session.questionCount ? (
-                    <Button onClick={finishSession}>
-                      Finish and check
-                      <Trophy size={14} />
-                    </Button>
-                  ) : (
-                    <Button onClick={() => setCurrentIndex((current) => Math.min(session.questionCount - 1, current + 1))}>
-                      Save and continue
-                      <ArrowRight size={14} />
-                    </Button>
-                  )}
-                </div>
-              </div>
+              {commandWord ? (
+                <p className="mt-3 text-sm italic text-slate-600">
+                  {commandWord.word}: {commandWord.guidance}
+                </p>
+              ) : null}
             </div>
 
-            <aside className="space-y-4">
-              <div className="rounded-[28px] border border-slate-200/80 bg-white/84 p-5 shadow-[0_18px_45px_-36px_rgba(80,60,30,0.16)] backdrop-blur-xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-amber-700">
-                  Session focus
-                </p>
-                <p className="mt-3 text-sm leading-relaxed text-slate-600">
-                  No hints, no overlay coaching, no checklist reveal. Answer the question as if this were the real paper, then check everything at the end.
-                </p>
+            <div className="rounded-2xl border border-slate-200/90 bg-white p-5 sm:p-6">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Your answer</p>
+                <span className="text-xs text-slate-400">
+                  {(answers[currentQuestion.id] ?? "").trim().split(/\s+/).filter(Boolean).length} words
+                </span>
               </div>
 
-              <div className="rounded-[28px] border border-slate-200/80 bg-white/84 p-5 shadow-[0_18px_45px_-36px_rgba(80,60,30,0.16)] backdrop-blur-xl">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                  Session stats
-                </p>
-                <div className="mt-4 space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Questions</span>
-                    <span className="font-semibold text-slate-950">{session.questionCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Answered</span>
-                    <span className="font-semibold text-slate-950">{answeredCount}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-slate-500">Estimated time</span>
-                    <span className="font-semibold text-slate-950">{session.estimatedMinutes} min</span>
-                  </div>
-                </div>
+              <textarea
+                value={answers[currentQuestion.id] ?? ""}
+                onChange={(event) =>
+                  setAnswers((current) => ({
+                    ...current,
+                    [currentQuestion.id]: event.target.value,
+                  }))
+                }
+                rows={14}
+                placeholder="Write here…"
+                className="min-h-[280px] w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-base leading-7 text-slate-900 placeholder:text-slate-400 focus:border-accent focus:outline-none focus:ring-1 focus:ring-accent/25"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-slate-500">
+                <CheckCircle2 size={14} className="mr-1 inline text-success align-text-bottom" />
+                {answeredCount} / {session.questionCount} with text
+              </p>
+
+              <div className="flex flex-wrap justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentIndex((current) => Math.max(0, current - 1))}
+                  disabled={currentIndex === 0 || isMarking}
+                >
+                  Back
+                </Button>
+                {currentIndex + 1 >= session.questionCount ? (
+                  <Button size="sm" onClick={finishSession} disabled={isMarking}>
+                    Finish &amp; check
+                    <Trophy size={14} />
+                  </Button>
+                ) : (
+                  <Button
+                    size="sm"
+                    disabled={isMarking}
+                    onClick={() => setCurrentIndex((current) => Math.min(session.questionCount - 1, current + 1))}
+                  >
+                    Next
+                    <ArrowRight size={14} />
+                  </Button>
+                )}
               </div>
-            </aside>
+            </div>
           </div>
         ) : null}
       </div>

@@ -44,13 +44,17 @@ export function TopicRouteShell({
   const progress = getSubtopicProgressForTopic(revisionProgress, topicId);
   const topicRoutes = getTopicRouteItems(topicId);
   const activeNavMode = getTopicNavMode(activeMode);
+  const topicsListHref =
+    activeNavMode === "exam-conditions"
+      ? "/revision/topics?mode=exam-conditions"
+      : "/revision/topics?mode=simple";
 
   return (
     <div className="space-y-5">
       <div className="rounded-[2rem] border border-border/70 bg-gradient-to-br from-card via-card to-background/85 p-4 shadow-[0_20px_55px_-36px_rgba(15,23,42,0.35)] sm:p-5">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex items-start gap-3">
-            <Link href="/revision/topics" className="mt-1">
+            <Link href={topicsListHref} className="mt-1">
               <Button variant="ghost" size="sm" className="border border-border/60 bg-background/80 shadow-sm">
                 <ArrowLeft size={14} />
               </Button>

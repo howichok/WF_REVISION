@@ -224,7 +224,7 @@ export default function FocusBreakdownPage() {
       if (user?.id) {
         clearFocusBreakdownDraft(user.id);
       }
-      router.push("/home");
+      router.push("/revision");
       router.refresh();
     } catch (saveError) {
       setError(

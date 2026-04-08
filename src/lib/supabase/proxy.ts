@@ -14,6 +14,7 @@ function isProtectedPath(pathname: string) {
     pathname.startsWith("/library") ||
     pathname.startsWith("/revision") ||
     pathname.startsWith("/settings") ||
+    pathname.startsWith("/planner") ||
     pathname.startsWith("/onboarding")
   );
 }
@@ -62,7 +63,7 @@ async function resolveNextRoute(
     weakAreas.length === 0
       ? "/onboarding"
       : onboardingRow?.completed_at
-        ? "/home"
+        ? "/revision"
         : "/onboarding/focus";
 
   if (ANON_ONLY_PATHS.has(pathname)) {
@@ -77,13 +78,14 @@ async function resolveNextRoute(
     return NextResponse.redirect(buildRedirect(request, nextPath));
   }
 
-  if (
-    (pathname.startsWith("/home") ||
-      pathname.startsWith("/library") ||
-      pathname.startsWith("/revision") ||
-      pathname.startsWith("/settings")) &&
-    nextPath !== "/home"
-  ) {
+  const isAppShellRoute =
+    pathname.startsWith("/home") ||
+    pathname.startsWith("/library") ||
+    pathname.startsWith("/revision") ||
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/planner");
+
+  if (isAppShellRoute && nextPath.startsWith("/onboarding")) {
     return NextResponse.redirect(buildRedirect(request, nextPath));
   }
 
