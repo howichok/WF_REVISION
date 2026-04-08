@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   AlarmClock,
   ArrowLeft,
@@ -14,10 +14,11 @@ import {
   Trophy,
 } from "lucide-react";
 import { useAiOverlay } from "@/components/providers/ai-overlay-provider";
-import { Badge, Button, ProgressBar } from "@/components/ui";
+import { Badge, Button, Input, ProgressBar } from "@/components/ui";
 import {
   evaluateExamConditionsSession,
   generateExamConditionsSession,
+  getExamConditionsPoolStats,
   type ExamConditionsQuestion,
   type ExamConditionsSession,
   type ExamConditionsSessionResult,
@@ -53,6 +54,29 @@ function getTimerTone(secondsLeft: number, totalSeconds: number) {
 
 const EXAM_TOPIC_LIST_HREF = "/revision/topics?mode=exam-conditions";
 
+const EXAM_QUESTION_TRANSITION = { duration: 0.38, ease: [0.22, 1, 0.36, 1] as const };
+
+const examQuestionVariants = {
+  enter: (dir: number) => ({
+    x: dir * 44,
+    opacity: 0,
+    scale: 0.97,
+    filter: "blur(6px)",
+  }),
+  center: {
+    x: 0,
+    opacity: 1,
+    scale: 1,
+    filter: "blur(0px)",
+  },
+  exit: (dir: number) => ({
+    x: dir * -32,
+    opacity: 0,
+    scale: 0.985,
+    filter: "blur(5px)",
+  }),
+};
+
 function getDifficultyBadgeVariant(question: ExamConditionsQuestion) {
   if (question.difficulty === "hard") {
     return "danger" as const;
@@ -72,6 +96,16 @@ export function ExamConditionsWorkspace({
 }: ExamConditionsWorkspaceProps) {
   const overlay = useAiOverlay();
   const { sharedCurriculum } = useAppData();
+  const reduceMotion = useReducedMotion();
+  const poolStats = useMemo(
+    () => getExamConditionsPoolStats(topicId, sharedCurriculum),
+    [topicId, sharedCurriculum]
+  );
+  const [userQuestionCount, setUserQuestionCount] = useState<number | undefined>(undefined);
+  const optionalQuestionCount =
+    userQuestionCount === undefined ? undefined : userQuestionCount;
+  const resolvedDisplayCount = userQuestionCount ?? poolStats.defaultQuestionCount;
+
   const [session, setSession] = useState<ExamConditionsSession | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -80,6 +114,8 @@ export function ExamConditionsWorkspace({
   const [secondsLeft, setSecondsLeft] = useState(0);
   const [isLaunching, setIsLaunching] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
+  /** +1 = forward (Next), -1 = back — drives slide direction for question transitions */
+  const [slideDirection, setSlideDirection] = useState(1);
 
   const sessionRef = useRef<ExamConditionsSession | null>(null);
   const answersRef = useRef<Record<string, string>>({});
@@ -101,8 +137,46 @@ export function ExamConditionsWorkspace({
         rest: currentQuestion.prompt.slice(commandWord.word.length),
       }
     : null;
+
+  const currentWordCount = useMemo(() => {
+    if (!currentQuestion) {
+      return 0;
+    }
+    return (answers[currentQuestion.id] ?? "").trim().split(/\s+/).filter(Boolean).length;
+  }, [answers, currentQuestion]);
+
+  const goToPreviousQuestion = useCallback(() => {
+    setSlideDirection(-1);
+    setCurrentIndex((current) => Math.max(0, current - 1));
+  }, []);
+
+  const goToNextQuestion = useCallback(() => {
+    if (!session) {
+      return;
+    }
+    setSlideDirection(1);
+    setCurrentIndex((current) => Math.min(session.questionCount - 1, current + 1));
+  }, [session]);
+
+  const questionMotionVariants = useMemo(() => {
+    if (reduceMotion) {
+      return {
+        enter: { opacity: 0 },
+        center: { opacity: 1 },
+        exit: { opacity: 0 },
+      };
+    }
+    return examQuestionVariants;
+  }, [reduceMotion]);
+
   const pageRootClass =
     "relative flex min-h-screen flex-col bg-[#faf9f7] text-slate-900";
+  const examActiveRootClass =
+    "relative flex min-h-screen flex-col bg-gradient-to-b from-slate-100/95 via-[#f6f4f1] to-slate-200/35 text-slate-900";
+
+  useEffect(() => {
+    setUserQuestionCount(undefined);
+  }, [topicId]);
 
   useEffect(() => {
     const shouldSuppress = Boolean(session);
@@ -177,6 +251,7 @@ export function ExamConditionsWorkspace({
     const nextSession = generateExamConditionsSession(topicId, {
       preferredQuestionId,
       snapshot: sharedCurriculum,
+      questionCount: optionalQuestionCount,
     });
 
     setSession(nextSession);
@@ -210,6 +285,7 @@ export function ExamConditionsWorkspace({
     const previewSession = generateExamConditionsSession(topicId, {
       preferredQuestionId,
       snapshot: sharedCurriculum,
+      questionCount: optionalQuestionCount,
     });
 
     return (
@@ -295,6 +371,37 @@ export function ExamConditionsWorkspace({
               </div>
             </div>
 
+            <div className="mt-6">
+              <Input
+                type="number"
+                label="Number of questions"
+                min={1}
+                max={Math.max(1, poolStats.maxSessionQuestions)}
+                value={poolStats.maxSessionQuestions === 0 ? "" : resolvedDisplayCount}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === "") {
+                    setUserQuestionCount(undefined);
+                    return;
+                  }
+                  const value = parseInt(raw, 10);
+                  if (!Number.isFinite(value)) {
+                    return;
+                  }
+                  setUserQuestionCount(
+                    Math.max(1, Math.min(poolStats.maxSessionQuestions, value))
+                  );
+                }}
+                disabled={poolStats.maxSessionQuestions === 0}
+                hint={
+                  poolStats.poolSize === 0
+                    ? "No questions in this topic yet."
+                    : `Between 1 and ${poolStats.maxSessionQuestions} (${poolStats.poolSize} available in this topic).`
+                }
+                className="tabular-nums"
+              />
+            </div>
+
             <div className="mt-7 flex gap-3">
               <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-center">
                 <p className="text-lg font-bold tabular-nums text-slate-900">{previewSession.questionCount}</p>
@@ -310,7 +417,11 @@ export function ExamConditionsWorkspace({
               </div>
             </div>
 
-            <Button className="mt-7 w-full" onClick={startSession}>
+            <Button
+              className="mt-7 w-full"
+              onClick={startSession}
+              disabled={poolStats.maxSessionQuestions === 0}
+            >
               <AlarmClock size={15} />
               Start exam
             </Button>
@@ -613,10 +724,10 @@ export function ExamConditionsWorkspace({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.985 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.28, ease: "easeOut" }}
-      className={pageRootClass}
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.35, ease: "easeOut" }}
+      className={examActiveRootClass}
     >
       <AnimatePresence>
         {isMarking ? (
@@ -659,164 +770,275 @@ export function ExamConditionsWorkspace({
       </AnimatePresence>
 
       {/* Compact sticky header */}
-      <div className="sticky top-0 z-20 border-b border-slate-200/60 bg-white/92 backdrop-blur-xl">
+      <motion.header
+        initial={{ y: -12, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+        className="sticky top-0 z-20 border-b border-slate-200/50 bg-white/80 shadow-[0_8px_30px_-18px_rgba(15,23,42,0.12)] backdrop-blur-xl"
+      >
         <div className="mx-auto flex w-full max-w-3xl items-center justify-between px-4 py-2.5 sm:px-6">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <Link href={EXAM_TOPIC_LIST_HREF}>
-              <button type="button" className="flex items-center gap-1 rounded-lg px-2 py-1.5 text-slate-400 transition-colors hover:bg-slate-100 hover:text-slate-600">
-                <ArrowLeft size={15} />
-                <span className="hidden text-[13px] font-medium sm:inline">Exit</span>
-              </button>
-            </Link>
-            <div className="hidden h-4 w-px bg-slate-200 sm:block" />
-            <p className="truncate text-[13px] font-semibold text-slate-800">
-              {topicIcon ? `${topicIcon} ` : ""}{topicLabel}
-            </p>
-            <span className="hidden text-[11px] text-slate-400 sm:inline">
-              {currentIndex + 1}/{session.questionCount} · {answeredCount} answered · {session.estimatedMinutes} min session
-            </span>
+          <div className="flex min-w-0 flex-1 flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-2.5">
+            <div className="flex items-center gap-2.5">
+              <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+                <Link href={EXAM_TOPIC_LIST_HREF}>
+                  <button
+                    type="button"
+                    className="flex items-center gap-1 rounded-xl px-2 py-1.5 text-slate-400 transition-colors hover:bg-slate-100/90 hover:text-slate-600"
+                  >
+                    <ArrowLeft size={15} />
+                    <span className="hidden text-[13px] font-medium sm:inline">Exit</span>
+                  </button>
+                </Link>
+              </motion.div>
+              <div className="hidden h-4 w-px bg-slate-200 sm:block" />
+              <p className="truncate text-[13px] font-semibold text-slate-800">
+                {topicIcon ? `${topicIcon} ` : ""}
+                {topicLabel}
+              </p>
+            </div>
+            <motion.p
+              key={`meta-${currentIndex}-${answeredCount}`}
+              initial={{ opacity: 0, x: -6 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.25 }}
+              className="truncate pl-7 text-[11px] text-slate-400 sm:pl-0"
+            >
+              {currentIndex + 1}/{session.questionCount} · {answeredCount} answered · {session.estimatedMinutes}{" "}
+              min
+            </motion.p>
           </div>
 
-          <div
-            className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 transition-all duration-300 ${
+          <motion.div
+            layout
+            className={`flex shrink-0 items-center gap-1.5 rounded-xl px-3 py-1.5 shadow-sm ring-1 ring-black/[0.04] transition-colors duration-300 ${
               timerTone === "danger"
-                ? "exam-timer-danger bg-red-50 text-red-600"
+                ? "exam-timer-danger bg-red-50 text-red-600 ring-red-200/40"
                 : timerTone === "warning"
-                  ? "exam-timer-warning bg-amber-50 text-amber-600"
-                  : "bg-slate-50 text-slate-600"
+                  ? "exam-timer-warning bg-amber-50 text-amber-700 ring-amber-200/40"
+                  : "bg-white text-slate-600 ring-slate-200/60"
             }`}
+            animate={
+              reduceMotion
+                ? { scale: 1 }
+                : timerTone === "danger"
+                  ? { scale: [1, 1.04, 1] }
+                  : timerTone === "warning"
+                    ? { scale: [1, 1.02, 1] }
+                    : { scale: 1 }
+            }
+            transition={
+              reduceMotion
+                ? { duration: 0 }
+                : timerTone === "danger" || timerTone === "warning"
+                  ? { duration: 1.2, repeat: Infinity, ease: "easeInOut" }
+                  : { duration: 0.2 }
+            }
           >
             <Clock3 size={13} className="opacity-60" />
             <span className="text-sm font-semibold tabular-nums">{formatTime(secondsLeft)}</span>
-          </div>
+          </motion.div>
         </div>
 
-        {/* Thin progress */}
-        <div className="h-[2px] bg-slate-100">
+        <div className="h-[3px] bg-slate-100/90">
           <motion.div
-            className="h-full bg-gradient-to-r from-accent via-indigo-400 to-accent"
+            className="h-full rounded-r-full bg-gradient-to-r from-violet-500 via-accent to-indigo-500 shadow-[0_0_12px_rgba(99,102,241,0.35)]"
             initial={false}
             animate={{ width: `${((currentIndex + 1) / session.questionCount) * 100}%` }}
-            transition={{ duration: 0.4, ease: "easeInOut" }}
+            transition={{ duration: 0.45, ease: [0.22, 1, 0.36, 1] }}
           />
         </div>
-      </div>
+      </motion.header>
 
       {/* Main workspace — single unified card */}
-      <div className="mx-auto w-full max-w-[680px] flex-1 px-4 py-5 sm:px-6 sm:py-7">
-        {currentQuestion ? (
-          <motion.div
-            key={currentQuestion.id}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.25, ease: "easeOut" }}
-            className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-[0_1px_3px_rgba(0,0,0,0.04),0_12px_40px_-20px_rgba(80,60,30,0.1)]"
-          >
-            {/* Question section */}
-            <div className="border-b border-slate-100 px-6 pb-5 pt-5 sm:px-8 sm:pb-6 sm:pt-6">
-              <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold">
-                <span className="text-slate-400">
-                  Question {currentIndex + 1} of {session.questionCount}
-                </span>
-                <span className="text-slate-300">·</span>
-                <span className="text-amber-500">{currentQuestion.marks} marks</span>
-                <span className="text-slate-300">·</span>
-                <span className={
-                  currentQuestion.difficulty === "hard"
-                    ? "text-red-500"
-                    : currentQuestion.difficulty === "medium"
-                      ? "text-amber-500"
-                      : "text-emerald-500"
-                }>
-                  {currentQuestion.difficulty}
-                </span>
-              </div>
-
-              <h2 className="mt-3.5 text-[1.15rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-xl">
-                {promptParts ? (
-                  <>
-                    <span className="command-word-highlight">{promptParts.highlighted}</span>
-                    {promptParts.rest}
-                  </>
-                ) : (
-                  currentQuestion.prompt
-                )}
-              </h2>
-
-              {commandWord ? (
-                <div className="mt-3.5 inline-flex items-center gap-2.5 rounded-xl bg-accent/[0.04] px-3.5 py-2">
-                  <span className="command-word-badge !py-1 !px-2.5">
-                    <span className="command-word-highlight text-[12px]">{commandWord.word}</span>
-                  </span>
-                  <p className="text-[12px] italic text-slate-500">
-                    {commandWord.guidance}
-                  </p>
-                </div>
-              ) : null}
-            </div>
-
-            {/* Answer section */}
-            <div className="px-6 pb-5 pt-4 sm:px-8 sm:pb-6 sm:pt-5">
-              <div className="mb-2.5 flex items-center justify-between">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Your answer</p>
-                <span className="text-[11px] tabular-nums text-slate-300">
-                  {(answers[currentQuestion.id] ?? "").trim().split(/\s+/).filter(Boolean).length} words
-                </span>
-              </div>
-
-              <textarea
-                value={answers[currentQuestion.id] ?? ""}
-                onChange={(event) =>
-                  setAnswers((current) => ({
-                    ...current,
-                    [currentQuestion.id]: event.target.value,
-                  }))
-                }
-                rows={10}
-                placeholder="Write here…"
-                className="exam-textarea-focus w-full resize-none rounded-xl border border-slate-200/70 bg-slate-50/50 px-4 py-3.5 text-[15px] leading-7 text-slate-900 placeholder:text-slate-300 focus:bg-white focus:outline-none sm:min-h-[240px]"
+      <div className="mx-auto flex w-full max-w-2xl flex-1 flex-col justify-center px-4 py-6 sm:px-6 sm:py-10">
+        <AnimatePresence mode="wait" custom={slideDirection}>
+          {currentQuestion ? (
+            <motion.div
+              key={currentQuestion.id}
+              custom={slideDirection}
+              variants={questionMotionVariants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={reduceMotion ? { duration: 0.15 } : EXAM_QUESTION_TRANSITION}
+              className="relative overflow-hidden rounded-[26px] border border-slate-200/70 bg-white/95 shadow-[0_32px_64px_-28px_rgba(30,27,75,0.18),0_0_0_1px_rgba(15,23,42,0.04),inset_0_1px_0_rgba(255,255,255,0.9)] backdrop-blur-sm"
+            >
+              <motion.div
+                className="absolute inset-x-0 top-0 h-[3px] origin-left bg-gradient-to-r from-violet-500 via-accent to-sky-500"
+                initial={{ scaleX: 0 }}
+                animate={{ scaleX: 1 }}
+                transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
               />
-            </div>
-          </motion.div>
-        ) : null}
+
+              <div className="border-b border-slate-100/90 px-6 pb-5 pt-6 sm:px-8 sm:pb-6 sm:pt-7">
+                <motion.div
+                  className="flex flex-wrap items-center gap-1.5 text-[10px] font-semibold"
+                  initial="hidden"
+                  animate="show"
+                  variants={{
+                    hidden: {},
+                    show: {
+                      transition: { staggerChildren: 0.05, delayChildren: 0.08 },
+                    },
+                  }}
+                >
+                  <motion.span
+                    variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
+                    className="text-slate-400"
+                  >
+                    Question {currentIndex + 1} of {session.questionCount}
+                  </motion.span>
+                  <span className="text-slate-300">·</span>
+                  <motion.span
+                    variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
+                    className="text-amber-600"
+                  >
+                    {currentQuestion.marks} marks
+                  </motion.span>
+                  <span className="text-slate-300">·</span>
+                  <motion.span
+                    variants={{ hidden: { opacity: 0, y: 6 }, show: { opacity: 1, y: 0 } }}
+                    className={
+                      currentQuestion.difficulty === "hard"
+                        ? "text-red-500"
+                        : currentQuestion.difficulty === "medium"
+                          ? "text-amber-500"
+                          : "text-emerald-600"
+                    }
+                  >
+                    {currentQuestion.difficulty}
+                  </motion.span>
+                </motion.div>
+
+                <motion.h2
+                  className="mt-4 text-[1.2rem] font-semibold leading-snug tracking-tight text-slate-900 sm:text-[1.35rem]"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12, duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  {promptParts ? (
+                    <>
+                      <span className="command-word-highlight">{promptParts.highlighted}</span>
+                      {promptParts.rest}
+                    </>
+                  ) : (
+                    currentQuestion.prompt
+                  )}
+                </motion.h2>
+
+                {commandWord ? (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2, duration: 0.32 }}
+                    className="mt-4 inline-flex items-center gap-2.5 rounded-2xl border border-violet-100/80 bg-gradient-to-br from-violet-50/90 to-indigo-50/40 px-3.5 py-2.5 shadow-sm"
+                  >
+                    <span className="command-word-badge !py-1 !px-2.5">
+                      <span className="command-word-highlight text-[12px]">{commandWord.word}</span>
+                    </span>
+                    <p className="text-[12px] leading-snug text-slate-600">{commandWord.guidance}</p>
+                  </motion.div>
+                ) : null}
+              </div>
+
+              <div className="px-6 pb-6 pt-4 sm:px-8 sm:pb-7 sm:pt-5">
+                <div className="mb-2.5 flex items-center justify-between">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Your answer</p>
+                  <motion.span
+                    key={currentWordCount}
+                    initial={{ scale: 1.2, opacity: 0.6 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ type: "spring", stiffness: 420, damping: 22 }}
+                    className="text-[11px] tabular-nums text-slate-400"
+                  >
+                    {currentWordCount} words
+                  </motion.span>
+                </div>
+
+                <motion.div
+                  initial={{ opacity: 0.92, y: 4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.12, duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <textarea
+                    value={answers[currentQuestion.id] ?? ""}
+                    onChange={(event) =>
+                      setAnswers((current) => ({
+                        ...current,
+                        [currentQuestion.id]: event.target.value,
+                      }))
+                    }
+                    rows={10}
+                    placeholder="Write here…"
+                    className="exam-textarea-focus w-full resize-none rounded-2xl border border-slate-200/80 bg-slate-50/60 px-4 py-3.5 text-[15px] leading-7 text-slate-900 shadow-inner placeholder:text-slate-300 transition-shadow duration-200 focus:bg-white focus:shadow-[0_0_0_3px_rgba(99,102,241,0.12)] sm:min-h-[260px]"
+                  />
+                </motion.div>
+              </div>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
 
-      {/* Sticky bottom bar */}
-      <div className="sticky bottom-0 z-20 border-t border-slate-200/60 bg-white/92 backdrop-blur-xl">
-        <div className="mx-auto flex w-full max-w-[680px] items-center justify-between px-4 py-2.5 sm:px-6">
-          <p className="flex items-center gap-1.5 text-[12px] text-slate-400">
-            <CheckCircle2 size={13} className="text-emerald-500" />
-            {answeredCount} / {session.questionCount} with text
-          </p>
-
-          <div className="flex items-center gap-2">
+      <motion.footer
+        initial={{ y: 16, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.45, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+        className="sticky bottom-0 z-20 border-t border-slate-200/50 bg-white/85 shadow-[0_-12px_40px_-20px_rgba(15,23,42,0.1)] backdrop-blur-xl"
+      >
+        <div className="mx-auto w-full max-w-2xl px-4 pt-3 sm:px-6">
+          <div className="mb-2 flex items-center justify-between gap-3">
+            <p className="flex items-center gap-1.5 text-[12px] text-slate-500">
+              <motion.span
+                key={answeredCount}
+                initial={{ scale: 1.2 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 400, damping: 18 }}
+              >
+                <CheckCircle2 size={14} className="text-emerald-500" />
+              </motion.span>
+              <span className="tabular-nums">
+                {answeredCount} / {session.questionCount} with text
+              </span>
+            </p>
+            <span className="text-[10px] font-medium uppercase tracking-wider text-slate-400">Progress</span>
+          </div>
+          <ProgressBar value={answeredCount} max={session.questionCount} size="md" color="accent" className="mb-3" />
+        </div>
+        <div className="mx-auto flex w-full max-w-2xl items-center justify-end gap-2 px-4 pb-3 sm:px-6">
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={() => setCurrentIndex((current) => Math.max(0, current - 1))}
+              onClick={goToPreviousQuestion}
               disabled={currentIndex === 0 || isMarking}
+              className="rounded-xl transition-transform"
             >
               Back
             </Button>
-            {currentIndex + 1 >= session.questionCount ? (
-              <Button size="sm" onClick={finishSession} disabled={isMarking}>
+          </motion.div>
+          {currentIndex + 1 >= session.questionCount ? (
+            <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.97 }}>
+              <Button size="sm" onClick={finishSession} disabled={isMarking} className="rounded-xl shadow-md shadow-violet-500/15">
                 Finish &amp; check
                 <Trophy size={14} />
               </Button>
-            ) : (
+            </motion.div>
+          ) : (
+            <motion.div whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
               <Button
                 size="sm"
                 disabled={isMarking}
-                onClick={() => setCurrentIndex((current) => Math.min(session.questionCount - 1, current + 1))}
+                onClick={goToNextQuestion}
+                className="rounded-xl shadow-md shadow-violet-500/15"
               >
                 Next
                 <ArrowRight size={14} />
               </Button>
-            )}
-          </div>
+            </motion.div>
+          )}
         </div>
-      </div>
+      </motion.footer>
     </motion.div>
   );
 }

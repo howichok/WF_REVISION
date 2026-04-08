@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   evaluateExamConditionsSession,
+  EXAM_CONDITIONS_SESSION_MAX_QUESTIONS,
   mergeGeminiExamMarking,
   type ExamConditionsQuestion,
 } from "@/lib/exam-conditions";
@@ -17,7 +18,7 @@ import {
 
 export const runtime = "nodejs";
 
-const MAX_QUESTIONS = 22;
+const MAX_QUESTIONS = EXAM_CONDITIONS_SESSION_MAX_QUESTIONS;
 const MAX_BODY_BYTES = 900_000;
 
 function jsonError(message: string, status = 400) {

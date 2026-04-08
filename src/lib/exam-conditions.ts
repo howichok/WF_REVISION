@@ -196,13 +196,36 @@ function toExamConditionsQuestion(
   };
 }
 
-function pickQuestionCount(maxCount: number) {
-  if (maxCount <= 10) {
-    return maxCount;
+/** Matches batch marking route limit (single request). */
+export const EXAM_CONDITIONS_SESSION_MAX_QUESTIONS = 22;
+
+function resolveExamConditionsQuestionCount(maxCount: number, requested?: number) {
+  const cap = Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, Math.max(0, maxCount));
+  const defaultCount = maxCount <= 10 ? maxCount : Math.min(20, maxCount);
+
+  if (requested === undefined || requested === null || Number.isNaN(requested)) {
+    return cap === 0 ? 0 : Math.min(defaultCount, cap);
   }
 
-  const upperBound = Math.min(20, maxCount);
-  return 10 + Math.floor(Math.random() * (upperBound - 10 + 1));
+  const rounded = Math.round(Number(requested));
+  if (!Number.isFinite(rounded)) {
+    return cap === 0 ? 0 : Math.min(defaultCount, cap);
+  }
+
+  return cap === 0 ? 0 : Math.max(1, Math.min(cap, rounded));
+}
+
+export function getExamConditionsPoolStats(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  const bundle = getTopicContentBundle(topicId, snapshot);
+  const poolSize = bundle.questions.filter((q) => q.questionType !== "question-bank-section").length;
+  const maxSessionQuestions =
+    poolSize === 0 ? 0 : Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, poolSize);
+  const defaultQuestionCount = resolveExamConditionsQuestionCount(poolSize);
+
+  return { poolSize, maxSessionQuestions, defaultQuestionCount };
 }
 
 function buildDifficultyTargets(questionCount: number) {
@@ -263,6 +286,8 @@ export function generateExamConditionsSession(
   options: {
     preferredQuestionId?: string;
     snapshot?: SharedCurriculumSnapshot | null;
+    /** If omitted, uses default (all when ≤10, else up to 20, capped by pool and {@link EXAM_CONDITIONS_SESSION_MAX_QUESTIONS}). */
+    questionCount?: number;
   } = {}
 ): ExamConditionsSession {
   const bundle = getTopicContentBundle(topicId, options.snapshot);
@@ -284,7 +309,7 @@ export function generateExamConditionsSession(
   const preferred = options.preferredQuestionId
     ? pool.find((question) => question.id === options.preferredQuestionId) ?? null
     : null;
-  const questionCount = pickQuestionCount(pool.length);
+  const questionCount = resolveExamConditionsQuestionCount(pool.length, options.questionCount);
   const targets = buildDifficultyTargets(questionCount);
   const selectedIds = new Set<string>();
   const hardBucket = shuffleArray(pool.filter((question) => question.difficulty === "hard"));
