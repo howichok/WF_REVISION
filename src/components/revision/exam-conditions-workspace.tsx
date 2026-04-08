@@ -17,8 +17,11 @@ import { useAiOverlay } from "@/components/providers/ai-overlay-provider";
 import { Badge, Button, Input, ProgressBar } from "@/components/ui";
 import {
   evaluateExamConditionsSession,
+  EXAM_CONDITIONS_SESSION_MAX_QUESTIONS,
   generateExamConditionsSession,
   getExamConditionsPoolStats,
+  resolveExamConditionsQuestionCount,
+  type ExamConditionsDifficultyMode,
   type ExamConditionsQuestion,
   type ExamConditionsSession,
   type ExamConditionsSessionResult,
@@ -77,6 +80,21 @@ const examQuestionVariants = {
   }),
 };
 
+function difficultyModeLabel(mode: ExamConditionsDifficultyMode): string {
+  switch (mode) {
+    case "mixed":
+      return "Mixed";
+    case "easy":
+      return "Easy";
+    case "medium":
+      return "Medium";
+    case "hard":
+      return "Hard";
+    default:
+      return mode;
+  }
+}
+
 function getDifficultyBadgeVariant(question: ExamConditionsQuestion) {
   if (question.difficulty === "hard") {
     return "danger" as const;
@@ -102,9 +120,29 @@ export function ExamConditionsWorkspace({
     [topicId, sharedCurriculum]
   );
   const [userQuestionCount, setUserQuestionCount] = useState<number | undefined>(undefined);
+  const [difficultyMode, setDifficultyMode] = useState<ExamConditionsDifficultyMode>("mixed");
+
+  const modeMaxQuestions = useMemo(() => {
+    switch (difficultyMode) {
+      case "easy":
+        return Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, poolStats.easyCount);
+      case "medium":
+        return Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, poolStats.mediumCount);
+      case "hard":
+        return Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, poolStats.hardCount);
+      default:
+        return poolStats.maxSessionQuestions;
+    }
+  }, [difficultyMode, poolStats]);
+
+  const defaultCountForMode = useMemo(
+    () => resolveExamConditionsQuestionCount(modeMaxQuestions),
+    [modeMaxQuestions]
+  );
+
   const optionalQuestionCount =
     userQuestionCount === undefined ? undefined : userQuestionCount;
-  const resolvedDisplayCount = userQuestionCount ?? poolStats.defaultQuestionCount;
+  const resolvedDisplayCount = userQuestionCount ?? defaultCountForMode;
 
   const [session, setSession] = useState<ExamConditionsSession | null>(null);
   const [answers, setAnswers] = useState<Record<string, string>>({});
@@ -176,7 +214,17 @@ export function ExamConditionsWorkspace({
 
   useEffect(() => {
     setUserQuestionCount(undefined);
+    setDifficultyMode("mixed");
   }, [topicId]);
+
+  useEffect(() => {
+    if (userQuestionCount === undefined || modeMaxQuestions === 0) {
+      return;
+    }
+    if (userQuestionCount > modeMaxQuestions) {
+      setUserQuestionCount(modeMaxQuestions);
+    }
+  }, [modeMaxQuestions, userQuestionCount]);
 
   useEffect(() => {
     const shouldSuppress = Boolean(session);
@@ -252,6 +300,7 @@ export function ExamConditionsWorkspace({
       preferredQuestionId,
       snapshot: sharedCurriculum,
       questionCount: optionalQuestionCount,
+      difficultyMode,
     });
 
     setSession(nextSession);
@@ -286,6 +335,7 @@ export function ExamConditionsWorkspace({
       preferredQuestionId,
       snapshot: sharedCurriculum,
       questionCount: optionalQuestionCount,
+      difficultyMode,
     });
 
     return (
@@ -351,8 +401,8 @@ export function ExamConditionsWorkspace({
               {topicLabel}
             </h1>
             <p className="mt-2.5 text-[13px] leading-relaxed text-slate-500">
-              Timed session · {previewSession.questionCount} questions · {previewSession.estimatedMinutes} min ·
-              marked after you finish
+              {difficultyMode === "mixed" ? "Mixed difficulty" : `${difficultyModeLabel(difficultyMode)} only`} ·{" "}
+              {previewSession.questionCount} questions · {previewSession.estimatedMinutes} min · marked after you finish
             </p>
           </div>
 
@@ -371,13 +421,50 @@ export function ExamConditionsWorkspace({
               </div>
             </div>
 
+            <div className="mt-6 space-y-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400">Difficulty</p>
+              <div className="flex flex-wrap gap-2">
+                {(
+                  [
+                    { mode: "mixed" as const, label: "Mixed", count: poolStats.poolSize },
+                    { mode: "easy" as const, label: "Easy", count: poolStats.easyCount },
+                    { mode: "medium" as const, label: "Medium", count: poolStats.mediumCount },
+                    { mode: "hard" as const, label: "Hard", count: poolStats.hardCount },
+                  ] as const
+                ).map(({ mode, label, count }) => {
+                  const active = difficultyMode === mode;
+                  const disabled = mode === "mixed" ? poolStats.poolSize === 0 : count === 0;
+                  return (
+                    <button
+                      key={mode}
+                      type="button"
+                      disabled={disabled}
+                      onClick={() => setDifficultyMode(mode)}
+                      className={`rounded-xl border px-3.5 py-2 text-left text-[12px] font-medium transition-all ${
+                        disabled
+                          ? "cursor-not-allowed border-slate-100 bg-slate-50 text-slate-300"
+                          : active
+                            ? "border-violet-300 bg-violet-50 text-violet-900 shadow-sm ring-1 ring-violet-200/60"
+                            : "border-slate-200/80 bg-white text-slate-600 hover:border-slate-300 hover:bg-slate-50/80"
+                      }`}
+                    >
+                      <span className="block">{label}</span>
+                      <span className="mt-0.5 block text-[10px] font-normal tabular-nums text-slate-400">
+                        {count} in topic
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="mt-6">
               <Input
                 type="number"
                 label="Number of questions"
                 min={1}
-                max={Math.max(1, poolStats.maxSessionQuestions)}
-                value={poolStats.maxSessionQuestions === 0 ? "" : resolvedDisplayCount}
+                max={Math.max(1, modeMaxQuestions)}
+                value={modeMaxQuestions === 0 ? "" : resolvedDisplayCount}
                 onChange={(e) => {
                   const raw = e.target.value;
                   if (raw === "") {
@@ -388,15 +475,15 @@ export function ExamConditionsWorkspace({
                   if (!Number.isFinite(value)) {
                     return;
                   }
-                  setUserQuestionCount(
-                    Math.max(1, Math.min(poolStats.maxSessionQuestions, value))
-                  );
+                  setUserQuestionCount(Math.max(1, Math.min(modeMaxQuestions, value)));
                 }}
-                disabled={poolStats.maxSessionQuestions === 0}
+                disabled={modeMaxQuestions === 0}
                 hint={
                   poolStats.poolSize === 0
                     ? "No questions in this topic yet."
-                    : `Between 1 and ${poolStats.maxSessionQuestions} (${poolStats.poolSize} available in this topic).`
+                    : difficultyMode === "mixed"
+                      ? `Between 1 and ${modeMaxQuestions} (full topic pool).`
+                      : `Between 1 and ${modeMaxQuestions} for ${difficultyModeLabel(difficultyMode).toLowerCase()} questions in this topic.`
                 }
                 className="tabular-nums"
               />
@@ -412,15 +499,17 @@ export function ExamConditionsWorkspace({
                 <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">Minutes</p>
               </div>
               <div className="flex-1 rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3 text-center">
-                <p className="text-lg font-bold text-slate-900">AI</p>
-                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">Marking</p>
+                <p className="text-lg font-bold leading-tight text-slate-900">
+                  {difficultyMode === "mixed" ? "Mix" : difficultyModeLabel(difficultyMode)}
+                </p>
+                <p className="mt-0.5 text-[10px] font-medium uppercase tracking-wider text-slate-400">Level</p>
               </div>
             </div>
 
             <Button
               className="mt-7 w-full"
               onClick={startSession}
-              disabled={poolStats.maxSessionQuestions === 0}
+              disabled={modeMaxQuestions === 0}
             >
               <AlarmClock size={15} />
               Start exam

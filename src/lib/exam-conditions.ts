@@ -16,6 +16,9 @@ import {
 
 export type ExamConditionsDifficulty = "easy" | "medium" | "hard";
 
+/** Session mix: all difficulties balanced vs single level only. */
+export type ExamConditionsDifficultyMode = "mixed" | ExamConditionsDifficulty;
+
 export interface ExamConditionsQuestion {
   id: string;
   topicId: string;
@@ -199,7 +202,7 @@ function toExamConditionsQuestion(
 /** Matches batch marking route limit (single request). */
 export const EXAM_CONDITIONS_SESSION_MAX_QUESTIONS = 22;
 
-function resolveExamConditionsQuestionCount(maxCount: number, requested?: number) {
+export function resolveExamConditionsQuestionCount(maxCount: number, requested?: number) {
   const cap = Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, Math.max(0, maxCount));
   const defaultCount = maxCount <= 10 ? maxCount : Math.min(20, maxCount);
 
@@ -220,12 +223,37 @@ export function getExamConditionsPoolStats(
   snapshot?: SharedCurriculumSnapshot | null
 ) {
   const bundle = getTopicContentBundle(topicId, snapshot);
-  const poolSize = bundle.questions.filter((q) => q.questionType !== "question-bank-section").length;
+  let easyCount = 0;
+  let mediumCount = 0;
+  let hardCount = 0;
+
+  for (const question of bundle.questions) {
+    if (question.questionType === "question-bank-section") {
+      continue;
+    }
+    const tier = inferDifficulty(question);
+    if (tier === "easy") {
+      easyCount += 1;
+    } else if (tier === "medium") {
+      mediumCount += 1;
+    } else {
+      hardCount += 1;
+    }
+  }
+
+  const poolSize = easyCount + mediumCount + hardCount;
   const maxSessionQuestions =
     poolSize === 0 ? 0 : Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, poolSize);
   const defaultQuestionCount = resolveExamConditionsQuestionCount(poolSize);
 
-  return { poolSize, maxSessionQuestions, defaultQuestionCount };
+  return {
+    poolSize,
+    maxSessionQuestions,
+    defaultQuestionCount,
+    easyCount,
+    mediumCount,
+    hardCount,
+  };
 }
 
 function buildDifficultyTargets(questionCount: number) {
@@ -288,6 +316,8 @@ export function generateExamConditionsSession(
     snapshot?: SharedCurriculumSnapshot | null;
     /** If omitted, uses default (all when ≤10, else up to 20, capped by pool and {@link EXAM_CONDITIONS_SESSION_MAX_QUESTIONS}). */
     questionCount?: number;
+    /** Default `mixed` uses a balanced hard/medium/easy mix; a single level only picks that tier. */
+    difficultyMode?: ExamConditionsDifficultyMode;
   } = {}
 ): ExamConditionsSession {
   const bundle = getTopicContentBundle(topicId, options.snapshot);
@@ -306,15 +336,35 @@ export function generateExamConditionsSession(
     };
   }
 
+  const difficultyMode: ExamConditionsDifficultyMode = options.difficultyMode ?? "mixed";
+  const eligiblePool =
+    difficultyMode === "mixed" ? pool : pool.filter((question) => question.difficulty === difficultyMode);
+
+  if (eligiblePool.length === 0) {
+    return {
+      topicId,
+      questionCount: 0,
+      estimatedMinutes: 0,
+      questions: [],
+    };
+  }
+
   const preferred = options.preferredQuestionId
-    ? pool.find((question) => question.id === options.preferredQuestionId) ?? null
+    ? eligiblePool.find((question) => question.id === options.preferredQuestionId) ?? null
     : null;
-  const questionCount = resolveExamConditionsQuestionCount(pool.length, options.questionCount);
-  const targets = buildDifficultyTargets(questionCount);
+  const questionCount = resolveExamConditionsQuestionCount(eligiblePool.length, options.questionCount);
+  const targets =
+    difficultyMode === "mixed"
+      ? buildDifficultyTargets(questionCount)
+      : {
+          easy: difficultyMode === "easy" ? questionCount : 0,
+          medium: difficultyMode === "medium" ? questionCount : 0,
+          hard: difficultyMode === "hard" ? questionCount : 0,
+        };
   const selectedIds = new Set<string>();
-  const hardBucket = shuffleArray(pool.filter((question) => question.difficulty === "hard"));
-  const mediumBucket = shuffleArray(pool.filter((question) => question.difficulty === "medium"));
-  const easyBucket = shuffleArray(pool.filter((question) => question.difficulty === "easy"));
+  const hardBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "hard"));
+  const mediumBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "medium"));
+  const easyBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "easy"));
 
   const selected: ExamConditionsQuestion[] = [];
   if (preferred) {
@@ -327,7 +377,7 @@ export function generateExamConditionsSession(
   selected.push(...takeFromBucket(easyBucket, Math.max(0, targets.easy - (preferred?.difficulty === "easy" ? 1 : 0)), selectedIds));
 
   if (selected.length < questionCount) {
-    const fallback = shuffleArray(pool);
+    const fallback = shuffleArray(eligiblePool);
     selected.push(...takeFromBucket(fallback, questionCount - selected.length, selectedIds));
   }
 
