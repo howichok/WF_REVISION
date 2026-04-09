@@ -29,7 +29,7 @@ export default async function TopicAskPage({
       activeMode="ask"
       eyebrow="Simple revision"
       title={`Ask ${topicInfo.label}`}
-      description="The fast revision route for hints, short explanations, official sources, and quick next-step guidance before you move into Exam conditions."
+      description="The fast revision route for hints, short explanations, official sources, and quick next-step guidance before you move into Exam questions."
       aside={
         <Card className="p-5">
           <p className="text-xs font-semibold uppercase tracking-[0.18em] text-muted-foreground">

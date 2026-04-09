@@ -32,10 +32,10 @@ function progressDot(percent: number) {
 
 function buildAnswerCheckHref(topicId: string, questionId?: string) {
   if (!questionId) {
-    return `/revision/${topicId}/exam-conditions`;
+    return `/revision/${topicId}/exam-questions`;
   }
 
-  return `/revision/${topicId}/exam-conditions?questionId=${encodeURIComponent(questionId)}`;
+  return `/revision/${topicId}/exam-questions?questionId=${encodeURIComponent(questionId)}`;
 }
 
 type StudioLane = "simple" | "exam";
@@ -229,19 +229,12 @@ export function TopicPracticeStudio({
 
   const simpleItems: StudioLinkItem[] = [
     {
-      id: "ask",
-      href: `/revision/${topicId}/ask`,
-      title: "Ask coach",
-      description: "Use AI for hints, short explanations, official sources, or the next question.",
-      suggested: suggested === "ask",
-    },
-    {
       id: "recall",
       href: `/revision/${topicId}/recall`,
       title: "Recall cards",
       description: `Retrieve ${bundle.recallCards.length} terms and points before you look at the answers.`,
       progress: recallProgress,
-      suggested: suggested === "recall",
+      suggested: suggested === "recall" || suggested === "ask",
     },
     {
       id: "quiz",
@@ -255,17 +248,18 @@ export function TopicPracticeStudio({
 
   const examItems: StudioLinkItem[] = [
     {
-      id: "exam-conditions",
+      id: "exam-questions",
       href: `${finalAnswerHref}${finalAnswerHref.includes("?") ? "&" : "?"}autoStart=1`,
-      title: "Launch exam conditions",
-      description: `Start a separate timed session with ${bundle.examDrills.length} possible prompts, one question on screen, and end-of-session marking.`,
+      title: "Launch exam questions",
+      description: `Timed full-screen session with ${bundle.examDrills.length} possible prompts, one question on screen, and marking at the end.`,
       progress: examProgress,
       suggested: suggested === "exam-drill" || suggested === "answer-check",
     },
   ];
 
+  const simpleSuggestedId = suggested === "ask" ? "recall" : suggested;
   const simpleFeatured =
-    simpleItems.find((item) => item.id === suggested) ?? simpleItems[0];
+    simpleItems.find((item) => item.id === simpleSuggestedId) ?? simpleItems[0];
   const examFeatured =
     examItems.find((item) => item.id === suggested) ?? examItems[0];
   const simpleSecondary = simpleItems.find((item) => item.id !== simpleFeatured.id) ?? null;
@@ -288,10 +282,10 @@ export function TopicPracticeStudio({
             </h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
               The whole topic now splits into two routes.{" "}
-              <span className="font-medium text-foreground">Simple revision</span> is for fast
-              Q/A, recall, and short explanations.{" "}
-              <span className="font-medium text-foreground">Exam conditions</span> is for
-              planning and then finishing with one fuller written answer that the AI checks.
+              <span className="font-medium text-foreground">Simple revision</span> is for recall
+              and fast Q/A.{" "}
+              <span className="font-medium text-foreground">Exam questions</span> is for
+              a timed paper-style run: several prompts, then AI marking once you finish.
             </p>
           </div>
           <div className="rounded-2xl border border-border/70 bg-background/70 px-4 py-3 shadow-sm">
@@ -307,7 +301,7 @@ export function TopicPracticeStudio({
         <FocusLaneCard
           lane="simple"
           title="Simple revision"
-          description="Quick questions, retrieval, and short AI help when you are still learning or warming up the topic."
+          description="Quick questions and retrieval when you are still learning or warming up the topic."
           statLabel="Revision signal"
           statValue={`${avgSimpleProgress}%`}
           icon={<Search size={18} className="text-accent" />}
@@ -319,8 +313,8 @@ export function TopicPracticeStudio({
 
         <FocusLaneCard
           lane="exam"
-          title="Exam conditions"
-          description="A separate full-screen exam feature with timer, one question at a time, and final checking only at the end."
+          title="Exam questions"
+          description="Full-screen timed session: paper-style questions one at a time, rubric marking only when the paper is done (or time runs out)."
           statLabel="Exam route"
           statValue={highestMarkQuestion ? `${highestMarkQuestion.maxScore}-mark finish` : `${examProgress}% ready`}
           icon={<ClipboardList size={18} className="text-warning" />}
@@ -345,10 +339,10 @@ export function TopicPracticeStudio({
         <div className="rounded-[1.5rem] border border-border/70 bg-background/75 px-4 py-4 shadow-sm">
           <div className="flex items-center gap-2">
             <Sparkles size={15} className="text-warning" />
-            <p className="text-sm font-semibold text-foreground">When to switch to Exam conditions</p>
+            <p className="text-sm font-semibold text-foreground">When to use Exam questions</p>
           </div>
           <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-            Switch once you can explain the core idea and want a timed one-question-at-a-time session instead of guided revision widgets.
+            Use this when you are ready for exam-style pressure: timer on, several questions in sequence, and full marking at the end—not quick Q/A hints.
           </p>
         </div>
 

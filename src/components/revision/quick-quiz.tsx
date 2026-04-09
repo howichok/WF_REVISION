@@ -103,7 +103,7 @@ function getRouteMeta(context: QuickQuizContext) {
       routeTitle: "Test yourself with fast Paper 1 retrieval questions",
       routeFocus: "Simple revision for theory retrieval, terminology, and quick knowledge checks.",
       resultSummary:
-        "Use this route for fast correction first, then move into Exam conditions when you want full written marking.",
+        "Use this route for fast correction first, then move into Exam questions when you want full written marking.",
     };
   }
 
@@ -116,7 +116,7 @@ function getRouteMeta(context: QuickQuizContext) {
       routeTitle: "Test yourself with applied Paper 2 prompts",
       routeFocus: "Simple revision for applied scenarios, short written checks, and exam-style thinking before full marking.",
       resultSummary:
-        "Use this route to warm up applied reasoning before you switch into Exam conditions for a longer marked answer.",
+        "Use this route to warm up applied reasoning before you switch into Exam questions for a longer marked answer.",
     };
   }
 
@@ -129,7 +129,7 @@ function getRouteMeta(context: QuickQuizContext) {
       routeTitle: "Test yourself inside one topic",
       routeFocus: "Simple revision inside one topic without mixing in unrelated paper prompts.",
       resultSummary:
-        "This route is best when you want a tight same-topic score before moving into Exam conditions.",
+        "This route is best when you want a tight same-topic score before moving into Exam questions.",
     };
   }
 
@@ -145,7 +145,7 @@ function getRouteMeta(context: QuickQuizContext) {
       routeFocus:
         "Simple revision using only the topics you picked — good for a focused warm-up before deeper practice.",
       resultSummary:
-        "When you are ready, open one topic for the full practice hub or switch into Exam conditions for timed writing.",
+        "When you are ready, open one topic for the full practice hub or switch into Exam questions for timed writing.",
     };
   }
 
@@ -157,7 +157,7 @@ function getRouteMeta(context: QuickQuizContext) {
     routeTitle: "Test yourself with fast retrieval questions",
     routeFocus: "Simple revision across topics when you want a warm-up before narrowing down.",
     resultSummary:
-      "This route is best when you want broad recall before switching into one topic or full Exam conditions.",
+      "This route is best when you want broad recall before switching into one topic or full Exam questions.",
   };
 }
 
@@ -668,7 +668,7 @@ export function QuickQuiz({
       note:
         stage === "active"
           ? currentQuestion?.type === "short-answer"
-            ? "This is still Simple revision. Switch to Exam conditions when you want a longer marked answer and AI rubric feedback."
+            ? "This is still Simple revision. Switch to Exam questions when you want a longer marked answer and AI rubric feedback."
             : "Quiz mode keeps the overlay lightweight and uses it for progress and next-step guidance only."
           : undefined,
     });
@@ -959,7 +959,7 @@ export function QuickQuiz({
   }
   const TypeIcon = typeIcon[currentQuestion.type];
   const topicInfo = TOPICS.find((topic) => topic.id === currentQuestion.topicId);
-  const examConditionsHref = `/revision/${currentQuestion.topicId}/exam-conditions`;
+  const examQuestionsHref = `/revision/${currentQuestion.topicId}/exam-questions`;
   const acceptedAnswerCues =
     currentQuestion.type === "short-answer"
       ? getAcceptedAnswerCues(currentQuestion)
@@ -1076,7 +1076,7 @@ export function QuickQuiz({
               subtitle={
                 currentQuestion.type === "multiple-choice"
                   ? "Choose the option that best fits the prompt."
-                  : "Write a short answer in your own words, then compare it with the fast cue-based feedback. This is not the full Exam conditions marker."
+                  : "Write a short answer in your own words, then compare it with the fast cue-based feedback. This is not the full Exam questions marker."
               }
               commandWord={cw}
             >
@@ -1093,10 +1093,10 @@ export function QuickQuiz({
                 </Badge>
                 {currentQuestion.type === "short-answer" ? (
                   <Link
-                    href={examConditionsHref}
+                    href={examQuestionsHref}
                     className="inline-flex items-center gap-1 rounded-full border border-warning/20 bg-warning/10 px-2.5 py-1 text-[11px] font-medium text-warning transition-colors hover:bg-warning/15"
                   >
-                    Open Exam conditions
+                    Open Exam questions
                     <ArrowRight size={12} />
                   </Link>
                 ) : null}
@@ -1111,7 +1111,7 @@ export function QuickQuiz({
           description={
             currentQuestion.type === "multiple-choice"
               ? "Select one option before checking the answer."
-              : "Type a short answer for a fast check. Use Exam conditions when you want a full written response and AI marking."
+              : "Type a short answer for a fast check. Use Exam questions when you want a full written response and AI marking."
           }
         >
           <div className="space-y-3">
@@ -1121,14 +1121,14 @@ export function QuickQuiz({
                   Simple revision
                 </p>
                 <p className="mt-1 text-xs leading-relaxed text-foreground/90">
-                  This route gives you a quick written check on one idea. For a fuller 6/8/12-mark style answer with AI rubric feedback, switch to Exam conditions.
+                  This route gives you a quick written check on one idea. For a fuller 6/8/12-mark style answer with AI rubric feedback, switch to Exam questions.
                 </p>
                 <div className="mt-3">
                   <Link
-                    href={examConditionsHref}
+                    href={examQuestionsHref}
                     className="inline-flex items-center gap-1 text-xs font-medium text-warning hover:text-warning/80"
                   >
-                    Open Exam conditions
+                    Open Exam questions
                     <ArrowRight size={12} />
                   </Link>
                 </div>

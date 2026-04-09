@@ -492,7 +492,7 @@ export function RecallPanel({
               }
             : {
                 label: "Check this topic against the mark scheme",
-                href: `/revision/${topicId}/exam-conditions`,
+                href: `/revision/${topicId}/exam-questions`,
               }
         }
         secondaryAction={
@@ -774,7 +774,7 @@ export function ExamDrillPanel({
       surfaceId: overlaySurfaceId,
       topicId,
       topicLabel,
-      modeGroup: "Exam conditions",
+      modeGroup: "Exam questions",
       modeLabel: "Planned exam response",
       prompt: currentDrill.prompt,
       anchorRef: surfaceRef,
@@ -855,7 +855,7 @@ export function ExamDrillPanel({
         lastRating === "ready"
           ? "Drill complete. You are ready to step up to the next same-topic task."
           : "Drill complete. Stay in the same topic and replay the weaker area once more.",
-      note: "This is the planning stage inside Exam conditions, so the feedback stays lightweight and routes you into the next same-topic action.",
+      note: "This is the planning stage inside Exam questions, so the feedback stays lightweight and routes you into the next same-topic action.",
       primaryAction: nextSteps.primary
         ? {
             label: nextSteps.primary.label,
@@ -939,7 +939,7 @@ export function ExamDrillPanel({
         setError(
           saveError instanceof Error
             ? saveError.message
-            : "Unable to save exam-conditions planning progress."
+            : "Unable to save exam-question planning progress."
         );
       } finally {
         setIsSaving(false);
@@ -969,7 +969,7 @@ export function ExamDrillPanel({
     return (
       <Card className="p-5">
         <p className="text-sm text-muted-foreground">
-          No mapped exam-conditions planning prompts are available for this topic yet.
+          No mapped exam-question planning prompts are available for this topic yet.
         </p>
       </Card>
     );
@@ -978,7 +978,7 @@ export function ExamDrillPanel({
   if (sessionComplete) {
     return (
       <LearningOutcomePanel
-        eyebrow="Exam conditions"
+        eyebrow="Exam questions"
         title="Planning round complete"
         summary={`You worked through ${drills.length} planned exam prompts. Use the readiness signal to decide whether to move into the final written answer or repeat guided planning.`}
         tone={getPercentTone(readinessPercent)}
@@ -998,7 +998,7 @@ export function ExamDrillPanel({
         primaryAction={
           toLearningAction(nextSteps.primary) ?? {
             label: "Check this topic against the mark scheme",
-            href: `/revision/${topicId}/exam-conditions`,
+            href: `/revision/${topicId}/exam-questions`,
           }
         }
         secondaryAction={
@@ -1051,15 +1051,15 @@ export function ExamDrillPanel({
     <div ref={surfaceRef}>
       <ActiveLearningLayout
       backHref={`/revision/${topicId}/practice`}
-      railTitle={`${topicLabel} exam conditions`}
+      railTitle={`${topicLabel} exam questions`}
       railSubtitle="Step 1: plan the answer first, then compare it with the checklist and decide whether you are ready for the final written response."
       railIcon={<span className="text-lg">{topicIcon}</span>}
       railItems={railItems}
       railSummary={railSummary}
-      mobileSummaryLabel="Exam conditions"
+      mobileSummaryLabel="Exam questions"
       contextStrip={
         <TaskContextStrip
-          eyebrow="Exam conditions"
+          eyebrow="Exam questions"
           breadcrumb={topicLabel}
           meta={`Prompt ${currentIndex + 1} of ${drills.length}`}
           status={

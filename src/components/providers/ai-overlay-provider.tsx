@@ -39,7 +39,7 @@ type OverlayPhase =
   | "error";
 
 type DockMode = "float" | "snap";
-type RevisionModeGroup = "Exam conditions" | "Simple revision";
+type RevisionModeGroup = "Exam questions" | "Simple revision";
 
 interface RevisionSurfaceRegistration {
   surfaceId: string;
@@ -335,8 +335,8 @@ function getCheckingStatusLine(meta?: OverlaySurfaceMeta | null) {
     return "Scanning the response against the mark scheme...";
   }
 
-  if (meta.modeGroup === "Exam conditions") {
-    return `Scanning ${meta.topicLabel} against the exam-conditions rubric...`;
+  if (meta.modeGroup === "Exam questions") {
+    return `Scanning ${meta.topicLabel} against the exam rubric...`;
   }
 
   return `Scanning ${meta.topicLabel} inside the current simple-revision task...`;
@@ -374,21 +374,21 @@ function getRectFromRef(ref?: RefObject<HTMLElement | null>) {
 }
 
 function getDefaultModeLabel(modeGroup: RevisionModeGroup) {
-  return modeGroup === "Exam conditions" ? "Written response" : "Revision task";
+  return modeGroup === "Exam questions" ? "Written response" : "Revision task";
 }
 
 function getReadyStatusLine(surface: OverlaySurfaceMeta) {
   switch (surface.modeLabel) {
     case "Final written answer":
-      return `Exam conditions are live for ${surface.topicLabel}. Write the full answer, then run the checker.`;
+      return `Exam questions are live for ${surface.topicLabel}. Write the full answer, then run the checker.`;
     case "Planned exam response":
-      return `Exam conditions are live for ${surface.topicLabel}. Plan the answer first, then reveal the checklist.`;
+      return `Exam questions are live for ${surface.topicLabel}. Plan the answer first, then reveal the checklist.`;
     case "Quick written check":
-      return `Simple revision is live for ${surface.topicLabel}. This is a fast written check, not the full exam-conditions marker.`;
+      return `Simple revision is live for ${surface.topicLabel}. This is a fast written check, not the full exam-question rubric marker.`;
     case "Fast Q/A":
       return `Simple revision is live for ${surface.topicLabel}. Use this route for quick correction and retrieval.`;
-    case "Ask coach":
-      return `Simple revision is live for ${surface.topicLabel}. Ask for hints, short explanations, or the next question.`;
+    case "Topic assistant":
+      return `Simple revision is live for ${surface.topicLabel}. Use this surface for focused prompts and short explanations.`;
     case "Recall card":
       return `Simple revision is live for ${surface.topicLabel}. Try to retrieve the answer before you reveal it.`;
     default:
@@ -397,12 +397,12 @@ function getReadyStatusLine(surface: OverlaySurfaceMeta) {
 }
 
 function getReadyNote(surface: OverlaySurfaceMeta) {
-  if (surface.modeGroup === "Exam conditions") {
+  if (surface.modeGroup === "Exam questions") {
     return "This mode is for structured exam work: planning first, then a fuller written response and AI checking.";
   }
 
   if (surface.modeLabel === "Quick written check") {
-    return "Simple revision stays fast here. If you want full rubric-style AI feedback, switch to Exam conditions.";
+    return "Simple revision stays fast here. If you want full rubric-style AI feedback, switch to Exam questions.";
   }
 
   return "The overlay stays global and follows whichever revision mode is currently active.";
@@ -418,7 +418,7 @@ function getBlankResponseHint(surface: OverlaySurfaceMeta) {
       return "Type a short response for a fast cue-based check.";
     case "Fast Q/A":
       return "Pick or type a quick answer and the overlay will stay with this revision route.";
-    case "Ask coach":
+    case "Topic assistant":
       return "Submit one focused prompt and the overlay will track the streamed answer.";
     case "Recall card":
       return "Use the prompt first, then reveal the answer when you are ready.";
@@ -460,8 +460,8 @@ function getInitialSessionState(): OverlaySessionState {
     answerPreview: "",
     wordCount: 0,
     phase: "idle",
-    statusLine: "Hovering until you open a DSD simple-revision or exam-conditions task.",
-    note: "The overlay follows the active mode and only turns into full writing AI on exam-conditions tasks.",
+    statusLine: "Hovering until you open a simple-revision or exam-questions task.",
+    note: "The overlay follows the active mode and only turns into full writing AI on timed exam-question tasks.",
     primaryAction: null,
     secondaryAction: null,
   };
@@ -992,7 +992,7 @@ export function AiOverlayProvider({ children }: { children: React.ReactNode }) {
       statusLine:
         current.phase === "checking"
           ? current.statusLine
-          : "Detached from the current task. Open any simple-revision or exam-conditions route to snap back in.",
+          : "Detached from the current task. Open any simple-revision or exam-questions route to snap back in.",
       note:
         current.phase === "checking"
           ? current.note

@@ -59,6 +59,8 @@ test("ensureCompleteGeminiItems preserves first row per id and fills gaps", () =
     band: "Pass",
     oneLiner: "ok",
     examinerNote: "",
+    whatWentWell: "ok",
+    targetsToImprove: "ok",
     items: [
       {
         id: "q1",
@@ -100,6 +102,8 @@ test("ensureCompleteGeminiItems keeps first duplicate id only", () => {
     band: "Pass",
     oneLiner: "ok",
     examinerNote: "",
+    whatWentWell: "x",
+    targetsToImprove: "y",
     items: [
       { id: "q1", m: 1, why: "a", evidence: [], hit: [], miss: [], fb: "f", level: "none" },
       { id: "q1", m: 3, why: "b", evidence: [], hit: [], miss: [], fb: "f", level: "none" },
@@ -120,6 +124,8 @@ test("mergeGeminiExamMarking clamps marks and can override overall band", () => 
     band: "Pass",
     oneLiner: "Summary",
     examinerNote: "AI note",
+    whatWentWell: "Clear points on q1.",
+    targetsToImprove: "Extend evaluation depth.",
     items: [
       {
         id: "q1",
@@ -141,4 +147,6 @@ test("mergeGeminiExamMarking clamps marks and can override overall band", () => 
   assert.ok(result.examinerNote);
   assert.ok(result.reviews[0].geminiMarking?.why);
   assert.equal(result.reviews[0].geminiMarking?.evidence[0], "quoted");
+  assert.ok(result.sessionClosingFeedback?.whatWentWell);
+  assert.ok(result.sessionClosingFeedback?.targetsToImprove);
 });

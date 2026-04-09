@@ -16,8 +16,8 @@ export default async function TopicAnswerCheckRedirectPage({
   }
 
   const href = nextSearch.size
-    ? `/revision/${topicId}/exam-conditions?${nextSearch.toString()}`
-    : `/revision/${topicId}/exam-conditions`;
+    ? `/revision/${topicId}/exam-questions?${nextSearch.toString()}`
+    : `/revision/${topicId}/exam-questions`;
 
   redirect(href);
 }

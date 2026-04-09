@@ -29,7 +29,7 @@ export default function TopicRecallPage() {
       activeMode="recall"
       eyebrow="Simple revision"
       title={topicInfo.label}
-      description="Recall key terms and curriculum points before you try longer written answers under Exam conditions."
+      description="Recall key terms and curriculum points before longer written work or a timed Exam questions session."
     >
       <RecallPanel
         topicId={topicId}

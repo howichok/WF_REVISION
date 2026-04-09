@@ -305,7 +305,7 @@ export function WrittenAnswerChecker({
       surfaceId: overlaySurfaceId,
       topicId,
       topicLabel,
-      modeGroup: "Exam conditions",
+      modeGroup: "Exam questions",
       modeLabel: "Final written answer",
       prompt: question.prompt,
       anchorRef: responseSurfaceRef,
@@ -887,7 +887,7 @@ export function WrittenAnswerChecker({
   return (
     <ActiveLearningLayout
       backHref={`/revision/${topicId}/practice`}
-      railTitle={`${topicLabel} exam conditions`}
+      railTitle={`${topicLabel} exam questions`}
       railSubtitle="Plan the wording in your head, write one fuller response, then let the deterministic checker mark it."
       railIcon={
         <span className="flex items-center gap-2 text-foreground">
@@ -897,10 +897,10 @@ export function WrittenAnswerChecker({
       }
       railItems={railItems}
       railSummary={railSummary}
-      mobileSummaryLabel="Exam conditions"
+      mobileSummaryLabel="Exam questions"
       contextStrip={
         <TaskContextStrip
-          eyebrow="Exam conditions"
+          eyebrow="Exam questions"
           breadcrumb={
             <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
               {topicIcon ? <span>{topicIcon}</span> : null}

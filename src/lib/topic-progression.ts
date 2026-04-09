@@ -153,16 +153,16 @@ function buildExamDrillHref(topicId: string, drillId?: string) {
   }
 
   return params.size
-    ? `/revision/${topicId}/exam-conditions?${params.toString()}`
-    : `/revision/${topicId}/exam-conditions`;
+    ? `/revision/${topicId}/exam-questions?${params.toString()}`
+    : `/revision/${topicId}/exam-questions`;
 }
 
 function buildAnswerCheckHref(topicId: string, questionId?: string) {
   if (!questionId) {
-    return `/revision/${topicId}/exam-conditions`;
+    return `/revision/${topicId}/exam-questions`;
   }
 
-  return `/revision/${topicId}/exam-conditions?questionId=${encodeURIComponent(questionId)}`;
+  return `/revision/${topicId}/exam-questions?questionId=${encodeURIComponent(questionId)}`;
 }
 
 function getCommandWordId(value?: string | null) {
@@ -369,8 +369,8 @@ export function getTopicPracticeStudioRecommendation(
 
   if (memory?.failStreak && memory.failStreak >= 2) {
     return {
-      suggestedMode: "ask",
-      why: "You hit the same weak area more than once, so the next best move is a scaffold-only same-topic coaching pass before another marked answer.",
+      suggestedMode: "recall",
+      why: "You hit the same weak area more than once — tighten the key terms with recall and quick Q/A before another long marked answer.",
     };
   }
 
@@ -383,8 +383,8 @@ export function getTopicPracticeStudioRecommendation(
 
   if (recallProgress === 0 && examProgress === 0 && quizProgress === 0) {
     return {
-      suggestedMode: "ask",
-      why: "Start with Universal Ask DSD to identify the best same-topic entrypoint before you commit to a practice mode.",
+      suggestedMode: "recall",
+      why: "Start with recall cards to map the key terms, then use Quick Q/A before longer written work.",
     };
   }
 

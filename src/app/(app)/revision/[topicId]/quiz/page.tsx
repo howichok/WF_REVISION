@@ -30,7 +30,7 @@ export default function TopicQuizPage() {
       activeMode="quiz"
       eyebrow="Simple revision"
       title={topicInfo.label}
-      description="Fast Q/A for this topic. Use it to warm up retrieval and short written checks before you switch into Exam conditions."
+      description="Fast Q/A for this topic. Use it to warm up retrieval and short written checks before a timed Exam questions session."
     >
       <QuickQuiz topicId={topicId} />
     </TopicRouteShell>

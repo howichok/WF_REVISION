@@ -526,19 +526,19 @@ function toRelatedResources(
 }
 
 function toRevisionQuestionHref(topicId: string, questionId: string) {
-  return `/revision/${topicId}/exam-conditions?questionId=${encodeURIComponent(questionId)}`;
+  return `/revision/${topicId}/exam-questions?questionId=${encodeURIComponent(questionId)}`;
 }
 
 function toExamDrillHref(topicId: string, drillId?: string) {
   if (!drillId) {
-    return `/revision/${topicId}/exam-conditions`;
+    return `/revision/${topicId}/exam-questions`;
   }
 
-  return `/revision/${topicId}/exam-conditions?drillId=${encodeURIComponent(drillId)}`;
+  return `/revision/${topicId}/exam-questions?drillId=${encodeURIComponent(drillId)}`;
 }
 
-function toExamQuestionsHref(topicId: string) {
-  return `/revision/${topicId}/exam-questions`;
+function toPaperPromptsHref(topicId: string) {
+  return `/revision/${topicId}/paper-prompts`;
 }
 
 function toRelatedQuestions(summary: LocalTopicMatchSummary): TopicIntelligenceRelatedQuestion[] {
@@ -562,7 +562,7 @@ function toRelatedQuestions(summary: LocalTopicMatchSummary): TopicIntelligenceR
       title: entry.title,
       prompt: entry.practicePrompt,
       sourceLabel: entry.sourceLabel,
-      href: toExamQuestionsHref(summary.topicId),
+      href: toPaperPromptsHref(summary.topicId),
       marks: entry.marks,
       kind: "exam-question",
     });
@@ -828,11 +828,11 @@ function buildGroundedSources(grounded: GroundedResearchResponse): TopicIntellig
 function buildAnswerCheckSuggestion(summary: LocalTopicMatchSummary): TopicIntelligenceNextAction {
   const question = summary.rankedRevisionQuestions[0]?.value;
   if (!question) {
-    return buildAction("Open exam conditions", `/revision/${summary.topicId}/exam-conditions`, "route");
+    return buildAction("Open exam questions", `/revision/${summary.topicId}/exam-questions`, "route");
   }
 
   return buildAction(
-    "Open exam conditions",
+    "Open exam questions",
     toRevisionQuestionHref(summary.topicId, question.id),
     "route"
   );
@@ -916,7 +916,7 @@ async function buildGroundedOrFallbackResponse(
       suggestedNextAction:
         baseIntent === "resource-pick"
           ? buildAction("Open topic resources", `/revision/${summary.topicId}/resources`, "route")
-          : buildAction("Open exam questions", toExamQuestionsHref(summary.topicId), "route"),
+          : buildAction("Open past papers", toPaperPromptsHref(summary.topicId), "route"),
       sources: buildLocalSources(summary),
       relatedQuestions: toRelatedQuestions(summary),
       relatedResources: toRelatedResources(summary.resources),
@@ -1019,7 +1019,7 @@ function buildLocalResponse(
       suggestedNextAction:
         drill
           ? buildAction("Try a practice question", toExamDrillHref(summary.topicId, drill.id), "route")
-          : buildAction("Open exam questions", toExamQuestionsHref(summary.topicId), "route"),
+          : buildAction("Open past papers", toPaperPromptsHref(summary.topicId), "route"),
       sources,
       relatedQuestions,
       relatedResources,
@@ -1110,7 +1110,7 @@ function buildLocalResponse(
       suggestedNextAction:
         drill
           ? buildAction("Try a practice question", toExamDrillHref(summary.topicId, drill.id), "route")
-          : buildAction("Open exam conditions", `/revision/${summary.topicId}/exam-conditions`, "route"),
+          : buildAction("Open exam questions", `/revision/${summary.topicId}/exam-questions`, "route"),
       sources,
       relatedQuestions,
       relatedResources,

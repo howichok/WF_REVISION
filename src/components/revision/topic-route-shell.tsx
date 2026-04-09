@@ -4,7 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { Button, Badge } from "@/components/ui";
-import { getTopicNavMode, getTopicRouteItems, type TopicLearningMode } from "@/lib/revision-routes";
+import {
+  getTopicNavMode,
+  getTopicRouteItems,
+  revisionTopicsListHref,
+  type TopicLearningMode,
+} from "@/lib/revision-routes";
 import { getTopicById } from "@/lib/types";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { getSubtopicProgressForTopic } from "@/lib/progress";
@@ -45,9 +50,9 @@ export function TopicRouteShell({
   const topicRoutes = getTopicRouteItems(topicId);
   const activeNavMode = getTopicNavMode(activeMode);
   const topicsListHref =
-    activeNavMode === "exam-conditions"
-      ? "/revision/topics?mode=exam-conditions"
-      : "/revision/topics?mode=simple";
+    activeNavMode === "exam-questions"
+      ? revisionTopicsListHref({ exam: true })
+      : revisionTopicsListHref({ exam: false });
 
   return (
     <div className="space-y-5">

@@ -26,11 +26,12 @@ const GEMINI_MODE_POLICIES: Record<GeminiPolicyMode, GeminiModePolicy> = {
     maxOutputTokens: 720,
     cacheTtlMs: 10 * 60_000,
   },
-  /** One JSON object for a whole exam session (richer per-question JSON: why, evidence, level). */
+  /** Full paper: micro marks + examiner walkthrough + WW/TTI in one JSON object. */
   "exam-session-mark": {
-    timeoutMs: 55_000,
-    maxOutputTokens: 3584,
-    cacheTtlMs: 0,
+    timeoutMs: 90_000,
+    maxOutputTokens: 4096,
+    /** Same answers+questions → no second API call (retries, double submit). */
+    cacheTtlMs: 25 * 60_000,
   },
 };
 

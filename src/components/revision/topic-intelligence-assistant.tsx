@@ -53,7 +53,7 @@ const QUICK_ACTIONS: Array<{
   {
     intent: "answer-check",
     label: "Check my answer",
-    description: "Route into exam-conditions style help.",
+    description: "Route into timed exam-question style help.",
   },
   {
     intent: "resource-pick",
@@ -121,7 +121,7 @@ function getIntentLabel(intent: TopicIntelligenceIntent) {
     case "grounded-answer":
       return "Grounded answer";
     case "answer-check":
-      return "Exam conditions route";
+      return "Exam questions route";
     case "practice-question":
       return "Practice question";
     case "resource-pick":
@@ -245,7 +245,7 @@ export function TopicIntelligenceAssistant({
       topicId,
       topicLabel,
       modeGroup: "Simple revision",
-      modeLabel: "Ask coach",
+      modeLabel: "Topic assistant",
       prompt: overlayPrompt,
       anchorRef: surfaceRef,
     });
@@ -525,7 +525,7 @@ export function TopicIntelligenceAssistant({
               Simple revision coach
             </p>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Use this when you need a fast hint, short explanation, official source, or the next best question before you switch into Exam conditions.
+              Use this when you need a fast hint, short explanation, official source, or the next best question before you switch into Exam questions.
             </p>
           </div>
           <Badge variant="accent">Official-first</Badge>

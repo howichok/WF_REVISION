@@ -5,6 +5,7 @@ import { ArrowRight, Flame, Sparkles, Target } from "lucide-react";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Button, Card } from "@/components/ui";
 import { PageContainer } from "@/components/layout/page-container";
+import { revisionTopicsListHref } from "@/lib/revision-routes";
 
 function getLondonGreeting(): string {
   const now = new Date();
@@ -36,15 +37,15 @@ export default function HomePage() {
 
   const shortcuts = [
     {
-      href: "/revision/topics?mode=simple",
+      href: revisionTopicsListHref({ exam: false }),
       label: "Simple revision",
-      hint: "Topics, quick Q/A, coach",
+      hint: "Topics, recall, quick Q/A",
       icon: Sparkles,
     },
     {
-      href: "/revision/topics?mode=exam-conditions",
-      label: "Exam conditions",
-      hint: "Timed topic session",
+      href: revisionTopicsListHref({ exam: true }),
+      label: "Exam questions",
+      hint: "Timed paper-style session",
       icon: Target,
     },
   ];
@@ -76,7 +77,7 @@ export default function HomePage() {
                 <div className="min-w-0">
                   <h2 className="text-base font-semibold">Repeat revision</h2>
                   <p className="mt-0.5 text-sm text-muted-foreground">
-                    Simple revision or exam conditions — then your topics.
+                    Simple revision or exam questions — then your topics.
                   </p>
                 </div>
               </div>

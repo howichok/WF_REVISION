@@ -9,9 +9,18 @@ import { ExamConditionsLaunchWizard } from "@/components/revision/exam-condition
 import { RevisionFocusNav } from "@/components/revision/revision-focus-nav";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Button, Card } from "@/components/ui";
-import type { ExamConditionsDifficultyMode } from "@/lib/exam-conditions";
+import {
+  serializeExamTopicAllocationsParam,
+  type ExamConditionsDifficultyMode,
+  type ExamQuestionSetSize,
+  type ExamTopicAllocationInput,
+} from "@/lib/exam-conditions";
 import { getPracticeSetId } from "@/lib/practice";
 import { getPracticeSetProgress, getSubtopicProgressForTopic } from "@/lib/progress";
+import {
+  REVISION_TOPICS_MODE_EXAM,
+  isRevisionTopicsExamMode,
+} from "@/lib/revision-routes";
 import { TOPICS, getTopicTree } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -22,33 +31,40 @@ function RevisionTopicsPageContent() {
   const topics = TOPICS.filter((topic) => topic.id !== "esp");
 
   const rawMode = searchParams.get("mode");
-  const examMode = rawMode === "exam-conditions";
+  const fromHub = searchParams.get("from") === "hub";
+  const examMode = isRevisionTopicsExamMode(rawMode);
   const focusMode = examMode ? "exam" : "simple";
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(() => new Set());
+  const [examTopicOrder, setExamTopicOrder] = useState<string[]>([]);
 
   useEffect(() => {
-    if (rawMode === null) {
-      router.replace("/revision/topics?mode=simple", { scroll: false });
-    } else if (rawMode !== "simple" && rawMode !== "exam-conditions") {
-      router.replace("/revision/topics?mode=simple", { scroll: false });
+    const hub = fromHub ? "&from=hub" : "";
+    if (rawMode === "exam-conditions") {
+      router.replace(`/revision/topics?mode=${REVISION_TOPICS_MODE_EXAM}${hub}`, { scroll: false });
+      return;
     }
-  }, [rawMode, router]);
+    if (rawMode === null) {
+      router.replace(`/revision/topics?mode=simple${hub}`, { scroll: false });
+    } else if (rawMode !== "simple" && rawMode !== REVISION_TOPICS_MODE_EXAM) {
+      router.replace(`/revision/topics?mode=simple${hub}`, { scroll: false });
+    }
+  }, [rawMode, router, fromHub]);
 
   useEffect(() => {
     setSelectedIds(new Set());
+    setExamTopicOrder([]);
   }, [examMode]);
 
   const toggleTopic = useCallback(
     (topicId: string) => {
+      if (examMode) {
+        setExamTopicOrder((prev) =>
+          prev.includes(topicId) ? prev.filter((id) => id !== topicId) : [...prev, topicId]
+        );
+        return;
+      }
       setSelectedIds((prev) => {
-        if (examMode) {
-          const next = new Set<string>();
-          if (!prev.has(topicId)) {
-            next.add(topicId);
-          }
-          return next;
-        }
         const next = new Set(prev);
         if (next.has(topicId)) {
           next.delete(topicId);
@@ -67,9 +83,10 @@ function RevisionTopicsPageContent() {
 
   const clearSelection = useCallback(() => {
     setSelectedIds(new Set());
+    setExamTopicOrder([]);
   }, []);
 
-  const selectedCount = selectedIds.size;
+  const selectedCount = examMode ? examTopicOrder.length : selectedIds.size;
   const maxTopics = topics.length;
 
   const startSimpleSession = useCallback(() => {
@@ -79,40 +96,49 @@ function RevisionTopicsPageContent() {
     router.push(`/revision/quick-quiz?topics=${q}&autoStart=1`);
   }, [router, selectedIds]);
 
-  const selectedExamTopicId = examMode && selectedCount === 1 ? [...selectedIds][0] : null;
+  const primaryExamTopicId = examTopicOrder[0] ?? "";
 
   const openExamWithConfig = useCallback(
-    (options: { questionCount: number; difficultyMode: ExamConditionsDifficultyMode }) => {
-      if (!selectedExamTopicId) {
+    (options: {
+      setSize: ExamQuestionSetSize;
+      difficultyMode: ExamConditionsDifficultyMode;
+      allocations: ExamTopicAllocationInput[];
+    }) => {
+      if (!primaryExamTopicId) {
         return;
       }
+      const allocRecord = Object.fromEntries(
+        options.allocations.filter((a) => a.count > 0).map((a) => [a.topicId, a.count])
+      );
       const params = new URLSearchParams({
         autoStart: "1",
-        count: String(options.questionCount),
+        size: String(options.setSize),
         difficulty: options.difficultyMode,
+        alloc: serializeExamTopicAllocationsParam(allocRecord),
       });
-      router.push(`/revision/${selectedExamTopicId}/exam-conditions?${params.toString()}`);
+      router.push(`/revision/${primaryExamTopicId}/exam-questions?${params.toString()}`);
     },
-    [router, selectedExamTopicId]
+    [router, primaryExamTopicId]
   );
 
   const titleSubtitle = useMemo(() => {
     if (examMode) {
       return {
-        title: "Pick one topic",
-        subtitle: "Timed session — one topic, then marking at the end.",
+        title: "Exam questions — pick topics",
+        subtitle:
+          "Choose one or more topics, set a 10 / 20 / 30 question paper, split counts per topic, then run a timed session. Marking runs once at the end.",
       };
     }
     return {
       title: "What do you want to study?",
-      subtitle: "Tick topics, run a quick Q/A mix, or open one topic for coach and recall.",
+      subtitle: "Tick topics for a mixed Quick Q/A run, or open one topic hub for recall and quizzes.",
     };
   }, [examMode]);
 
   return (
     <PageContainer size="lg">
       <div className="space-y-8 sm:space-y-10">
-        <RevisionFocusNav activeMode={focusMode} />
+        <RevisionFocusNav activeMode={focusMode} fromHub={fromHub} />
 
         <header className="space-y-2">
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
@@ -131,10 +157,10 @@ function RevisionTopicsPageContent() {
           <p className="text-sm text-foreground">
             {!examMode && selectedCount > 0
               ? `${selectedCount} / ${maxTopics} selected`
-              : examMode && selectedCount === 1
-                ? "Choose difficulty and number of questions below."
+              : examMode && selectedCount > 0
+                ? "Set paper length and topic split below."
                 : examMode
-                  ? "Choose one topic"
+                  ? "Select at least one topic"
                   : "Select topics or open a single hub below"}
           </p>
           <div className="flex flex-wrap gap-2">
@@ -157,9 +183,9 @@ function RevisionTopicsPageContent() {
                   Quick Q/A
                 </Button>
               </>
-            ) : selectedCount === 1 ? (
+            ) : selectedCount > 0 ? (
               <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
-                Change topic
+                Clear topics
               </Button>
             ) : null}
           </div>
@@ -175,7 +201,7 @@ function RevisionTopicsPageContent() {
                 topic.id,
                 getPracticeSetId(topic.id, "quiz")
               )?.progressPercent ?? 0;
-            const isSelected = selectedIds.has(topic.id);
+            const isSelected = examMode ? examTopicOrder.includes(topic.id) : selectedIds.has(topic.id);
 
             return (
               <Card
@@ -248,13 +274,8 @@ function RevisionTopicsPageContent() {
           })}
         </div>
 
-        {examMode && selectedExamTopicId ? (
-          <ExamConditionsLaunchWizard
-            topicId={selectedExamTopicId}
-            onStart={({ questionCount, difficultyMode }) =>
-              openExamWithConfig({ questionCount, difficultyMode })
-            }
-          />
+        {examMode && examTopicOrder.length > 0 ? (
+          <ExamConditionsLaunchWizard selectedTopicIds={examTopicOrder} onStart={openExamWithConfig} />
         ) : null}
       </div>
     </PageContainer>

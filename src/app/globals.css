@@ -467,7 +467,7 @@ html {
   }
 }
 
-/* ── Exam conditions ────────────────────────────────────────── */
+/* ── Exam questions (timed paper UI) ────────────────────────── */
 @keyframes command-word-shimmer {
   0% { background-position: -200% center; }
   100% { background-position: 200% center; }
@@ -564,6 +564,16 @@ html {
     0 0 20px -8px rgba(103, 92, 241, 0.15);
 }
 
+/* Timed exam paper — neutral, no tutorial styling */
+.exam-paper-textarea {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.exam-paper-textarea:focus {
+  outline: none;
+  border-color: #1e293b;
+  box-shadow: 0 0 0 1px #1e293b;
+}
+
 .exam-nav-progress {
   position: relative;
   overflow: hidden;
@@ -580,11 +590,74 @@ html {
   background-size: 200% auto;
 }
 
+/* ── Results view ──────────────────────────────────────────── */
+@keyframes results-hero-shimmer {
+  0% { background-position: -300% center; }
+  100% { background-position: 300% center; }
+}
+
+@keyframes results-slot-pop {
+  0% { transform: scale(0.85); opacity: 0; }
+  60% { transform: scale(1.05); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes results-glow-pulse {
+  0%, 100% { box-shadow: 0 24px 64px -32px rgba(80, 60, 30, 0.14); }
+  50% { box-shadow: 0 28px 72px -28px rgba(80, 60, 30, 0.2); }
+}
+
+.results-hero-card {
+  animation: results-glow-pulse 4s ease-in-out infinite;
+}
+
+.results-slot-badge {
+  animation: results-slot-pop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.results-slot-badge:nth-child(1) { animation-delay: 0.05s; }
+.results-slot-badge:nth-child(2) { animation-delay: 0.1s; }
+.results-slot-badge:nth-child(3) { animation-delay: 0.15s; }
+.results-slot-badge:nth-child(4) { animation-delay: 0.2s; }
+.results-slot-badge:nth-child(5) { animation-delay: 0.25s; }
+.results-slot-badge:nth-child(6) { animation-delay: 0.3s; }
+
+.results-session-label {
+  background: linear-gradient(
+    110deg,
+    #d97706 0%,
+    #f59e0b 25%,
+    #fbbf24 50%,
+    #f59e0b 75%,
+    #d97706 100%
+  );
+  background-size: 300% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: results-hero-shimmer 4s ease-in-out infinite;
+}
+
+.results-review-card {
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.25s ease;
+}
+.results-review-card:hover {
+  transform: translateY(-1px);
+}
+
+.score-ring-svg {
+  filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.06));
+}
+
 @media (prefers-reduced-motion: reduce) {
   .command-word-highlight { animation: none !important; }
   .command-word-badge { animation: none !important; }
   .exam-timer-warning, .exam-timer-danger { animation: none !important; }
   .exam-question-card { animation: none !important; }
+  .results-hero-card { animation: none !important; }
+  .results-slot-badge { animation: none !important; }
+  .results-session-label { animation: none !important; }
+  .results-review-card { transition: none !important; }
 }
 
 /* ── Noise texture overlay ───────────────────────────────────── */

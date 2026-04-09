@@ -88,32 +88,32 @@ export function TopicOverviewPanel({ topicId }: { topicId: string }) {
 
         <div className="mt-5 grid gap-3 md:grid-cols-3">
           <Link
-            href={`/revision/${topicId}/ask`}
+            href={`/revision/${topicId}/recall`}
             className="rounded-xl border border-accent/20 bg-accent/10 p-4 text-left transition-colors hover:border-accent/35 hover:bg-accent/15"
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
               Start here
             </p>
             <p className="mt-2 text-sm font-semibold text-foreground">
-              Open Universal Ask DSD
+              Recall cards
             </p>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Start with one prompt and let the router decide whether you need a hint, source, answer check, or next question.
+              Retrieve key terms and points from memory before you reveal the answers.
             </p>
           </Link>
 
           <Link
-            href={`/revision/${topicId}/exam-questions`}
+            href={`/revision/${topicId}/paper-prompts`}
             className="rounded-xl border border-border/70 bg-background/75 p-4 text-left shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-accent/20 hover:bg-background"
           >
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">
-              Exam-style practice
+              Past papers
             </p>
             <p className="mt-2 text-sm font-semibold text-foreground">
-              Review mapped paper prompts
+              Mapped paper prompts
             </p>
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Compare this topic against past-paper wording and answer focus.
+              See real paper wording and marks before you run a timed Exam questions session.
             </p>
           </Link>
 

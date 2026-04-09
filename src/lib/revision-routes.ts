@@ -13,22 +13,39 @@ export type TopicLearningMode =
   | "overview"
   | "ask"
   | "practice"
-  | "exam-conditions"
+  | "exam-questions"
   | "recall"
   | "exam-drill"
   | "answer-check"
   | "quiz"
-  | "exam-questions"
+  | "paper-prompts"
   | "resources"
   | "progress";
 
 type TopicRouteNavMode =
   | "overview"
   | "practice"
-  | "exam-conditions"
   | "exam-questions"
+  | "paper-prompts"
   | "resources"
   | "progress";
+
+/** Canonical `mode` on `/revision/topics` for picking a topic for timed exam-question sessions */
+export const REVISION_TOPICS_MODE_EXAM = "exam" as const;
+
+/** Accepts current and legacy query values */
+export function isRevisionTopicsExamMode(value: string | null): boolean {
+  return value === REVISION_TOPICS_MODE_EXAM || value === "exam-conditions";
+}
+
+export function revisionTopicsListHref(options: { exam: boolean; fromHub?: boolean }): string {
+  const params = new URLSearchParams();
+  params.set("mode", options.exam ? REVISION_TOPICS_MODE_EXAM : "simple");
+  if (options.fromHub) {
+    params.set("from", "hub");
+  }
+  return `/revision/topics?${params.toString()}`;
+}
 
 export const REVISION_ROUTE_ITEMS: Array<{
   id: RevisionRouteId;
@@ -83,13 +100,17 @@ export const TOPIC_ROUTE_ITEMS: Array<{
   description?: string;
 }> = [
   { id: "overview", label: "Overview", description: "What this topic covers" },
-  { id: "practice", label: "Simple revision", description: "Ask coach, recall, and quick Q/A" },
+  { id: "practice", label: "Simple revision", description: "Recall cards and quick Q/A" },
   {
-    id: "exam-conditions",
-    label: "Exam conditions",
-    description: "Separate full-screen exam mode with timer and final marking",
+    id: "exam-questions",
+    label: "Exam questions",
+    description: "Timed session: paper-style prompts, timer, marking at the end",
   },
-  { id: "exam-questions", label: "Exam questions", description: "Past-style prompts" },
+  {
+    id: "paper-prompts",
+    label: "Past papers",
+    description: "Browse mapped exam paper prompts for this topic",
+  },
   { id: "resources", label: "Resources", description: "Notes and references" },
   { id: "progress", label: "Progress", description: "Your progress in this topic" },
 ];
@@ -110,8 +131,8 @@ export function getTopicNavMode(mode: TopicLearningMode): TopicRouteNavMode {
     return "practice";
   }
 
-  if (mode === "exam-drill" || mode === "answer-check" || mode === "exam-conditions") {
-    return "exam-conditions";
+  if (mode === "exam-drill" || mode === "answer-check" || mode === "exam-questions") {
+    return "exam-questions";
   }
 
   return mode;
@@ -122,7 +143,7 @@ export function mapLegacyTopicTabToRoute(topicId: string, tab?: string | null) {
     case "practice":
       return getTopicRouteHref(topicId, "practice");
     case "exam-questions":
-      return getTopicRouteHref(topicId, "exam-questions");
+      return getTopicRouteHref(topicId, "paper-prompts");
     case "progress":
       return getTopicRouteHref(topicId, "progress");
     case "key-terms":
@@ -136,4 +157,3 @@ export function mapLegacyTopicTabToRoute(topicId: string, tab?: string | null) {
       return getTopicRouteHref(topicId, "overview");
   }
 }
-

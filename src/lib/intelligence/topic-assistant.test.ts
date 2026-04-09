@@ -70,7 +70,7 @@ test("routes draft answers into answer-check guidance", async () => {
 
   assert.match(response.intent, /answer-check|misconception-fix/);
   assert.equal(response.localOnly, true);
-  assert.ok(response.suggestedNextAction?.href.includes("/answer-check"));
+  assert.ok(response.suggestedNextAction?.href.includes("/exam-questions"));
 });
 
 test("returns a targeted practice question for security", async () => {

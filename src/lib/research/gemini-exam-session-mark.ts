@@ -1,12 +1,43 @@
-import type { GeminiExamMarkResponse } from "@/lib/exam-conditions";
+import { createHash } from "node:crypto";
+import type {
+  ExaminerWalkthroughBeat,
+  GeminiExamMarkItem,
+  GeminiExamMarkResponse,
+} from "@/lib/exam-conditions";
 import { parseItemLevel } from "@/lib/exam-conditions-marking-post";
-import { createGeminiTimeoutSignal, getGeminiModePolicy } from "@/lib/research/gemini-policy";
+import {
+  buildGeminiCacheKey,
+  createGeminiTimeoutSignal,
+  getGeminiModePolicy,
+  readGeminiCachedResponse,
+  writeGeminiCachedResponse,
+} from "@/lib/research/gemini-policy";
 
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY?.trim();
-const GEMINI_MODEL =
-  process.env.GEMINI_EXAM_MARK_MODEL?.trim() ||
-  process.env.GEMINI_COACH_MODEL?.trim() ||
-  "gemini-2.5-flash";
+
+/** Cost-first default; override with GEMINI_EXAM_MARK_MODEL. */
+const GEMINI_EXAM_MARK_MODEL_DEFAULT = "gemini-2.5-flash-lite";
+
+const GEMINI_EXAM_MARK_MODEL =
+  process.env.GEMINI_EXAM_MARK_MODEL?.trim() || GEMINI_EXAM_MARK_MODEL_DEFAULT;
+
+/** One retry when lite fails (rate limits, unsupported feature). */
+const GEMINI_EXAM_MARK_FALLBACK_MODEL =
+  process.env.GEMINI_EXAM_MARK_FALLBACK_MODEL?.trim() || "gemini-2.5-flash";
+
+/** Bumps when prompt/schema shape changes — avoids stale in-memory cache hits. */
+const EXAM_SESSION_MARK_CACHE_VERSION = "v2";
+
+export interface GenerateExamSessionGeminiMarksResult {
+  response: GeminiExamMarkResponse;
+  /** True when the JSON needed repair (missing fields); marks were still applied. */
+  recovered: boolean;
+}
+
+interface GeminiExamMarkCachePayload {
+  response: GeminiExamMarkResponse;
+  recovered: boolean;
+}
 
 interface GeminiContentPart {
   text?: string;
@@ -45,161 +76,293 @@ function compactRow(input: {
   commandWord?: string;
   answer: string;
 }) {
-  const answerCap = input.answer.length > 2800 ? 2200 : 1200;
+  const answerCap = input.answer.length > 2200 ? 1400 : 800;
   return {
     i: input.id,
     x: input.marks,
-    s: input.markSchemeSummary.replace(/\s+/g, " ").trim().slice(0, 780),
-    e: input.expectation.replace(/\s+/g, " ").trim().slice(0, 420),
-    q: input.prompt.replace(/\s+/g, " ").trim().slice(0, 280),
-    cw: (input.commandWord ?? "").replace(/\s+/g, " ").trim().slice(0, 120),
+    s: input.markSchemeSummary.replace(/\s+/g, " ").trim().slice(0, 420),
+    e: input.expectation.replace(/\s+/g, " ").trim().slice(0, 260),
+    q: input.prompt.replace(/\s+/g, " ").trim().slice(0, 180),
+    cw: (input.commandWord ?? "").replace(/\s+/g, " ").trim().slice(0, 80),
     a: input.answer.replace(/\s+/g, " ").trim().slice(0, answerCap),
   };
 }
 
-const ITEM_LEVEL_SCHEMA = {
-  type: "string",
-  enum: ["none", "basic", "clear", "detailed"],
-};
-
 const RESPONSE_SCHEMA = {
   type: "object",
   properties: {
-    band: { type: "string" },
-    oneLiner: { type: "string" },
-    examinerNote: { type: "string" },
     items: {
       type: "array",
       items: {
         type: "object",
         properties: {
           id: { type: "string" },
-          m: { type: "number" },
-          why: { type: "string" },
-          evidence: { type: "array", items: { type: "string" } },
-          hit: { type: "array", items: { type: "string" } },
-          miss: { type: "array", items: { type: "string" } },
-          fb: { type: "string" },
-          level: ITEM_LEVEL_SCHEMA,
+          m: { type: "integer" },
+          rc: {
+            type: "string",
+            enum: ["correct", "partial", "incorrect", "off_topic"],
+          },
+          mk: {
+            type: "array",
+            items: { type: "string" },
+            maxItems: 3,
+          },
         },
-        required: ["id", "m", "why", "evidence", "hit", "miss", "fb", "level"],
+        required: ["id", "m", "rc", "mk"],
         additionalProperties: false,
       },
     },
+    opening: { type: "string" },
+    walkthrough: {
+      type: "array",
+      items: {
+        type: "object",
+        properties: {
+          id: { type: "string" },
+          line: { type: "string" },
+          note: { type: "string" },
+        },
+        required: ["id", "line", "note"],
+        additionalProperties: false,
+      },
+    },
+    band: { type: "string" },
+    oneLiner: { type: "string" },
+    examinerNote: { type: "string" },
+    whatWentWell: { type: "string" },
+    targetsToImprove: { type: "string" },
   },
-  required: ["band", "oneLiner", "examinerNote", "items"],
+  required: [
+    "items",
+    "opening",
+    "walkthrough",
+    "band",
+    "oneLiner",
+    "examinerNote",
+    "whatWentWell",
+    "targetsToImprove",
+  ],
   additionalProperties: false,
 };
 
-const SYSTEM_TEXT =
-  "You are an examiner marking a whole Digital Services Design session in one JSON reply. " +
-  "Credit ONLY ideas clearly present in field a (the student's answer). Do not invent facts they did not write. " +
-  "Use s (mark scheme), e (expectation), q (question), and cw (command word hint: id:guidance) to judge what was asked. " +
-  "Walk the scheme points in s; hit/miss must name specific scheme expectations, not vague praise. " +
-  "Marks m must be whole numbers from 0 to x inclusive (half marks are not used). " +
-  "If the answer is vague or off-topic, award the lower end of the range. " +
-  "why = one or two short sentences: why this mark (what was credited or missing). " +
-  "evidence = up to 3 short quotes or tight paraphrases from a that support hit (empty if none). " +
-  "level = none|basic|clear|detailed matching depth vs x. " +
-  "fb = one feedback line for the student (max 36 words). " +
-  "band = exactly one of: Below, Pass, Merit, Strong — consistent with total marks across items. " +
-  "oneLiner = max 24 words summarising the whole session. " +
-  "examinerNote = one honest line that AI marking is approximate and not a replacement for a real examiner. " +
-  "Output JSON only; every question id in the payload must appear exactly once in items.";
+function buildSystemInstruction(subjectLabel: string): string {
+  const subject = subjectLabel.replace(/\s+/g, " ").trim().slice(0, 96) || "Digital Services & Data";
+  return (
+    `You are a GCSE ${subject} examiner marking one candidate paper in one pass. Output JSON only, no markdown. ` +
+    "Tone: calm, professional, second person; you are going through their script question by question, not giving a vague summary only. " +
+    "Field `items`: for each compact row use student answer `a` and scheme `s`,`e`,`q`,`cw`. Integer `m` from 0 to `x` inclusive. " +
+    "`rc`: correct|partial|incorrect|off_topic. `mk`: max 3 short missing keywords (empty array if none). " +
+    "Field `opening`: 1–2 sentences as if you have just finished reading the whole paper before you comment per question. " +
+    "Field `walkthrough`: one object per question in the SAME ORDER as `items` / payload `items`; `id` must equal that row's `i`. " +
+    "`line` is a short lead-in (e.g. 'On this one you…'); `note` is 2–3 sentences on that answer and the marks. " +
+    "Cover every question; if an answer is empty, say so briefly. " +
+    "Field `band`: one of Below | Pass | Merit | Strong (approximate). " +
+    "`oneLiner`: one sentence overall judgement. `examinerNote`: one short caveat about AI marking limits (max ~200 chars). " +
+    "`whatWentWell` and `targetsToImprove`: whole-paper strengths and next steps (not repeating the walkthrough verbatim)."
+  );
+}
 
-function parseMarkResponse(text: string): GeminiExamMarkResponse {
-  const parsed = JSON.parse(text) as {
-    band?: string;
-    oneLiner?: string;
-    examinerNote?: string;
-    items?: Array<{
-      id?: string;
-      m?: number;
-      why?: string;
-      evidence?: string[];
-      hit?: string[];
-      miss?: string[];
-      fb?: string;
-      level?: string;
-    }>;
-  };
+const REASON_LABEL: Record<string, string> = {
+  correct: "Meets the mark scheme.",
+  partial: "Partial match to the scheme.",
+  incorrect: "Does not meet the scheme.",
+  off_topic: "Off-topic or not addressing the question.",
+};
 
-  if (!parsed.items || !Array.isArray(parsed.items)) {
-    throw new Error("Invalid mark response: missing items.");
-  }
+function expandMicroItem(
+  row: { id?: string; m?: number; rc?: string; mk?: string[] },
+  maxById: Map<string, number>
+): GeminiExamMarkItem {
+  const idKey = String(row.id ?? "");
+  const max = Math.max(1, maxById.get(idKey) ?? 1);
+  const mRaw = typeof row.m === "number" ? row.m : Number(row.m) || 0;
+  const m = Math.max(0, Math.min(max, Math.round(mRaw)));
+  const rc = String(row.rc ?? "incorrect").toLowerCase().trim();
+  const mk = Array.isArray(row.mk)
+    ? row.mk.map((s) => String(s).replace(/\s+/g, " ").trim().slice(0, 72)).filter(Boolean).slice(0, 3)
+    : [];
+
+  const ratio = max > 0 ? m / max : 0;
+  const level =
+    ratio >= 0.85 ? "detailed" : ratio >= 0.55 ? "clear" : ratio >= 0.28 ? "basic" : "none";
+
+  const why = `${REASON_LABEL[rc] ?? REASON_LABEL.incorrect}${mk.length ? ` Gaps: ${mk.join("; ")}.` : ""}`.slice(
+    0,
+    420
+  );
+  const hit =
+    rc === "correct" || rc === "partial"
+      ? ["Aligned with scheme cues"]
+      : [];
+  const fb =
+    mk.length > 0
+      ? `Next: ${mk[0] ?? "review scheme"}.`.slice(0, 200)
+      : (REASON_LABEL[rc] ?? "Check the mark scheme.").slice(0, 200);
 
   return {
-    band: String(parsed.band ?? "Pass").slice(0, 48),
-    oneLiner: String(parsed.oneLiner ?? "").slice(0, 400),
-    examinerNote: String(parsed.examinerNote ?? "").replace(/\s+/g, " ").trim().slice(0, 280),
-    items: parsed.items.map((row) => ({
-      id: String(row.id ?? ""),
-      m: typeof row.m === "number" ? row.m : Number(row.m) || 0,
-      why: String(row.why ?? "").replace(/\s+/g, " ").trim().slice(0, 520),
-      evidence: Array.isArray(row.evidence)
-        ? row.evidence.map((line) => String(line).replace(/\s+/g, " ").trim().slice(0, 200)).slice(0, 3)
-        : [],
-      hit: Array.isArray(row.hit) ? row.hit.map((h) => String(h).slice(0, 120)) : [],
-      miss: Array.isArray(row.miss) ? row.miss.map((h) => String(h).slice(0, 120)) : [],
-      fb: String(row.fb ?? "").slice(0, 400),
-      level: parseItemLevel(row.level),
-    })),
+    id: idKey,
+    m,
+    hit,
+    miss: mk.length > 0 ? mk : rc === "correct" ? [] : ["Gap vs scheme"],
+    fb,
+    why,
+    evidence: [],
+    level: parseItemLevel(level),
   };
 }
 
-export async function generateExamSessionGeminiMarks(
-  rows: Array<{
-    id: string;
-    marks: number;
-    prompt: string;
-    expectation: string;
-    markSchemeSummary: string;
-    commandWord?: string;
-    answer: string;
-  }>
-): Promise<GeminiExamMarkResponse> {
+function normaliseWalkthrough(
+  raw: unknown,
+  orderedIds: string[]
+): ExaminerWalkthroughBeat[] {
+  if (!Array.isArray(raw)) {
+    return orderedIds.map((id) => ({
+      id,
+      line: "",
+      note: "",
+    }));
+  }
+
+  const byId = new Map<string, ExaminerWalkthroughBeat>();
+  for (const row of raw) {
+    if (!row || typeof row !== "object") {
+      continue;
+    }
+    const o = row as { id?: string; line?: string; note?: string };
+    const id = String(o.id ?? "").trim();
+    if (!id || byId.has(id)) {
+      continue;
+    }
+    byId.set(id, {
+      id,
+      line: String(o.line ?? "").replace(/\s+/g, " ").trim(),
+      note: String(o.note ?? "").replace(/\s+/g, " ").trim(),
+    });
+  }
+
+  return orderedIds.map((id) => {
+    const w = byId.get(id);
+    if (w) {
+      return w;
+    }
+    return { id, line: "", note: "" };
+  });
+}
+
+/**
+ * Lenient parse: keeps marks when the model returns valid `items` but omits or mistypes prose fields.
+ * Returns null when JSON is invalid or `items` cannot be read (caller may retry the API).
+ */
+function tryParseExamMarkResponse(
+  text: string,
+  maxById: Map<string, number>,
+  orderedIds: string[]
+): GenerateExamSessionGeminiMarksResult | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return null;
+  }
+
+  if (!parsed || typeof parsed !== "object") {
+    return null;
+  }
+
+  const p = parsed as Record<string, unknown>;
+  if (!Array.isArray(p.items) || p.items.length === 0) {
+    return null;
+  }
+
+  let recovered = false;
+  if (!Array.isArray(p.walkthrough)) {
+    recovered = true;
+  }
+
+  const strField = (key: string): string => {
+    if (!(key in p)) {
+      recovered = true;
+      return "";
+    }
+    const v = p[key];
+    if (typeof v !== "string") {
+      if (v !== undefined && v !== null) {
+        recovered = true;
+      }
+      return "";
+    }
+    return v.replace(/\s+/g, " ").trim();
+  };
+
+  try {
+    const items = (p.items as unknown[]).map((row) =>
+      expandMicroItem(row as { id?: string; m?: number; rc?: string; mk?: string[] }, maxById)
+    );
+
+    return {
+      recovered,
+      response: {
+        band: strField("band"),
+        oneLiner: strField("oneLiner"),
+        examinerNote: strField("examinerNote"),
+        whatWentWell: strField("whatWentWell"),
+        targetsToImprove: strField("targetsToImprove"),
+        opening: strField("opening"),
+        walkthrough: normaliseWalkthrough(p.walkthrough, orderedIds),
+        items,
+      },
+    };
+  } catch {
+    return null;
+  }
+}
+
+async function callGeminiExamMark(
+  model: string,
+  userPayload: string,
+  policy: ReturnType<typeof getGeminiModePolicy>,
+  systemInstruction: string
+): Promise<string> {
   if (!GEMINI_API_KEY) {
     throw new Error("Missing GEMINI_API_KEY.");
   }
 
-  if (rows.length === 0) {
-    throw new Error("No items to mark.");
+  const useThinkingOff = model.includes("2.5-flash") && !model.includes("lite");
+
+  const generationConfig: Record<string, unknown> = {
+    temperature: 0,
+    topP: 0.9,
+    candidateCount: 1,
+    maxOutputTokens: policy.maxOutputTokens,
+    responseMimeType: "application/json",
+    responseJsonSchema: RESPONSE_SCHEMA,
+  };
+  if (useThinkingOff) {
+    generationConfig.thinkingConfig = { thinkingBudget: 0 };
   }
 
-  if (rows.length > 22) {
-    throw new Error("Too many questions for one marking request.");
-  }
-
-  const policy = getGeminiModePolicy("exam-session-mark");
-  const compact = rows.map(compactRow);
-  const userPayload = JSON.stringify({ topic: "DSD", n: compact.length, items: compact });
+  const body = {
+    systemInstruction: {
+      parts: [{ text: systemInstruction }],
+    },
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: userPayload }],
+      },
+    ],
+    generationConfig,
+  };
 
   const response = await fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent`,
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
     {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
         "x-goog-api-key": GEMINI_API_KEY,
       },
-      body: JSON.stringify({
-        systemInstruction: {
-          parts: [{ text: SYSTEM_TEXT }],
-        },
-        contents: [
-          {
-            role: "user",
-            parts: [{ text: userPayload }],
-          },
-        ],
-        generationConfig: {
-          temperature: 0.12,
-          topP: 0.85,
-          maxOutputTokens: policy.maxOutputTokens,
-          responseMimeType: "application/json",
-          responseJsonSchema: RESPONSE_SCHEMA,
-        },
-      }),
+      body: JSON.stringify(body),
       cache: "no-store",
       signal: createGeminiTimeoutSignal("exam-session-mark"),
     }
@@ -214,6 +377,103 @@ export async function generateExamSessionGeminiMarks(
   if (!responseText) {
     throw new Error("Gemini returned empty marking response.");
   }
+  return responseText;
+}
 
-  return parseMarkResponse(responseText);
+export async function generateExamSessionGeminiMarks(
+  rows: Array<{
+    id: string;
+    marks: number;
+    prompt: string;
+    expectation: string;
+    markSchemeSummary: string;
+    commandWord?: string;
+    answer: string;
+  }>,
+  options?: { subjectLabel?: string }
+): Promise<GenerateExamSessionGeminiMarksResult> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("Missing GEMINI_API_KEY.");
+  }
+
+  if (rows.length === 0) {
+    throw new Error("No items to mark.");
+  }
+
+  if (rows.length > 30) {
+    throw new Error("Too many questions for one marking request.");
+  }
+
+  const policy = getGeminiModePolicy("exam-session-mark");
+  const compact = rows.map(compactRow);
+  const orderedIds = rows.map((r) => r.id);
+  const subjectLabel = (options?.subjectLabel ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+  const systemInstruction = buildSystemInstruction(subjectLabel);
+
+  const userPayload = JSON.stringify({
+    topic: "exam",
+    subjectLabel,
+    n: compact.length,
+    items: compact,
+    questionOrderIds: orderedIds,
+  });
+  const maxById = new Map(rows.map((r) => [r.id, r.marks]));
+  const payloadHash = createHash("sha256").update(userPayload).digest("hex");
+
+  let usedModel = GEMINI_EXAM_MARK_MODEL;
+  const tryCacheKey = buildGeminiCacheKey(
+    "exam-session-mark",
+    EXAM_SESSION_MARK_CACHE_VERSION,
+    usedModel,
+    payloadHash
+  );
+  const cached = readGeminiCachedResponse<GeminiExamMarkCachePayload>(tryCacheKey);
+  if (cached?.response) {
+    return { response: cached.response, recovered: Boolean(cached.recovered) };
+  }
+
+  let responseText: string;
+  try {
+    responseText = await callGeminiExamMark(GEMINI_EXAM_MARK_MODEL, userPayload, policy, systemInstruction);
+  } catch (primaryError) {
+    if (GEMINI_EXAM_MARK_FALLBACK_MODEL && GEMINI_EXAM_MARK_FALLBACK_MODEL !== GEMINI_EXAM_MARK_MODEL) {
+      usedModel = GEMINI_EXAM_MARK_FALLBACK_MODEL;
+      const fbKey = buildGeminiCacheKey(
+        "exam-session-mark",
+        EXAM_SESSION_MARK_CACHE_VERSION,
+        usedModel,
+        payloadHash
+      );
+      const fbCached = readGeminiCachedResponse<GeminiExamMarkCachePayload>(fbKey);
+      if (fbCached?.response) {
+        return { response: fbCached.response, recovered: Boolean(fbCached.recovered) };
+      }
+      responseText = await callGeminiExamMark(usedModel, userPayload, policy, systemInstruction);
+    } else {
+      throw primaryError;
+    }
+  }
+
+  let outcome = tryParseExamMarkResponse(responseText, maxById, orderedIds);
+  if (!outcome) {
+    responseText = await callGeminiExamMark(usedModel, userPayload, policy, systemInstruction);
+    outcome = tryParseExamMarkResponse(responseText, maxById, orderedIds);
+  }
+
+  if (!outcome) {
+    throw new Error(
+      "The marking service returned data we could not read. Your answers are safe — try submitting again in a moment."
+    );
+  }
+
+  const cachePayload: GeminiExamMarkCachePayload = {
+    response: outcome.response,
+    recovered: outcome.recovered,
+  };
+  writeGeminiCachedResponse(
+    "exam-session-mark",
+    buildGeminiCacheKey("exam-session-mark", EXAM_SESSION_MARK_CACHE_VERSION, usedModel, payloadHash),
+    cachePayload
+  );
+  return outcome;
 }

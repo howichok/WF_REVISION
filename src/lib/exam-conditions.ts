@@ -1,5 +1,6 @@
 import type { QuestionMetadata } from "@/data/curriculum";
 import { getMarkSchemeConceptsForQuestion, getTopicContentBundle } from "@/lib/content";
+import { getTopicById } from "@/lib/types";
 import {
   evaluatePracticeShortAnswer,
   type PracticeShortAnswerEvaluation,
@@ -55,9 +56,28 @@ export interface ExamConditionsSession {
   estimatedMinutes: number;
   questions: ExamConditionsQuestion[];
   pinnedQuestionId?: string;
+  /** Chosen paper size before pool capping (10 / 20 / 30). */
+  plannedQuestionCount?: number;
+  /** Per-topic counts actually drawn (single- or multi-topic). */
+  topicMix?: Array<{ topicId: string; label: string; count: number }>;
 }
 
 export type ExamGeminiItemLevel = "none" | "basic" | "clear" | "detailed";
+
+export interface ExamMarkingSessionMeta {
+  usedGemini: boolean;
+  /** When AI was not called but could have been — short reason for the student. */
+  aiSkippedNote?: string;
+  /** Questions scored by the model in this request (rest used fast local). */
+  geminiQuestionCount?: number;
+  /** Questions scored only with the fast local checker. */
+  localQuestionCount?: number;
+  /**
+   * True when the model JSON was repaired (e.g. missing examiner fields) but per-question marks were kept.
+   * Optional note for support; students usually only see aiSkippedNote when relevant.
+   */
+  markingResponseRecovered?: boolean;
+}
 
 export interface ExamConditionsSessionResult {
   reviews: ExamConditionsReview[];
@@ -73,6 +93,15 @@ export interface ExamConditionsSessionResult {
   bandOverriddenToMatchMarks?: boolean;
   /** Optional note from the model about limitations of AI marking. */
   examinerNote?: string;
+  examMarkingMeta?: ExamMarkingSessionMeta;
+  /** Whole-paper closing feedback (AI when Gemini; heuristic when local). */
+  sessionClosingFeedback?: {
+    whatWentWell: string;
+    targetsToImprove: string;
+  };
+  /** Examiner voice-over (from the same Gemini response as marks). */
+  examinerOpening?: string;
+  examinerWalkthrough?: ExaminerWalkthroughBeat[];
 }
 
 export interface ExamConditionsReview {
@@ -103,11 +132,26 @@ export interface GeminiExamMarkItem {
   level?: ExamGeminiItemLevel;
 }
 
+/** One step of the examiner “walking through” the paper (same order as questions). */
+export interface ExaminerWalkthroughBeat {
+  id: string;
+  /** Short lead-in, e.g. “On this one you…” */
+  line: string;
+  /** Voice note on that answer (2–3 sentences). */
+  note: string;
+}
+
 export interface GeminiExamMarkResponse {
   band: string;
   oneLiner: string;
   items: GeminiExamMarkItem[];
   examinerNote?: string;
+  whatWentWell?: string;
+  targetsToImprove?: string;
+  /** Examiner opens the review. */
+  opening?: string;
+  /** Per-question voice — must cover every question id once, session order. */
+  walkthrough?: ExaminerWalkthroughBeat[];
 }
 
 function uniqueStrings(values: Array<string | null | undefined>) {
@@ -212,9 +256,90 @@ function toExamConditionsQuestion(
   };
 }
 
-/** Matches batch marking route limit (single request). */
-export const EXAM_CONDITIONS_SESSION_MAX_QUESTIONS = 22;
+/** Matches batch marking route limit (single Gemini request). */
+export const EXAM_CONDITIONS_SESSION_MAX_QUESTIONS = 30;
+/** Exam Questions sessions aim for at least this many when the pool allows. */
+export const EXAM_CONDITIONS_SESSION_MIN_QUESTIONS = 5;
 
+export const EXAM_QUESTION_SET_SIZES = [10, 20, 30] as const;
+export type ExamQuestionSetSize = (typeof EXAM_QUESTION_SET_SIZES)[number];
+
+export function isExamQuestionSetSize(value: number): value is ExamQuestionSetSize {
+  return value === 10 || value === 20 || value === 30;
+}
+
+export function parseExamQuestionSetSizeParam(raw: string | null | undefined): ExamQuestionSetSize | undefined {
+  if (raw == null || raw === "") {
+    return undefined;
+  }
+  const n = Number.parseInt(raw, 10);
+  return isExamQuestionSetSize(n) ? n : undefined;
+}
+
+/** `alloc=topicA:4,topicB:8` (topic ids must not contain `:` or `,`). */
+export function parseExamTopicAllocationsParam(raw: string | null): Record<string, number> | null {
+  if (!raw?.trim()) {
+    return null;
+  }
+  const out: Record<string, number> = {};
+  for (const seg of raw.split(",")) {
+    const t = seg.trim();
+    if (!t) {
+      continue;
+    }
+    const idx = t.lastIndexOf(":");
+    if (idx <= 0 || idx === t.length - 1) {
+      return null;
+    }
+    const topicId = t.slice(0, idx).trim();
+    const n = Number.parseInt(t.slice(idx + 1), 10);
+    if (!topicId || !Number.isFinite(n) || n < 0) {
+      return null;
+    }
+    out[topicId] = n;
+  }
+  return Object.keys(out).length > 0 ? out : null;
+}
+
+export function serializeExamTopicAllocationsParam(alloc: Record<string, number>): string {
+  return Object.entries(alloc)
+    .filter(([, c]) => c > 0)
+    .map(([id, c]) => `${id}:${c}`)
+    .join(",");
+}
+
+export function clampExamCountToPool(setSize: ExamQuestionSetSize, poolCap: number): number {
+  return Math.min(setSize, Math.max(0, poolCap));
+}
+
+/** Start allowed when the pool can deliver at least {@link EXAM_CONDITIONS_SESSION_MIN_QUESTIONS}. */
+export function examSessionMeetsMinimum(poolCap: number, effectiveCount: number): boolean {
+  if (effectiveCount <= 0 || poolCap < EXAM_CONDITIONS_SESSION_MIN_QUESTIONS) {
+    return false;
+  }
+  return effectiveCount >= EXAM_CONDITIONS_SESSION_MIN_QUESTIONS;
+}
+
+/** Evenly split `total` questions across topics (remainder to earlier slots). */
+export function splitExamAllocationsEvenly(topicIds: string[], total: number): Record<string, number> {
+  if (topicIds.length === 0 || total <= 0) {
+    return {};
+  }
+  const base = Math.floor(total / topicIds.length);
+  let rem = total - base * topicIds.length;
+  const out: Record<string, number> = {};
+  for (const id of topicIds) {
+    out[id] = base + (rem > 0 ? 1 : 0);
+    if (rem > 0) {
+      rem -= 1;
+    }
+  }
+  return out;
+}
+
+/**
+ * @deprecated Use {@link clampExamCountToPool} with a set size of 10, 20, or 30.
+ */
 export function resolveExamConditionsQuestionCount(maxCount: number, requested?: number) {
   const cap = Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, Math.max(0, maxCount));
   const defaultCount = maxCount <= 10 ? maxCount : Math.min(20, maxCount);
@@ -269,6 +394,25 @@ export function getExamConditionsPoolStats(
   };
 }
 
+/** Max questions drawable from one topic for Exam Questions (by difficulty mode). */
+export function getTopicExamAllocCap(
+  topicId: string,
+  mode: ExamConditionsDifficultyMode,
+  snapshot?: SharedCurriculumSnapshot | null
+): number {
+  const s = getExamConditionsPoolStats(topicId, snapshot);
+  switch (mode) {
+    case "easy":
+      return Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, s.easyCount);
+    case "medium":
+      return Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, s.mediumCount);
+    case "hard":
+      return Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, s.hardCount);
+    default:
+      return s.maxSessionQuestions;
+  }
+}
+
 function buildDifficultyTargets(questionCount: number) {
   const easeBias = Math.max(0, Math.min(1, (questionCount - 10) / 10));
   const hardTarget = Math.round(questionCount * (0.55 - 0.3 * easeBias));
@@ -313,6 +457,70 @@ function orderQuestionsForSession(questions: ExamConditionsQuestion[]) {
   return [...easy, ...medium, ...hard];
 }
 
+function pickQuestionsForEligiblePool(
+  eligiblePool: ExamConditionsQuestion[],
+  questionCount: number,
+  difficultyMode: ExamConditionsDifficultyMode,
+  preferred: ExamConditionsQuestion | null
+): ExamConditionsQuestion[] {
+  const count = Math.max(0, Math.min(questionCount, eligiblePool.length));
+  if (count === 0) {
+    return [];
+  }
+
+  const targets =
+    difficultyMode === "mixed"
+      ? buildDifficultyTargets(count)
+      : {
+          easy: difficultyMode === "easy" ? count : 0,
+          medium: difficultyMode === "medium" ? count : 0,
+          hard: difficultyMode === "hard" ? count : 0,
+        };
+  const selectedIds = new Set<string>();
+  const hardBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "hard"));
+  const mediumBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "medium"));
+  const easyBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "easy"));
+
+  const selected: ExamConditionsQuestion[] = [];
+  if (preferred) {
+    selectedIds.add(preferred.id);
+    selected.push(preferred);
+  }
+
+  selected.push(
+    ...takeFromBucket(
+      hardBucket,
+      Math.max(0, targets.hard - (preferred?.difficulty === "hard" ? 1 : 0)),
+      selectedIds
+    )
+  );
+  selected.push(
+    ...takeFromBucket(
+      mediumBucket,
+      Math.max(0, targets.medium - (preferred?.difficulty === "medium" ? 1 : 0)),
+      selectedIds
+    )
+  );
+  selected.push(
+    ...takeFromBucket(
+      easyBucket,
+      Math.max(0, targets.easy - (preferred?.difficulty === "easy" ? 1 : 0)),
+      selectedIds
+    )
+  );
+
+  if (selected.length < count) {
+    const fallback = shuffleArray(eligiblePool);
+    selected.push(...takeFromBucket(fallback, count - selected.length, selectedIds));
+  }
+
+  const ordered = orderQuestionsForSession(selected.slice(0, count));
+  if (preferred && ordered.some((question) => question.id === preferred.id)) {
+    return [preferred, ...ordered.filter((question) => question.id !== preferred.id)];
+  }
+  return ordered;
+}
+
 function estimateMinutes(questions: ExamConditionsQuestion[]) {
   const hardCount = questions.filter((question) => question.difficulty === "hard").length;
   const mediumCount = questions.filter((question) => question.difficulty === "medium").length;
@@ -327,7 +535,9 @@ export function generateExamConditionsSession(
   options: {
     preferredQuestionId?: string;
     snapshot?: SharedCurriculumSnapshot | null;
-    /** If omitted, uses default (all when ≤10, else up to 20, capped by pool and {@link EXAM_CONDITIONS_SESSION_MAX_QUESTIONS}). */
+    /** Paper size: 10, 20, or 30 (capped by pool). Default 10. */
+    setSize?: ExamQuestionSetSize;
+    /** @deprecated Use setSize (10/20/30). */
     questionCount?: number;
     /** Default `mixed` uses a balanced hard/medium/easy mix; a single level only picks that tier. */
     difficultyMode?: ExamConditionsDifficultyMode;
@@ -365,40 +575,26 @@ export function generateExamConditionsSession(
   const preferred = options.preferredQuestionId
     ? eligiblePool.find((question) => question.id === options.preferredQuestionId) ?? null
     : null;
-  const questionCount = resolveExamConditionsQuestionCount(eligiblePool.length, options.questionCount);
-  const targets =
-    difficultyMode === "mixed"
-      ? buildDifficultyTargets(questionCount)
-      : {
-          easy: difficultyMode === "easy" ? questionCount : 0,
-          medium: difficultyMode === "medium" ? questionCount : 0,
-          hard: difficultyMode === "hard" ? questionCount : 0,
-        };
-  const selectedIds = new Set<string>();
-  const hardBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "hard"));
-  const mediumBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "medium"));
-  const easyBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "easy"));
 
-  const selected: ExamConditionsQuestion[] = [];
-  if (preferred) {
-    selectedIds.add(preferred.id);
-    selected.push(preferred);
-  }
+  const setSize: ExamQuestionSetSize =
+    options.setSize ??
+    (() => {
+      const n = options.questionCount;
+      if (n === undefined || !Number.isFinite(n)) {
+        return 10;
+      }
+      if (n <= 10) {
+        return 10;
+      }
+      if (n <= 20) {
+        return 20;
+      }
+      return 30;
+    })();
 
-  selected.push(...takeFromBucket(hardBucket, Math.max(0, targets.hard - (preferred?.difficulty === "hard" ? 1 : 0)), selectedIds));
-  selected.push(...takeFromBucket(mediumBucket, Math.max(0, targets.medium - (preferred?.difficulty === "medium" ? 1 : 0)), selectedIds));
-  selected.push(...takeFromBucket(easyBucket, Math.max(0, targets.easy - (preferred?.difficulty === "easy" ? 1 : 0)), selectedIds));
-
-  if (selected.length < questionCount) {
-    const fallback = shuffleArray(eligiblePool);
-    selected.push(...takeFromBucket(fallback, questionCount - selected.length, selectedIds));
-  }
-
-  const ordered = orderQuestionsForSession(selected.slice(0, questionCount));
-  const finalQuestions =
-    preferred && ordered.some((question) => question.id === preferred.id)
-      ? [preferred, ...ordered.filter((question) => question.id !== preferred.id)]
-      : ordered;
+  const targetCount = clampExamCountToPool(setSize, eligiblePool.length);
+  const finalQuestions = pickQuestionsForEligiblePool(eligiblePool, targetCount, difficultyMode, preferred);
+  const topicInfo = getTopicById(topicId);
 
   return {
     topicId,
@@ -406,7 +602,112 @@ export function generateExamConditionsSession(
     estimatedMinutes: estimateMinutes(finalQuestions),
     questions: finalQuestions,
     pinnedQuestionId: preferred?.id,
+    plannedQuestionCount: setSize,
+    topicMix: [
+      {
+        topicId,
+        label: topicInfo?.label ?? topicId,
+        count: finalQuestions.length,
+      },
+    ],
   };
+}
+
+export interface ExamTopicAllocationInput {
+  topicId: string;
+  count: number;
+}
+
+/** Build one session from explicit per-topic counts (sum must equal `setSize`). Questions are shuffled together. */
+export function generateMultiTopicExamSession(
+  allocations: ExamTopicAllocationInput[],
+  options: {
+    /** Requested paper length (10/20/30); may exceed what the pool delivers. */
+    setSize: ExamQuestionSetSize;
+    difficultyMode?: ExamConditionsDifficultyMode;
+    snapshot?: SharedCurriculumSnapshot | null;
+    preferredQuestionId?: string;
+  }
+): ExamConditionsSession {
+  const difficultyMode: ExamConditionsDifficultyMode = options.difficultyMode ?? "mixed";
+  const sum = allocations.reduce((s, a) => s + Math.max(0, a.count), 0);
+  if (sum === 0) {
+    return {
+      topicId: allocations[0]?.topicId ?? "",
+      questionCount: 0,
+      estimatedMinutes: 0,
+      questions: [],
+    };
+  }
+
+  const collected: ExamConditionsQuestion[] = [];
+  const topicMix: Array<{ topicId: string; label: string; count: number }> = [];
+
+  for (const { topicId, count } of allocations) {
+    if (count <= 0) {
+      continue;
+    }
+    const bundle = getTopicContentBundle(topicId, options.snapshot);
+    const pool = shuffleArray(
+      bundle.questions
+        .filter((question) => question.questionType !== "question-bank-section")
+        .map((question) => toExamConditionsQuestion(topicId, question, options.snapshot))
+    );
+    const eligiblePool =
+      difficultyMode === "mixed" ? pool : pool.filter((question) => question.difficulty === difficultyMode);
+
+    const preferred =
+      options.preferredQuestionId &&
+      eligiblePool.some((q) => q.id === options.preferredQuestionId) &&
+      eligiblePool.find((q) => q.id === options.preferredQuestionId)
+        ? eligiblePool.find((q) => q.id === options.preferredQuestionId)!
+        : null;
+
+    const picked = pickQuestionsForEligiblePool(
+      eligiblePool,
+      Math.min(count, eligiblePool.length),
+      difficultyMode,
+      preferred
+    );
+    collected.push(...picked);
+    const topicInfo = getTopicById(topicId);
+    topicMix.push({ topicId, label: topicInfo?.label ?? topicId, count: picked.length });
+  }
+
+  const finalQuestions = shuffleArray(collected);
+  const anchorTopicId = allocations.find((a) => a.count > 0)?.topicId ?? "";
+
+  return {
+    topicId: anchorTopicId,
+    questionCount: finalQuestions.length,
+    estimatedMinutes: estimateMinutes(finalQuestions),
+    questions: finalQuestions,
+    plannedQuestionCount: options.setSize,
+    topicMix,
+  };
+}
+
+function extractMarkSchemeSummaryCues(summary: string): string[] {
+  const raw = summary.replace(/\s+/g, " ").trim();
+  if (!raw) {
+    return [];
+  }
+  const segments = raw.split(/\s*\|\s*/);
+  const out: string[] = [];
+  for (const segment of segments) {
+    const t = segment.trim();
+    if (t.length >= 14) {
+      out.push(t);
+    }
+    const colon = t.indexOf(":");
+    if (colon > 0 && colon < t.length - 4) {
+      const after = t.slice(colon + 1).trim();
+      if (after.length >= 10) {
+        out.push(after);
+      }
+    }
+  }
+  return uniqueStrings(out).slice(0, 12);
 }
 
 function buildEvaluationQuestion(question: ExamConditionsQuestion) {
@@ -415,13 +716,16 @@ function buildEvaluationQuestion(question: ExamConditionsQuestion) {
       ? (question.paper as PracticePaper)
       : undefined;
 
+  const summaryCues = extractMarkSchemeSummaryCues(question.markSchemeSummary);
+  const acceptableAnswers = uniqueStrings([...question.acceptableAnswers, ...summaryCues]);
+
   return {
     id: `exam-session-${question.id}`,
     topicId: question.topicId,
     type: "short-answer" as const,
     question: question.prompt,
-    correctAnswer: question.acceptableAnswers[0] ?? question.expectation,
-    acceptableAnswers: question.acceptableAnswers,
+    correctAnswer: acceptableAnswers[0] ?? question.expectation,
+    acceptableAnswers,
     explanation: question.expectation,
     difficulty: question.difficulty,
     sourceLabel: question.sourceLabel,
@@ -489,7 +793,7 @@ export function evaluateExamConditionsSession(
     const answer = answers[question.id] ?? "";
     const evaluation = evaluateExamConditionsQuestion(question, answer);
 
-    return {
+    const row: ExamConditionsReview = {
       question,
       answer,
       evaluation: evaluation.evaluation,
@@ -497,6 +801,12 @@ export function evaluateExamConditionsSession(
       maxScore: evaluation.maxScore,
       scorePercent: evaluation.scorePercent,
     };
+
+    if (answer.trim()) {
+      row.geminiMarking = buildLocalExaminerMarking(evaluation.evaluation, evaluation.maxScore);
+    }
+
+    return row;
   });
 
   const totalScore = roundToTenth(reviews.reduce((sum, review) => sum + review.score, 0));
@@ -513,6 +823,8 @@ export function evaluateExamConditionsSession(
     markingProvider: "local",
     overallBand: bandFromPercent(scorePercent),
     overallSummary: localOverallSummary(scorePercent, answeredCount, questions.length),
+    examMarkingMeta: { usedGemini: false },
+    sessionClosingFeedback: buildLocalSessionClosingFeedback(reviews),
   };
 }
 
@@ -520,11 +832,62 @@ function bandFromPercent(pct: number): string {
   if (pct >= 75) return "Strong";
   if (pct >= 55) return "Merit";
   if (pct >= 35) return "Pass";
-  return "Build up";
+  return "Below";
 }
 
 function localOverallSummary(pct: number, answered: number, total: number): string {
-  return `${pct}% · ${answered}/${total} attempted · local cue-based marker.`;
+  return `${pct}% · ${answered}/${total} answered · cue + rubric summary marker.`;
+}
+
+/** Fallback when the session-level AI closing call fails or is off. */
+export function buildLocalSessionClosingFeedback(reviews: ExamConditionsReview[]): {
+  whatWentWell: string;
+  targetsToImprove: string;
+} {
+  const answered = reviews.filter((r) => r.answer.trim().length > 0);
+  const strong = answered.filter((r) => r.scorePercent >= 72);
+  const weak = reviews.filter((r) => !r.answer.trim() || r.scorePercent < 45);
+
+  const whatWentWell =
+    strong.length >= 2
+      ? `You showed solid understanding on ${strong.length} questions — keep linking those ideas to the command words.`
+      : strong.length === 1
+        ? "There is clear strength in at least one answer; build the same depth across the rest of the paper."
+        : "You attempted the paper; next time foreground precise, scheme-linked points in every response.";
+
+  const targetsToImprove =
+    weak.length >= 3
+      ? `${weak.length} responses need more detail or were left thin — aim for one concrete point per mark and answer every part of the prompt.`
+      : weak.length > 0
+        ? "Tighten weaker answers with specific vocabulary from the mark scheme and short, relevant examples."
+        : "Add one extra developed idea on higher-mark questions to push into the next band.";
+
+  return { whatWentWell, targetsToImprove };
+}
+
+function buildLocalExaminerMarking(
+  evaluation: PracticeShortAnswerEvaluation,
+  scaledMaxScore: number
+): NonNullable<ExamConditionsReview["geminiMarking"]> {
+  const ratio = scaledMaxScore > 0 ? evaluation.score / scaledMaxScore : 0;
+  const level: ExamGeminiItemLevel =
+    ratio >= 0.85 ? "detailed" : ratio >= 0.58 ? "clear" : ratio >= 0.28 ? "basic" : "none";
+
+  const fromSlots = evaluation.slotBreakdown
+    .filter((slot) => slot.matchedEvidence.length > 0)
+    .flatMap((slot) => slot.matchedEvidence.map((c) => c.slice(0, 140)));
+
+  const evidence = uniqueStrings([
+    ...evaluation.matchedSlots.map((s) => s.slice(0, 140)),
+    ...fromSlots,
+  ]).slice(0, 3);
+
+  return {
+    why: evaluation.feedback.replace(/\s+/g, " ").trim().slice(0, 520),
+    evidence,
+    level,
+    lowConfidence: false,
+  };
 }
 
 function verdictFromRatio(ratio: number): {
@@ -639,6 +1002,34 @@ export function mergeGeminiExamMarking(
 
   const bandDecision = reconcileOverallBand(gemini.band ?? "", scorePercent, 1);
   const examinerNote = (gemini.examinerNote ?? "").replace(/\s+/g, " ").trim().slice(0, 280);
+  const ww = (gemini.whatWentWell ?? "").replace(/\s+/g, " ").trim().slice(0, 620);
+  const ti = (gemini.targetsToImprove ?? "").replace(/\s+/g, " ").trim().slice(0, 620);
+  const localClosing = buildLocalSessionClosingFeedback(reviews);
+
+  const walkMap = new Map((gemini.walkthrough ?? []).map((w) => [w.id, w]));
+  const examinerWalkthrough: ExaminerWalkthroughBeat[] = questions.map((q, idx) => {
+    const w = walkMap.get(q.id);
+    const rev = reviews.find((r) => r.question.id === q.id);
+    if (w) {
+      return {
+        id: q.id,
+        line: w.line.replace(/\s+/g, " ").trim().slice(0, 220),
+        note: w.note.replace(/\s+/g, " ").trim().slice(0, 560),
+      };
+    }
+    const fb = rev?.evaluation.feedback ?? rev?.geminiMarking?.why ?? "";
+    return {
+      id: q.id,
+      line: `Question ${idx + 1}.`,
+      note: (fb || "See the mark breakdown below.").replace(/\s+/g, " ").trim().slice(0, 560),
+    };
+  });
+
+  const examinerOpeningRaw = (gemini.opening ?? "").replace(/\s+/g, " ").trim();
+  const examinerOpening =
+    examinerOpeningRaw.length > 0
+      ? examinerOpeningRaw.slice(0, 420)
+      : "I've read your whole paper — let's walk through what you wrote, question by question.";
 
   return {
     reviews,
@@ -654,5 +1045,12 @@ export function mergeGeminiExamMarking(
       .trim()
       .slice(0, 320),
     examinerNote: examinerNote.length > 0 ? examinerNote : undefined,
+    examinerOpening,
+    examinerWalkthrough,
+    examMarkingMeta: { usedGemini: true },
+    sessionClosingFeedback: {
+      whatWentWell: ww.length > 0 ? ww : localClosing.whatWentWell,
+      targetsToImprove: ti.length > 0 ? ti : localClosing.targetsToImprove,
+    },
   };
 }

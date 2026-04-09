@@ -84,12 +84,12 @@ function buildAssistantResult(
   };
 }
 
-test("practice studio recommendation stays on ask first when no practice has started", () => {
+test("practice studio recommendation starts on recall when no practice has started", () => {
   const recommendation = getTopicPracticeStudioRecommendation("security", []);
-  assert.equal(recommendation.suggestedMode, "ask");
+  assert.equal(recommendation.suggestedMode, "recall");
 });
 
-test("practice studio recommendation forces ask after repeated same-topic failures", () => {
+test("practice studio recommendation favors recall after repeated same-topic failures", () => {
   const memory = recordAnswerCheckTopicCoaching({}, {
     topicId: "security",
     questionId: "security-cia-triad-balance",
@@ -104,7 +104,7 @@ test("practice studio recommendation forces ask after repeated same-topic failur
   });
 
   const recommendation = getTopicPracticeStudioRecommendation("security", [], updatedMemory);
-  assert.equal(recommendation.suggestedMode, "ask");
+  assert.equal(recommendation.suggestedMode, "recall");
 });
 
 test("practice studio recommendation escalates through recall, exam-drill, quiz, then answer-check", () => {
@@ -147,7 +147,7 @@ test("answer-check fail routes into same-topic replay before anything else", () 
     revisionProgress: [],
   });
 
-  assert.ok(recommendations.primary?.href.includes("/revision/security/exam-drill"));
+  assert.ok(recommendations.primary?.href.includes("/revision/security/exam-questions"));
   assert.ok(recommendations.primary?.href.includes("drillId="));
   assert.ok(recommendations.secondary?.href.includes("/revision/security/ask?"));
 });
@@ -160,8 +160,8 @@ test("answer-check merit routes into a harder same-topic written answer", () => 
     revisionProgress: [],
   });
 
-  assert.ok(recommendations.primary?.href.includes("/revision/security/answer-check?questionId="));
-  assert.ok(recommendations.secondary?.href.includes("/revision/security/exam-drill"));
+  assert.ok(recommendations.primary?.href.includes("/revision/security/exam-questions?questionId="));
+  assert.ok(recommendations.secondary?.href.includes("/revision/security/exam-questions"));
 });
 
 test("answer-check distinction routes into the next uncovered same-topic point", () => {
@@ -172,7 +172,7 @@ test("answer-check distinction routes into the next uncovered same-topic point",
     revisionProgress: [],
   });
 
-  assert.ok(recommendations.primary?.href.includes("/revision/security/exam-drill"));
+  assert.ok(recommendations.primary?.href.includes("/revision/security/exam-questions"));
   assert.ok(!recommendations.primary?.href.includes("/weak-areas"));
 });
 
@@ -185,7 +185,7 @@ test("exam-drill needs-work replays the same topic before moving on", () => {
     revisionProgress: [],
   });
 
-  assert.ok(recommendations.primary?.href.includes("/revision/security/exam-drill"));
+  assert.ok(recommendations.primary?.href.includes("/revision/security/exam-questions"));
   assert.ok(recommendations.secondary?.href.includes("/revision/security/ask?"));
 });
 
@@ -198,7 +198,7 @@ test("exam-drill ready routes into answer-check for the same topic", () => {
     revisionProgress: [],
   });
 
-  assert.ok(recommendations.primary?.href.includes("/revision/security/answer-check?questionId="));
+  assert.ok(recommendations.primary?.href.includes("/revision/security/exam-questions?questionId="));
 });
 
 test("exam-drill repeated weak area forces a scaffold before another replay", () => {

@@ -7,12 +7,12 @@ import {
   FilePenLine,
   MessageSquare,
   Search,
-  Sparkles,
   Target,
   Zap,
 } from "lucide-react";
 import { motion } from "framer-motion";
 import { Badge } from "@/components/ui";
+import { revisionTopicsListHref } from "@/lib/revision-routes";
 import { cn } from "@/lib/utils";
 
 interface PracticeHubProps {
@@ -38,10 +38,10 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
           Revision
         </p>
         <h1 className="mt-3 text-balance text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
-          Simple revision or exam conditions
+          Simple revision or exam questions
         </h1>
         <p className="mx-auto mt-3 max-w-md text-pretty text-sm leading-relaxed text-muted-foreground">
-          Then choose your topics. Two modes only: quick Q/A and coaching, or timed exam-style writing.
+          Next you pick topics. Either fast recall and Q/A, or a timed run of paper-style questions with marking at the end.
         </p>
       </motion.header>
 
@@ -53,7 +53,7 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
           transition={{ duration: 0.4, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
         >
           <Link
-            href="/revision/topics?mode=simple"
+            href={revisionTopicsListHref({ exam: false, fromHub: true })}
             className={cn(
                 "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-accent/25 bg-gradient-to-br from-accent/12 via-card to-background/80 p-6 shadow-[0_24px_64px_-28px_rgba(139,92,246,0.3)] transition-all duration-300",
                 "hover:-translate-y-1 hover:border-accent/35 hover:shadow-[0_28px_64px_-24px_rgba(139,92,246,0.38)]",
@@ -85,7 +85,7 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
                     </Badge>
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Ask for hints, run recall, and do quick checks while you are still learning the topic.
+                    Run recall, then quick checks while you are still learning the topic.
                   </p>
                 </div>
               </div>
@@ -96,7 +96,6 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
 
             <ul className="relative mt-6 grid gap-2 sm:mt-8">
               {[
-                { icon: Sparkles, label: "Ask coach", hint: "Hints and short explanations" },
                 { icon: Zap, label: "Recall", hint: "Terms and points from memory" },
                 { icon: MessageSquare, label: "Quick Q/A", hint: "Fast checks before long answers" },
               ].map(({ icon: Icon, label, hint }) => (
@@ -124,7 +123,7 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
           transition={{ duration: 0.4, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
         >
           <Link
-            href="/revision/topics?mode=exam-conditions"
+            href={revisionTopicsListHref({ exam: true, fromHub: true })}
             className={cn(
                 "group relative flex h-full flex-col overflow-hidden rounded-[2rem] border border-warning/30 bg-gradient-to-br from-warning/14 via-card to-background/80 p-6 shadow-[0_24px_64px_-28px_rgba(245,158,11,0.26)] transition-all duration-300",
               "hover:-translate-y-1 hover:border-warning/40 hover:shadow-[0_28px_64px_-24px_rgba(245,158,11,0.32)]",
@@ -149,14 +148,14 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="text-xl font-semibold tracking-tight text-foreground">
-                      Exam conditions
+                      Exam questions
                     </h2>
                     <Badge variant="warning" className="font-medium">
-                      Plan + write
+                      Timed session
                     </Badge>
                   </div>
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                    Jump straight into the separate timed exam feature for one topic, with full-screen focus and end-of-session checking.
+                    One topic, full screen, timer on. Work through mapped questions like a paper; AI marking runs once at the end.
                   </p>
                 </div>
               </div>
@@ -167,8 +166,8 @@ export function PracticeHub({ compact = false }: PracticeHubProps) {
 
             <ul className="relative mt-6 grid gap-2 sm:mt-8">
               {[
-                { icon: ClipboardList, label: "Separate exam mode", hint: "Dedicated full-screen session with timer" },
-                { icon: FilePenLine, label: "Final marking at the end", hint: "Write first, then run the checker once" },
+                { icon: ClipboardList, label: "Paper-style flow", hint: "One question on screen at a time, exam-style layout" },
+                { icon: FilePenLine, label: "Marking at the finish", hint: "Complete the paper (or time runs out), then run the checker" },
               ].map(({ icon: Icon, label, hint }) => (
                 <li
                   key={label}

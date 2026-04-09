@@ -6,5 +6,5 @@ export default async function TopicExamDrillRedirectPage({
   params: Promise<{ topicId: string }>;
 }) {
   const { topicId } = await params;
-  redirect(`/revision/${topicId}/exam-conditions`);
+  redirect(`/revision/${topicId}/exam-questions`);
 }
