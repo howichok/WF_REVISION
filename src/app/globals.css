@@ -566,12 +566,67 @@ html {
 
 /* Timed exam paper — neutral, no tutorial styling */
 .exam-paper-textarea {
-  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
 }
 .exam-paper-textarea:focus {
   outline: none;
   border-color: #1e293b;
   box-shadow: 0 0 0 1px #1e293b;
+}
+
+/* Full-bleed exam: seamless answer zone, subtle ruled lines */
+.exam-paper-textarea--immersive {
+  border: none;
+  border-radius: 0;
+  border-bottom: 2px solid rgba(15, 23, 42, 0.1);
+  background-color: rgba(255, 255, 255, 0.42);
+  background-image: linear-gradient(
+    to bottom,
+    rgba(100, 116, 139, 0.2) 1px,
+    transparent 1px
+  );
+  background-size: 100% 1.875rem;
+  background-attachment: local;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.exam-paper-textarea--immersive:focus {
+  outline: none;
+  border-bottom-color: rgba(15, 23, 42, 0.42);
+  background-color: rgba(255, 255, 255, 0.72);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    0 12px 40px -20px rgba(15, 23, 42, 0.18);
+}
+.exam-paper-textarea--immersive::placeholder {
+  color: rgb(148 163 184 / 0.85);
+}
+
+/* Dark mode overrides for the immersive exam textarea */
+.dark .exam-paper-textarea--immersive {
+  border-bottom-color: rgba(226, 232, 240, 0.14);
+  background-color: rgba(15, 23, 42, 0.32);
+  background-image: linear-gradient(
+    to bottom,
+    rgba(148, 163, 184, 0.18) 1px,
+    transparent 1px
+  );
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  color: #e2e8f0;
+}
+.dark .exam-paper-textarea--immersive:focus {
+  border-bottom-color: rgba(226, 232, 240, 0.45);
+  background-color: rgba(15, 23, 42, 0.55);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 12px 40px -20px rgba(0, 0, 0, 0.8);
+}
+.dark .exam-paper-textarea--immersive::placeholder {
+  color: rgb(100 116 139 / 0.85);
+}
+.dark .exam-paper-textarea:focus {
+  border-color: #cbd5e1;
+  box-shadow: 0 0 0 1px #cbd5e1;
 }
 
 .exam-nav-progress {
@@ -649,6 +704,39 @@ html {
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.06));
 }
 
+/* ── Examiner theatre ──────────────────────────────────────── */
+@keyframes examiner-cursor-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.examiner-cursor {
+  animation: examiner-cursor-blink 0.9s ease-in-out infinite;
+  height: 1.1em;
+  vertical-align: text-bottom;
+}
+
+.examiner-theatre {
+  position: relative;
+}
+
+.examiner-theatre::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.7' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.02'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+  border-radius: inherit;
+}
+
+.examiner-section-label {
+  position: relative;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .command-word-highlight { animation: none !important; }
   .command-word-badge { animation: none !important; }
@@ -658,6 +746,7 @@ html {
   .results-slot-badge { animation: none !important; }
   .results-session-label { animation: none !important; }
   .results-review-card { transition: none !important; }
+  .examiner-cursor { animation: none !important; }
 }
 
 /* ── Noise texture overlay ───────────────────────────────────── */
