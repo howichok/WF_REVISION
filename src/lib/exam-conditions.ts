@@ -1,12 +1,19 @@
-import type { QuestionMetadata } from "@/data/curriculum";
+import {
+  CONTENT_SOURCES,
+  type QuestionMetadata,
+} from "@/data/curriculum";
+import type { ContentSourceKind } from "@/data/curriculum/types";
 import { getMarkSchemeConceptsForQuestion, getTopicContentBundle } from "@/lib/content";
-import { getTopicById } from "@/lib/types";
+import { getTopicById, type TopicId } from "@/lib/types";
 import {
   evaluatePracticeShortAnswer,
   type PracticeShortAnswerEvaluation,
 } from "@/lib/practice-evaluator";
 import { extractCommandWord } from "@/lib/command-words";
-import type { SharedCurriculumSnapshot } from "@/lib/shared-curriculum";
+import {
+  resolveSharedCurriculumSnapshot,
+  type SharedCurriculumSnapshot,
+} from "@/lib/shared-curriculum";
 import type { PracticePaper } from "@/lib/practice";
 import {
   ensureCompleteGeminiItems,
@@ -33,12 +40,23 @@ export function parseExamConditionsDifficultyParam(
   return undefined;
 }
 
+/** Where the on-screen stem text came from. */
+export type ExamQuestionStemOrigin = "past-paper" | "paper-set" | "practice";
+
+const CURATED_PAPER_SOURCE_IDS = new Set(["curated-paper1-practice", "curated-paper2-practice"]);
+const WORKSHEET_MICRO_DRILL_SOURCE_IDS = new Set([
+  "teach-csv-data-formats-worksheet",
+  "teach-pack-big-data-worksheet",
+]);
+
 export interface ExamConditionsQuestion {
   id: string;
   topicId: string;
   title: string;
   prompt: string;
   sourceLabel: string;
+  /** Exam series year when known (released papers). */
+  year?: number;
   marks: number;
   questionType: QuestionMetadata["questionType"];
   difficulty: ExamConditionsDifficulty;
@@ -48,6 +66,8 @@ export interface ExamConditionsQuestion {
   evaluationProfile?: QuestionMetadata["evaluationProfile"];
   /** Condensed mark-scheme cues for end-of-session AI marking (single request). */
   markSchemeSummary: string;
+  /** `past-paper` / `paper-set` use exam-style summary text; `practice` uses the shorter practice prompt. */
+  stemOrigin?: ExamQuestionStemOrigin;
 }
 
 export interface ExamConditionsSession {
@@ -55,6 +75,10 @@ export interface ExamConditionsSession {
   questionCount: number;
   estimatedMinutes: number;
   questions: ExamConditionsQuestion[];
+  /** Released past-paper stems in this session. */
+  releasedPastPaperStemCount?: number;
+  /** Past-paper + Pearson-style Paper 1/2 curated sets (closer to exam wording than generic practice). */
+  examStyleStemCount?: number;
   pinnedQuestionId?: string;
   /** Chosen paper size before pool capping (10 / 20 / 30). */
   plannedQuestionCount?: number;
@@ -232,19 +256,175 @@ function buildMarkSchemeSummary(question: QuestionMetadata, snapshot?: SharedCur
     .slice(0, 480);
 }
 
+function getQuestionContentSourceKind(
+  sourceId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+): ContentSourceKind | undefined {
+  return (
+    resolveSharedCurriculumSnapshot(snapshot).sources.find((source) => source.id === sourceId)?.kind ??
+    CONTENT_SOURCES.find((source) => source.id === sourceId)?.kind
+  );
+}
+
+function isCuratedPaperSetSource(question: QuestionMetadata) {
+  return CURATED_PAPER_SOURCE_IDS.has(question.sourceId);
+}
+
+function isWorksheetMicroDrill(question: QuestionMetadata) {
+  const prompt = question.practicePrompt.toLowerCase();
+
+  return (
+    WORKSHEET_MICRO_DRILL_SOURCE_IDS.has(question.sourceId) ||
+    question.id.startsWith("teach-pack-format-snippet-") ||
+    question.id.endsWith("-fix-misconception") ||
+    prompt.includes("format for this snippet") ||
+    prompt.includes("which of the 6 vs best fits")
+  );
+}
+
+function isExamConditionsEligibleQuestion(
+  question: QuestionMetadata,
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  if (question.questionType === "question-bank-section") {
+    return false;
+  }
+
+  if (isWorksheetMicroDrill(question)) {
+    return false;
+  }
+
+  const kind = getQuestionContentSourceKind(question.sourceId, snapshot);
+  if (kind === "past-paper" || isCuratedPaperSetSource(question)) {
+    return true;
+  }
+
+  const marks = question.marks ?? 4;
+  if (marks >= 6) {
+    return true;
+  }
+
+  if (marks >= 4 && question.questionType !== "short-open") {
+    return true;
+  }
+
+  return false;
+}
+
+function getExamEligibleRawQuestions(
+  questions: QuestionMetadata[],
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  const preferred = questions.filter((question) =>
+    isExamConditionsEligibleQuestion(question, snapshot)
+  );
+
+  if (preferred.length > 0) {
+    return preferred;
+  }
+
+  return questions.filter(
+    (question) => question.questionType !== "question-bank-section" && !isWorksheetMicroDrill(question)
+  );
+}
+
+function getExamRawPoolForTopic(
+  topicId: string,
+  questions: QuestionMetadata[],
+  snapshot?: SharedCurriculumSnapshot | null
+) {
+  const directTopicQuestions = questions.filter((question) =>
+    question.legacyTopicIds.includes(topicId as TopicId)
+  );
+  const directEligible = getExamEligibleRawQuestions(directTopicQuestions, snapshot);
+
+  if (directEligible.length > 0) {
+    return directEligible;
+  }
+
+  return getExamEligibleRawQuestions(questions, snapshot);
+}
+
+/**
+ * Past-paper and curated Paper 1/2 sets use the `summary` field (exam-style stem). Other items keep `practicePrompt`.
+ */
+function buildExamDisplayPrompt(
+  question: QuestionMetadata,
+  snapshot?: SharedCurriculumSnapshot | null
+): { prompt: string; stemOrigin: ExamQuestionStemOrigin } {
+  const kind = getQuestionContentSourceKind(question.sourceId, snapshot);
+  if (kind === "past-paper") {
+    const fromSummary = question.summary.replace(/\s+/g, " ").trim();
+    if (fromSummary.length >= 16) {
+      return { prompt: fromSummary, stemOrigin: "past-paper" };
+    }
+  }
+  if (isCuratedPaperSetSource(question)) {
+    const fromSummary = question.summary.replace(/\s+/g, " ").trim();
+    if (fromSummary.length >= 16) {
+      return { prompt: fromSummary, stemOrigin: "paper-set" };
+    }
+  }
+  return {
+    prompt: cleanExamPracticePrompt(question.practicePrompt, question.sourceId),
+    stemOrigin: "practice",
+  };
+}
+
+function cleanExamPracticePrompt(prompt: string, sourceId: string) {
+  let cleaned = prompt.replace(/\s+/g, " ").trim();
+
+  if (!sourceId.startsWith("generated-official-point-")) {
+    return cleaned;
+  }
+
+  cleaned = cleaned
+    .replace(/\bif a team ignores identify\b/gi, "if a team fails to identify")
+    .replace(/\bif a team ignores apply\b/gi, "if a team fails to apply")
+    .replace(/\bif a team ignores define\b/gi, "if a team fails to define")
+    .replace(/\bif a team ignores design\b/gi, "if a team does not design")
+    .replace(/\bif a team ignores select\b/gi, "if a team does not select")
+    .replace(/\bif a team ignores understand\b/gi, "if a team does not consider")
+    .replace(/\bwhen applying evaluate\b/gi, "when evaluating")
+    .replace(/\bwhen applying understand\b/gi, "when applying")
+    .replace(/\bwhen applying identify\b/gi, "when identifying")
+    .replace(/\bwhen applying select\b/gi, "when selecting")
+    .replace(/\bwhen applying apply\b/gi, "when applying")
+    .replace(/\bwhen applying design\b/gi, "when designing")
+    .replace(/\bbecause of apply\b/gi, "because of applying")
+    .replace(/\bbecause of understand\b/gi, "because of")
+    .replace(/\bbecause of design\b/gi, "because of designing")
+    .replace(/\bbecause of identify\b/gi, "because of identifying")
+    .replace(/\bbecause of select\b/gi, "because of selecting")
+    .replace(/\btests and test data to\b/gi, "tests and test data for")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return cleaned;
+}
+
+function shuffleExamStemPriority(pool: ExamConditionsQuestion[]) {
+  const past = shuffleArray(pool.filter((q) => q.stemOrigin === "past-paper"));
+  const paperSet = shuffleArray(pool.filter((q) => q.stemOrigin === "paper-set"));
+  const rest = shuffleArray(pool.filter((q) => q.stemOrigin === "practice"));
+  return [...past, ...paperSet, ...rest];
+}
+
 function toExamConditionsQuestion(
   topicId: string,
   question: QuestionMetadata,
   snapshot?: SharedCurriculumSnapshot | null
 ): ExamConditionsQuestion {
   const acceptableAnswers = extractCues(question, snapshot);
+  const { prompt, stemOrigin } = buildExamDisplayPrompt(question, snapshot);
 
   return {
     id: question.id,
     topicId,
     title: question.title,
-    prompt: question.practicePrompt,
+    prompt,
     sourceLabel: question.sourceLabel,
+    year: question.year,
     marks: question.marks ?? 4,
     questionType: question.questionType,
     difficulty: inferDifficulty(question),
@@ -253,6 +433,7 @@ function toExamConditionsQuestion(
     acceptableAnswers,
     evaluationProfile: question.evaluationProfile,
     markSchemeSummary: buildMarkSchemeSummary(question, snapshot),
+    stemOrigin,
   };
 }
 
@@ -365,10 +546,9 @@ export function getExamConditionsPoolStats(
   let mediumCount = 0;
   let hardCount = 0;
 
-  for (const question of bundle.questions) {
-    if (question.questionType === "question-bank-section") {
-      continue;
-    }
+  const eligibleQuestions = getExamRawPoolForTopic(topicId, bundle.questions, snapshot);
+
+  for (const question of eligibleQuestions) {
     const tier = inferDifficulty(question);
     if (tier === "easy") {
       easyCount += 1;
@@ -383,6 +563,12 @@ export function getExamConditionsPoolStats(
   const maxSessionQuestions =
     poolSize === 0 ? 0 : Math.min(EXAM_CONDITIONS_SESSION_MAX_QUESTIONS, poolSize);
   const defaultQuestionCount = resolveExamConditionsQuestionCount(poolSize);
+  const eligibleForStem = eligibleQuestions;
+  const pastPaperStemCountInPool = eligibleForStem.filter(
+    (question) => getQuestionContentSourceKind(question.sourceId, snapshot) === "past-paper"
+  ).length;
+  const paperSetStemCountInPool = eligibleForStem.filter(isCuratedPaperSetSource).length;
+  const examStyleStemCountInPool = pastPaperStemCountInPool + paperSetStemCountInPool;
 
   return {
     poolSize,
@@ -391,6 +577,9 @@ export function getExamConditionsPoolStats(
     easyCount,
     mediumCount,
     hardCount,
+    pastPaperStemCountInPool,
+    paperSetStemCountInPool,
+    examStyleStemCountInPool,
   };
 }
 
@@ -450,9 +639,9 @@ function takeFromBucket<T extends { id: string }>(
 }
 
 function orderQuestionsForSession(questions: ExamConditionsQuestion[]) {
-  const easy = shuffleArray(questions.filter((question) => question.difficulty === "easy"));
-  const medium = shuffleArray(questions.filter((question) => question.difficulty === "medium"));
-  const hard = shuffleArray(questions.filter((question) => question.difficulty === "hard"));
+  const easy = shuffleExamStemPriority(questions.filter((question) => question.difficulty === "easy"));
+  const medium = shuffleExamStemPriority(questions.filter((question) => question.difficulty === "medium"));
+  const hard = shuffleExamStemPriority(questions.filter((question) => question.difficulty === "hard"));
 
   return [...easy, ...medium, ...hard];
 }
@@ -477,9 +666,9 @@ function pickQuestionsForEligiblePool(
           hard: difficultyMode === "hard" ? count : 0,
         };
   const selectedIds = new Set<string>();
-  const hardBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "hard"));
-  const mediumBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "medium"));
-  const easyBucket = shuffleArray(eligiblePool.filter((question) => question.difficulty === "easy"));
+  const hardBucket = shuffleExamStemPriority(eligiblePool.filter((question) => question.difficulty === "hard"));
+  const mediumBucket = shuffleExamStemPriority(eligiblePool.filter((question) => question.difficulty === "medium"));
+  const easyBucket = shuffleExamStemPriority(eligiblePool.filter((question) => question.difficulty === "easy"));
 
   const selected: ExamConditionsQuestion[] = [];
   if (preferred) {
@@ -510,7 +699,7 @@ function pickQuestionsForEligiblePool(
   );
 
   if (selected.length < count) {
-    const fallback = shuffleArray(eligiblePool);
+    const fallback = shuffleExamStemPriority(eligiblePool);
     selected.push(...takeFromBucket(fallback, count - selected.length, selectedIds));
   }
 
@@ -544,10 +733,17 @@ export function generateExamConditionsSession(
   } = {}
 ): ExamConditionsSession {
   const bundle = getTopicContentBundle(topicId, options.snapshot);
-  const pool = shuffleArray(
-    bundle.questions
-      .filter((question) => question.questionType !== "question-bank-section")
-      .map((question) => toExamConditionsQuestion(topicId, question, options.snapshot))
+  const eligibleRaw = getExamRawPoolForTopic(topicId, bundle.questions, options.snapshot);
+  const isPastSource = (q: QuestionMetadata) =>
+    getQuestionContentSourceKind(q.sourceId, options.snapshot) === "past-paper";
+  const isPaperSetSource = (q: QuestionMetadata) => isCuratedPaperSetSource(q);
+  const pastRaw = shuffleArray(eligibleRaw.filter(isPastSource));
+  const paperSetRaw = shuffleArray(
+    eligibleRaw.filter((q) => !isPastSource(q) && isPaperSetSource(q))
+  );
+  const restRaw = shuffleArray(eligibleRaw.filter((q) => !isPastSource(q) && !isPaperSetSource(q)));
+  const pool = [...pastRaw, ...paperSetRaw, ...restRaw].map((question) =>
+    toExamConditionsQuestion(topicId, question, options.snapshot)
   );
 
   if (pool.length === 0) {
@@ -595,12 +791,16 @@ export function generateExamConditionsSession(
   const targetCount = clampExamCountToPool(setSize, eligiblePool.length);
   const finalQuestions = pickQuestionsForEligiblePool(eligiblePool, targetCount, difficultyMode, preferred);
   const topicInfo = getTopicById(topicId);
+  const releasedPastPaperStemCount = finalQuestions.filter((q) => q.stemOrigin === "past-paper").length;
+  const examStyleStemCount = finalQuestions.filter((q) => q.stemOrigin !== "practice").length;
 
   return {
     topicId,
     questionCount: finalQuestions.length,
     estimatedMinutes: estimateMinutes(finalQuestions),
     questions: finalQuestions,
+    releasedPastPaperStemCount,
+    examStyleStemCount,
     pinnedQuestionId: preferred?.id,
     plannedQuestionCount: setSize,
     topicMix: [
@@ -648,10 +848,17 @@ export function generateMultiTopicExamSession(
       continue;
     }
     const bundle = getTopicContentBundle(topicId, options.snapshot);
-    const pool = shuffleArray(
-      bundle.questions
-        .filter((question) => question.questionType !== "question-bank-section")
-        .map((question) => toExamConditionsQuestion(topicId, question, options.snapshot))
+    const eligibleRaw = getExamRawPoolForTopic(topicId, bundle.questions, options.snapshot);
+    const isPastSource = (q: QuestionMetadata) =>
+      getQuestionContentSourceKind(q.sourceId, options.snapshot) === "past-paper";
+    const isPaperSetSource = (q: QuestionMetadata) => isCuratedPaperSetSource(q);
+    const pastRaw = shuffleArray(eligibleRaw.filter(isPastSource));
+    const paperSetRaw = shuffleArray(
+      eligibleRaw.filter((q) => !isPastSource(q) && isPaperSetSource(q))
+    );
+    const restRaw = shuffleArray(eligibleRaw.filter((q) => !isPastSource(q) && !isPaperSetSource(q)));
+    const pool = [...pastRaw, ...paperSetRaw, ...restRaw].map((question) =>
+      toExamConditionsQuestion(topicId, question, options.snapshot)
     );
     const eligiblePool =
       difficultyMode === "mixed" ? pool : pool.filter((question) => question.difficulty === difficultyMode);
@@ -676,12 +883,16 @@ export function generateMultiTopicExamSession(
 
   const finalQuestions = shuffleArray(collected);
   const anchorTopicId = allocations.find((a) => a.count > 0)?.topicId ?? "";
+  const releasedPastPaperStemCount = finalQuestions.filter((q) => q.stemOrigin === "past-paper").length;
+  const examStyleStemCount = finalQuestions.filter((q) => q.stemOrigin !== "practice").length;
 
   return {
     topicId: anchorTopicId,
     questionCount: finalQuestions.length,
     estimatedMinutes: estimateMinutes(finalQuestions),
     questions: finalQuestions,
+    releasedPastPaperStemCount,
+    examStyleStemCount,
     plannedQuestionCount: options.setSize,
     topicMix,
   };
