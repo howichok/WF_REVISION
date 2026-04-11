@@ -16,12 +16,43 @@ export interface ExamMilestone {
   href: string;
 }
 
+export function examMilestoneKindLabel(m: ExamMilestone): string {
+  if (m.kind === "exam") return "Exam";
+  if (m.kind === "task") return "ESP task";
+  return "Milestone";
+}
+
 export const PAPER_LABELS: Record<ExamPlanPaper, string> = {
   "paper-1": "Paper 1",
   "paper-2": "Paper 2",
   esp: "ESP",
   os: "Occupational specialism",
 };
+
+/** Start of local calendar day (no time component). */
+function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/**
+ * Next calendar occurrence of this milestone’s month/day (May–June season rolls to next year after it passes).
+ */
+export function resolveMilestoneDate(m: ExamMilestone, reference: Date = new Date()): Date {
+  const ref = startOfLocalDay(reference);
+  let y = ref.getFullYear();
+  let candidate = new Date(y, m.month - 1, m.day);
+  if (candidate < ref) {
+    candidate = new Date(y + 1, m.month - 1, m.day);
+  }
+  return candidate;
+}
+
+/** Whole days from `reference`’s local calendar day to the milestone date (negative if that date is in the past). */
+export function daysUntilMilestone(m: ExamMilestone, reference: Date = new Date()): number {
+  const target = startOfLocalDay(resolveMilestoneDate(m, reference));
+  const ref = startOfLocalDay(reference);
+  return Math.round((target.getTime() - ref.getTime()) / 86400000);
+}
 
 export const EXAM_MILESTONES: ExamMilestone[] = [
   {

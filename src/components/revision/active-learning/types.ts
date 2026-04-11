@@ -27,6 +27,8 @@ export interface ActiveTaskAction {
 }
 
 export interface ActiveLearningLayoutProps {
+  /** When true, hides desktop + mobile rails (e.g. minimal quick quiz). */
+  hideRail?: boolean;
   backHref?: string;
   railTitle: string;
   railSubtitle?: string;

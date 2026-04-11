@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { AnimatePresence, motion } from "framer-motion";
 import { ArrowLeft, Check, ChevronRight, Lock, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { Button } from "@/components/ui";
 import { cn } from "@/lib/utils";
@@ -121,16 +122,33 @@ export function MobileLearningRail({
         </span>
       </button>
 
-      {isOpen ? (
-        <div className="fixed inset-0 z-50 lg:hidden">
-          <button
-            type="button"
-            aria-label="Close progression drawer"
-            className="absolute inset-0 bg-black/65 backdrop-blur-sm"
-            onClick={() => setIsOpen(false)}
-          />
+      <AnimatePresence>
+        {isOpen ? (
+          <motion.div
+            key="learning-rail-drawer"
+            className="fixed inset-0 z-50 lg:hidden"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+          >
+            <motion.button
+              type="button"
+              aria-label="Close progression drawer"
+              className="absolute inset-0 bg-black/65 backdrop-blur-sm"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsOpen(false)}
+            />
 
-          <div className="relative h-full max-w-[22rem] border-r border-white/8 bg-[linear-gradient(180deg,rgba(14,14,18,0.98),rgba(8,8,10,1))] px-4 py-5 shadow-[24px_0_60px_-30px_rgba(0,0,0,0.9)]">
+            <motion.div
+              className="relative h-full max-w-[22rem] border-r border-white/8 bg-[linear-gradient(180deg,rgba(14,14,18,0.98),rgba(8,8,10,1))] px-4 py-5 shadow-[24px_0_60px_-30px_rgba(0,0,0,0.9)]"
+              initial={{ x: "-105%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-105%" }}
+              transition={{ type: "spring", stiffness: 320, damping: 32 }}
+            >
             <div className="flex items-start justify-between gap-3 pb-4">
               <div className="space-y-1">
                 <p className="text-sm font-semibold text-foreground">{railTitle}</p>
@@ -154,11 +172,27 @@ export function MobileLearningRail({
               </Link>
             ) : null}
 
-            <div className="space-y-3 overflow-y-auto pb-4">
+            <motion.div
+              className="space-y-3 overflow-y-auto pb-4"
+              initial="hidden"
+              animate="show"
+              variants={{
+                hidden: {},
+                show: { transition: { staggerChildren: 0.04, delayChildren: 0.08 } },
+              }}
+            >
               {railItems.map((item) => (
-                <MobileRailItem key={item.id} item={item} onNavigate={() => setIsOpen(false)} />
+                <motion.div
+                  key={item.id}
+                  variants={{
+                    hidden: { opacity: 0, x: -8 },
+                    show: { opacity: 1, x: 0, transition: { type: "spring", stiffness: 380, damping: 26 } },
+                  }}
+                >
+                  <MobileRailItem item={item} onNavigate={() => setIsOpen(false)} />
+                </motion.div>
               ))}
-            </div>
+            </motion.div>
 
             {railSummary?.length ? (
               <div className="mt-4 flex flex-wrap gap-2 border-t border-white/8 pt-4">
@@ -184,9 +218,10 @@ export function MobileLearningRail({
                 ))}
               </div>
             ) : null}
-          </div>
-        </div>
-      ) : null}
+            </motion.div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </>
   );
 }

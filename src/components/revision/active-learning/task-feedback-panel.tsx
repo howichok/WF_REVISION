@@ -1,6 +1,7 @@
 "use client";
 
 import type { HTMLAttributes, ReactNode } from "react";
+import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
 type FeedbackTone = "default" | "success" | "warning" | "danger" | "analysis";
@@ -29,14 +30,21 @@ export function TaskFeedbackPanel({
 }: TaskFeedbackPanelProps) {
   return (
     <section className={cn(toneClasses[tone], className)} {...props}>
-      {title || summary ? (
-        <header className="space-y-2">
-          {title ? <h3 className="text-lg font-semibold text-foreground">{title}</h3> : null}
-          {summary ? <p className="text-sm leading-6 text-muted">{summary}</p> : null}
-        </header>
-      ) : null}
+      <motion.div
+        className="contents"
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ type: "spring", stiffness: 360, damping: 28 }}
+      >
+        {title || summary ? (
+          <header className="space-y-2">
+            {title ? <h3 className="text-lg font-semibold text-foreground">{title}</h3> : null}
+            {summary ? <p className="text-sm leading-6 text-muted">{summary}</p> : null}
+          </header>
+        ) : null}
 
-      {children}
+        {children}
+      </motion.div>
     </section>
   );
 }

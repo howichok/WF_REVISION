@@ -99,6 +99,51 @@ function dedupeById<T extends { id: string }>(values: T[]) {
   return Array.from(new Map(values.map((value) => [value.id, value])).values());
 }
 
+function shuffleQuizPool<T>(items: T[]): T[] {
+  const next = [...items];
+  for (let i = next.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
+const SIMPLE_REVISION_QUIZ_CAP = 8;
+/** About one short-written item per this many quick-check (MCQ) slots in a capped session. */
+export const SIMPLE_REVISION_MCQ_PER_WRITTEN = 10;
+
+/**
+ * Simple revision sessions favour multiple-choice: roughly {@link SIMPLE_REVISION_MCQ_PER_WRITTEN}
+ * quick checks per one short written task in a capped run (default {@link SIMPLE_REVISION_QUIZ_CAP}).
+ * When `paperId` routes use the full mixed shuffle instead.
+ */
+export function buildSimpleRevisionQuizSelection(
+  pool: PracticeQuizQuestion[],
+  options: { maxQuestions?: number; mcqPerWritten?: number } = {}
+): PracticeQuizQuestion[] {
+  const max = Math.max(1, options.maxQuestions ?? SIMPLE_REVISION_QUIZ_CAP);
+  const mcqPerWritten = Math.max(1, options.mcqPerWritten ?? SIMPLE_REVISION_MCQ_PER_WRITTEN);
+
+  const mcqPool = shuffleQuizPool(pool.filter((q) => q.type === "multiple-choice"));
+  const writtenPool = shuffleQuizPool(pool.filter((q) => q.type === "short-answer"));
+
+  const writtenTarget = Math.min(
+    writtenPool.length,
+    Math.max(0, Math.round(max / (mcqPerWritten + 1)))
+  );
+  const mcqTarget = max - writtenTarget;
+
+  const mcqCount = Math.min(mcqPool.length, mcqTarget);
+  const writtenCount = Math.min(writtenPool.length, max - mcqCount);
+
+  const picked = [
+    ...mcqPool.slice(0, mcqCount),
+    ...writtenPool.slice(0, writtenCount),
+  ];
+
+  return shuffleQuizPool(picked);
+}
+
 function inferQuestionPaper(question: QuestionMetadata): PracticePaper | undefined {
   if (question.paper === "Paper 1" || question.paper === "Paper 2") {
     return question.paper;
@@ -165,7 +210,7 @@ function buildTermMultipleChoiceQuestion(
     id: `quiz-term-${term.id}`,
     topicId,
     type: "multiple-choice",
-    question: `Which term best matches this description: ${term.definition}`,
+    question: `Which term best matches this description?\n\n${term.definition}`,
     options,
     correctAnswer: term.term,
     explanation: `${term.term}: ${term.definition}`,
@@ -200,9 +245,9 @@ function buildSubtopicQuestion(topicId: string): PracticeQuizQuestion[] {
       id: `quiz-subtopic-${subtopic.id}`,
       topicId,
       type: "multiple-choice",
-      question: `Which subtopic is most closely linked to ${subtopic.keywords
+      question: `Which subtopic is most closely linked to this keyword set?\n\n${subtopic.keywords
         .slice(0, 3)
-        .join(", ")}?`,
+        .join(", ")}`,
       options,
       correctAnswer: subtopic.label,
       explanation: `${subtopic.label} covers ideas such as ${subtopic.keywords

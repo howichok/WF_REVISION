@@ -133,6 +133,26 @@ export const CONTENT_SOURCES: ContentSource[] = [
       "Internal scenario-style question set written in clearer language to expand Paper 2 applied practice across UI, deployment, change, APIs, and collaboration.",
   },
   {
+    id: "codex-reviewed-paper1-exam-bank-2026",
+    title: "Codex Reviewed Paper 1 Exam-Style Bank 2026",
+    kind: "question-bank",
+    classification: "secondary",
+    filePath: "internal://codex-reviewed-paper1-exam-bank-2026",
+    year: 2026,
+    notes:
+      "Reviewed internal Paper 1 exam-style question bank generated from repository-held official/spec-aligned sources. Metadata records command word, assessment objective emphasis, paper boundary validation, and provenance.",
+  },
+  {
+    id: "codex-reviewed-paper2-exam-bank-2026",
+    title: "Codex Reviewed Paper 2 Exam-Style Bank 2026",
+    kind: "question-bank",
+    classification: "secondary",
+    filePath: "internal://codex-reviewed-paper2-exam-bank-2026",
+    year: 2026,
+    notes:
+      "Reviewed internal Paper 2 exam-style question bank generated from repository-held official/spec-aligned sources. Metadata records command word, assessment objective emphasis, paper boundary validation, and provenance.",
+  },
+  {
     id: "core-paper2-autumn-2022",
     title: "Core Paper 2 Autumn 2022",
     kind: "past-paper",

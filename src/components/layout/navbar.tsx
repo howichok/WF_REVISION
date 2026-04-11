@@ -63,7 +63,8 @@ export function Navbar() {
         {/* User section */}
         <div className="flex items-center gap-2">
           <button
-            onClick={toggleTheme}
+            type="button"
+            onClick={(e) => toggleTheme(e)}
             className="rounded-full border border-border/60 p-2 text-muted-foreground transition-colors hover:border-border hover:bg-card hover:text-foreground cursor-pointer"
             title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
           >

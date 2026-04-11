@@ -11,15 +11,11 @@ import {
   ShieldCheck,
   Sparkles,
 } from "lucide-react";
-import { useAiOverlay } from "@/components/providers/ai-overlay-provider";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { TopicNextSteps } from "@/components/revision/topic-next-steps";
 import { Badge, Button, Card, SearchComposer } from "@/components/ui";
 import { consumeSseStream } from "@/lib/intelligence/client-sse";
-import {
-  getAskNextStepRecommendations,
-  type TopicNextStepRecommendation,
-} from "@/lib/topic-progression";
+import { getAskNextStepRecommendations } from "@/lib/topic-progression";
 import type {
   TopicIntelligenceIntent,
   TopicIntelligenceResponse,
@@ -184,10 +180,7 @@ export function TopicIntelligenceAssistant({
   initialIntent,
   autoRun = false,
 }: TopicIntelligenceAssistantProps) {
-  const overlay = useAiOverlay();
   const { recordAskCoaching, revisionProgress, topicCoachingMemory } = useAppData();
-  const overlaySurfaceId = useMemo(() => `topic-intelligence-${topicId}-${surface}`, [topicId, surface]);
-  const surfaceRef = useRef<HTMLDivElement | null>(null);
   const autoRunRef = useRef(false);
   const [query, setQuery] = useState(initialQuery?.trim() ?? "");
   const [overrideIntent, setOverrideIntent] = useState<TopicIntelligenceIntent>(
@@ -230,89 +223,19 @@ export function TopicIntelligenceAssistant({
     ),
     [precisionCues, result]
   );
-  const overlayPrompt = useMemo(
+  const autoRunPrompt = useMemo(
     () => query.trim() || getFallbackPrompt(overrideIntent, topicLabel),
     [overrideIntent, query, topicLabel]
   );
 
   useEffect(() => {
-    if (surface !== "page") {
-      return;
-    }
-
-    overlay.registerRevisionSurface({
-      surfaceId: overlaySurfaceId,
-      topicId,
-      topicLabel,
-      modeGroup: "Simple revision",
-      modeLabel: "Topic assistant",
-      prompt: overlayPrompt,
-      anchorRef: surfaceRef,
-    });
-
-    return () => {
-      overlay.unregisterRevisionSurface(overlaySurfaceId);
-    };
-  }, [overlay, overlaySurfaceId, surface, topicId, topicLabel]);
-
-  useEffect(() => {
-    if (surface !== "page") {
-      return;
-    }
-
-    overlay.syncRevisionSurface({
-      surfaceId: overlaySurfaceId,
-      prompt: overlayPrompt,
-      answer: result?.answer ?? draftAnswer,
-      canUndoEdits: false,
-      canClearInsertedCues: false,
-    });
-  }, [draftAnswer, overlay, overlayPrompt, overlaySurfaceId, result?.answer, surface]);
-
-  useEffect(() => {
-    if (surface !== "page") {
-      return;
-    }
-
-    overlay.setSurfaceRecommendations({
-      surfaceId: overlaySurfaceId,
-      primaryAction: nextSteps.primary
-        ? {
-            label: nextSteps.primary.label,
-            href: nextSteps.primary.href,
-            kind: nextSteps.primary.actionKind,
-          }
-        : null,
-      secondaryAction: nextSteps.secondary
-        ? {
-            label: nextSteps.secondary.label,
-            href: nextSteps.secondary.href,
-            kind: nextSteps.secondary.actionKind,
-          }
-        : null,
-    });
-  }, [nextSteps.primary, nextSteps.secondary, overlay, overlaySurfaceId, surface]);
-
-  useEffect(() => {
-    if (!autoRun || autoRunRef.current || !overlayPrompt.trim()) {
+    if (!autoRun || autoRunRef.current || !autoRunPrompt.trim()) {
       return;
     }
 
     autoRunRef.current = true;
     void handleSubmit();
-  }, [autoRun, overlayPrompt]);
-
-  function toOverlayAction(recommendation: TopicNextStepRecommendation | null) {
-    if (!recommendation) {
-      return null;
-    }
-
-    return {
-      label: recommendation.label,
-      href: recommendation.href,
-      kind: recommendation.actionKind,
-    } as const;
-  }
+  }, [autoRun, autoRunPrompt]);
 
   async function handleSubmit() {
     const resolvedQuery = query.trim() || getFallbackPrompt(overrideIntent, topicLabel);
@@ -322,13 +245,6 @@ export function TopicIntelligenceAssistant({
     setStreamStatus("Opening live response...");
     setResult(null);
     setPrecisionCues([]);
-    if (surface === "page") {
-      overlay.startGuidedSession({
-        surfaceId: overlaySurfaceId,
-        statusLine: "Routing your DSD request...",
-        note: "The router stays local-first, then only reaches for official grounding when it needs stronger confirmation.",
-      });
-    }
 
     try {
       const response = await fetch("/api/intelligence/topic-assistant/stream", {
@@ -372,12 +288,6 @@ export function TopicIntelligenceAssistant({
 
         if (eventName === "status") {
           setStreamStatus((payload as { message?: string }).message ?? "Thinking...");
-          if (surface === "page") {
-            overlay.streamRevisionProgress({
-              surfaceId: overlaySurfaceId,
-              statusLine: (payload as { message?: string }).message ?? "Thinking...",
-            });
-          }
           return;
         }
 
@@ -396,12 +306,6 @@ export function TopicIntelligenceAssistant({
           if (sectionPayload.section === "precisionCues") {
             const nextItems = uniqueCueItems(sectionPayload.items ?? [], 3);
             setPrecisionCues(nextItems);
-            if (surface === "page" && nextItems[0]) {
-              overlay.streamRevisionProgress({
-                surfaceId: overlaySurfaceId,
-                note: nextItems[0],
-              });
-            }
             return;
           }
 
@@ -443,12 +347,6 @@ export function TopicIntelligenceAssistant({
                 }
               : current
           );
-          if (surface === "page") {
-            overlay.streamRevisionProgress({
-              surfaceId: overlaySurfaceId,
-              note: streamedAnswer,
-            });
-          }
           return;
         }
 
@@ -472,19 +370,6 @@ export function TopicIntelligenceAssistant({
             recommendedAction: recommendations.primary?.reasonCode ?? finalResult.suggestedNextAction?.label,
             recommendedHref: recommendations.primary?.href ?? finalResult.suggestedNextAction?.href,
           });
-          if (surface === "page") {
-            overlay.completeGuidedSession({
-              surfaceId: overlaySurfaceId,
-              phase: "ready",
-              statusLine: `${getIntentLabel(finalResult.intent)} ready. Stay in ${topicLabel} and take the next targeted step.`,
-              note:
-                finalResult.localOnly
-                  ? "This stayed inside the local DSD layer unless official grounding was really needed."
-                  : "The answer used grounded confirmation and still stayed inside the current topic.",
-              primaryAction: toOverlayAction(recommendations.primary),
-              secondaryAction: toOverlayAction(recommendations.secondary),
-            });
-          }
           return;
         }
 
@@ -502,13 +387,6 @@ export function TopicIntelligenceAssistant({
           ? submitError.message
           : "Unable to run the topic assistant right now.";
       setError(message);
-      if (surface === "page") {
-        overlay.failGuidedSession({
-          surfaceId: overlaySurfaceId,
-          message,
-          note: "The overlay stayed attached so you can retry or switch to a different same-topic action.",
-        });
-      }
     } finally {
       setIsLoading(false);
     }
@@ -517,7 +395,7 @@ export function TopicIntelligenceAssistant({
   const compact = surface === "panel";
 
   return (
-    <div ref={surfaceRef} className="space-y-4">
+    <div className="space-y-4">
       <Card variant={compact ? "support" : "accent"} className={compact ? "p-4" : "p-5 sm:p-6"}>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>

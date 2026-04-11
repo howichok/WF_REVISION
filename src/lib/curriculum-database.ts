@@ -90,6 +90,9 @@ type QuestionRow = {
   expectation: string;
   practice_prompt: string | null;
   legacy_topic_ids: TopicId[];
+  exam_metadata?: QuestionMetadata["examMetadata"] | null;
+  reviewed?: boolean | null;
+  active?: boolean | null;
 };
 
 type QuestionPointRow = {
@@ -425,6 +428,12 @@ export function buildSharedCurriculumSnapshotFromDatabaseTables(
         practicePrompt: row.practice_prompt ?? local?.practicePrompt ?? row.title,
         markSchemeConceptIds: local?.markSchemeConceptIds ?? [],
         evaluationProfile: local?.evaluationProfile,
+        examMetadata:
+          row.exam_metadata && Object.keys(row.exam_metadata).length > 0
+            ? row.exam_metadata
+            : local?.examMetadata,
+        reviewed: row.reviewed ?? local?.reviewed,
+        active: row.active ?? local?.active,
       } satisfies QuestionMetadata;
     }),
     compareByYearThenTitle

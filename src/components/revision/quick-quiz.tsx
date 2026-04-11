@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight,
   CheckCircle2,
@@ -20,15 +20,19 @@ import { TaskFeedbackPanel } from "@/components/revision/active-learning/task-fe
 import { TaskPanel } from "@/components/revision/active-learning/task-panel";
 import { TaskResponsePanel } from "@/components/revision/active-learning/task-response-panel";
 import { useAppData } from "@/components/providers/app-data-provider";
-import { useAiOverlay } from "@/components/providers/ai-overlay-provider";
 import { Badge, Button, Card, ProgressBar } from "@/components/ui";
 import { AnswerRipple } from "@/components/ui/answer-ripple";
-import { getFilteredQuickQuizQuestionPool, getPracticeSetId } from "@/lib/practice";
+import {
+  buildSimpleRevisionQuizSelection,
+  getFilteredQuickQuizQuestionPool,
+  getPracticeSetId,
+} from "@/lib/practice";
+import { deriveRevisionPracticeTagCodes } from "@/lib/revision-practice-analytics";
 import {
   evaluatePracticeShortAnswer,
   getAcceptedAnswerCues,
 } from "@/lib/practice-evaluator";
-import { extractCommandWord } from "@/lib/command-words";
+import { extractCommandWordFromPrompt } from "@/lib/command-words";
 import { getQuizNextStepRecommendations } from "@/lib/topic-progression";
 import { cn } from "@/lib/utils";
 import { TOPICS } from "@/lib/types";
@@ -101,9 +105,9 @@ function getRouteMeta(context: QuickQuizContext) {
       taskVariant: "paper-1" as const,
       routeLabel: "Paper 1 route",
       routeTitle: "Test yourself with fast Paper 1 retrieval questions",
-      routeFocus: "Simple revision for theory retrieval, terminology, and quick knowledge checks.",
+      routeFocus: "Paper 1 retrieval — mostly quick Q/A with occasional short written checks.",
       resultSummary:
-        "Use this route for fast correction first, then move into Exam questions when you want full written marking.",
+        "Use this route for fast correction first, then move into Exam questions when you want full written marking practice.",
     };
   }
 
@@ -114,9 +118,9 @@ function getRouteMeta(context: QuickQuizContext) {
       taskVariant: "paper-2" as const,
       routeLabel: "Paper 2 route",
       routeTitle: "Test yourself with applied Paper 2 prompts",
-      routeFocus: "Simple revision for applied scenarios, short written checks, and exam-style thinking before full marking.",
+      routeFocus: "Paper 2 practice — mixed quick Q/A and written prompts as in the pool.",
       resultSummary:
-        "Use this route to warm up applied reasoning before you switch into Exam questions for a longer marked answer.",
+        "Use this route to warm up applied reasoning before you switch into Exam questions for longer marked answers.",
     };
   }
 
@@ -127,7 +131,7 @@ function getRouteMeta(context: QuickQuizContext) {
       taskVariant: "task" as const,
       routeLabel: "Topic quiz",
       routeTitle: "Test yourself inside one topic",
-      routeFocus: "Simple revision inside one topic without mixing in unrelated paper prompts.",
+      routeFocus: "Mostly quick Q/A; about one short written per ten retrieval-style questions in an 8-question run.",
       resultSummary:
         "This route is best when you want a tight same-topic score before moving into Exam questions.",
     };
@@ -143,7 +147,9 @@ function getRouteMeta(context: QuickQuizContext) {
       routeTitle:
         n > 1 ? `Fast checks across ${n} topics` : "Fast checks for your selected topic",
       routeFocus:
-        "Simple revision using only the topics you picked — good for a focused warm-up before deeper practice.",
+        n > 1
+          ? "Warm-up across your topics — mostly quick Q/A, about one written per ten Q/A in a short run."
+          : "Mostly quick Q/A; about one short written per ten retrieval-style questions in an 8-question run.",
       resultSummary:
         "When you are ready, open one topic for the full practice hub or switch into Exam questions for timed writing.",
     };
@@ -155,7 +161,7 @@ function getRouteMeta(context: QuickQuizContext) {
     taskVariant: "task" as const,
     routeLabel: "Quick quiz",
     routeTitle: "Test yourself with fast retrieval questions",
-    routeFocus: "Simple revision across topics when you want a warm-up before narrowing down.",
+    routeFocus: "Broad warm-up — mostly quick Q/A, about one written per ten Q/A in an 8-question run.",
     resultSummary:
       "This route is best when you want broad recall before switching into one topic or full Exam questions.",
   };
@@ -494,14 +500,14 @@ export function QuickQuiz({
   onClose,
   onStageChange,
 }: QuickQuizProps) {
-  const overlay = useAiOverlay();
   const {
+    logRevisionPracticeEvent,
     recordQuizCoaching,
     revisionProgress,
     topicCoachingMemory,
     trackPracticeSetProgress,
+    user,
   } = useAppData();
-  const surfaceRef = useRef<HTMLDivElement | null>(null);
   const lockedPaper =
     paperId === "paper-1" ? "Paper 1" : paperId === "paper-2" ? "Paper 2" : undefined;
   const [selectedTopicId, setSelectedTopicId] = useState<string | null>(topicId ?? null);
@@ -516,6 +522,11 @@ export function QuickQuiz({
   const [saveError, setSaveError] = useState("");
   const [isSavingProgress, setIsSavingProgress] = useState(false);
   const [rippleState, setRippleState] = useState<"correct" | "incorrect" | null>(null);
+  const [quizSessionId, setQuizSessionId] = useState<string | null>(() =>
+    autoStart ? crypto.randomUUID() : null
+  );
+  const questionStartedAtRef = useRef<number | null>(null);
+  const reduceMotion = useReducedMotion();
 
   const context = normalizeContext(paperId, topicId, selectedTopicId, topicIds);
   const routeMeta = getRouteMeta(context);
@@ -528,8 +539,12 @@ export function QuickQuiz({
             paper: lockedPaper,
           }
     );
-    return shuffleArray(pool).slice(0, Math.min(pool.length, 8));
-  }, [lockedPaper, selectedTopicId, topicIds]);
+    const cap = Math.min(pool.length, 8);
+    if (paperId) {
+      return shuffleArray(pool).slice(0, cap);
+    }
+    return buildSimpleRevisionQuizSelection(pool, { maxQuestions: cap });
+  }, [lockedPaper, paperId, selectedTopicId, topicIds]);
 
   const availableTopics = useMemo(
     () =>
@@ -544,11 +559,6 @@ export function QuickQuiz({
   );
 
   const currentQuestion = questions[currentIndex];
-  const overlayTopicId =
-    selectedTopicId ?? currentQuestion?.topicId ?? topicIds?.[0] ?? topicId ?? null;
-  const overlayTopicInfo = overlayTopicId
-    ? TOPICS.find((topic) => topic.id === overlayTopicId) ?? null
-    : null;
   const totalQuestions = questions.length;
   const progressPct =
     totalQuestions > 0 ? Math.round((answeredCount / totalQuestions) * 100) : 0;
@@ -562,16 +572,6 @@ export function QuickQuiz({
     : quizFinished
       ? "results"
       : "active";
-  const overlaySurfaceId = useMemo(() => {
-    if (topicIds?.length) {
-      return `quick-quiz-topics-${topicIds.slice().sort().join("-")}`;
-    }
-    return `quick-quiz-${selectedTopicId ?? topicId ?? paperId ?? "mixed"}`;
-  }, [paperId, selectedTopicId, topicId, topicIds]);
-  const overlayModeLabel =
-    currentQuestion?.type === "short-answer" && stage === "active"
-      ? "Quick written check"
-      : "Fast Q/A";
   const scorePercent = totalQuestions > 0 ? Math.round((score / totalQuestions) * 100) : 0;
   const quizNextSteps = useMemo(
     () =>
@@ -591,144 +591,10 @@ export function QuickQuiz({
   }, [onStageChange, stage]);
 
   useEffect(() => {
-    if (stage === "launcher" || !overlayTopicId) {
-      return;
+    if (quizStarted && !quizFinished) {
+      questionStartedAtRef.current = Date.now();
     }
-
-    overlay.registerRevisionSurface({
-      surfaceId: overlaySurfaceId,
-      topicId: overlayTopicId,
-      topicLabel: overlayTopicInfo?.label ?? overlayTopicId,
-      modeGroup: "Simple revision",
-      modeLabel: overlayModeLabel,
-      prompt:
-        stage === "results"
-          ? "Quiz complete"
-          : currentQuestion?.question ?? routeMeta.routeTitle,
-      anchorRef: surfaceRef,
-    });
-
-    return () => {
-      overlay.unregisterRevisionSurface(overlaySurfaceId);
-    };
-  }, [
-    currentQuestion?.question,
-    overlay,
-    overlayModeLabel,
-    overlaySurfaceId,
-    overlayTopicId,
-    overlayTopicInfo?.label,
-    routeMeta.routeTitle,
-    stage,
-  ]);
-
-  useEffect(() => {
-    if (stage === "launcher" || !overlayTopicId) {
-      return;
-    }
-
-    overlay.syncRevisionSurface({
-      surfaceId: overlaySurfaceId,
-      prompt:
-        stage === "results"
-          ? "Quiz complete"
-          : currentQuestion?.question ?? routeMeta.routeTitle,
-      answer:
-        currentQuestion?.type === "short-answer"
-          ? typedAnswer
-          : selectedAnswer ?? "",
-      canUndoEdits: false,
-      canClearInsertedCues: false,
-    });
-  }, [
-    currentQuestion?.question,
-    currentQuestion?.type,
-    overlay,
-    overlaySurfaceId,
-    overlayTopicId,
-    routeMeta.routeTitle,
-    selectedAnswer,
-    stage,
-    typedAnswer,
-  ]);
-
-  useEffect(() => {
-    if (stage === "launcher" || !overlayTopicId) {
-      return;
-    }
-
-    overlay.streamRevisionProgress({
-      surfaceId: overlaySurfaceId,
-      statusLine:
-        stage === "results"
-          ? "Quiz complete. Use the score to choose the next same-topic task."
-          : currentQuestion?.type === "short-answer"
-            ? `Quick written check in progress. Question ${currentIndex + 1} of ${totalQuestions}.`
-            : `Fast Q/A in progress. Question ${currentIndex + 1} of ${totalQuestions}.`,
-      note:
-        stage === "active"
-          ? currentQuestion?.type === "short-answer"
-            ? "This is still Simple revision. Switch to Exam questions when you want a longer marked answer and AI rubric feedback."
-            : "Quiz mode keeps the overlay lightweight and uses it for progress and next-step guidance only."
-          : undefined,
-    });
-  }, [currentIndex, currentQuestion?.type, overlay, overlaySurfaceId, overlayTopicId, stage, totalQuestions]);
-
-  useEffect(() => {
-    if (!selectedTopicId) {
-      return;
-    }
-
-    overlay.setSurfaceRecommendations({
-      surfaceId: overlaySurfaceId,
-      primaryAction: quizNextSteps.primary
-        ? {
-            label: quizNextSteps.primary.label,
-            href: quizNextSteps.primary.href,
-            kind: quizNextSteps.primary.actionKind,
-          }
-        : null,
-      secondaryAction: quizNextSteps.secondary
-        ? {
-            label: quizNextSteps.secondary.label,
-            href: quizNextSteps.secondary.href,
-            kind: quizNextSteps.secondary.actionKind,
-          }
-        : null,
-    });
-  }, [overlay, overlaySurfaceId, quizNextSteps.primary, quizNextSteps.secondary, selectedTopicId]);
-
-  useEffect(() => {
-    if (!overlayTopicId || stage !== "results") {
-      return;
-    }
-
-    overlay.completeGuidedSession({
-      surfaceId: overlaySurfaceId,
-      phase: scorePercent >= 70 ? "merit" : scorePercent >= 40 ? "ready" : "fail",
-      statusLine:
-        scorePercent >= 70
-          ? "Quiz complete. The next same-topic step can now be harder."
-          : scorePercent >= 40
-            ? "Quiz complete. Retrieval is partly there, but the topic still needs guided follow-up."
-            : "Quiz complete. Stay inside the same topic before jumping to harder written work.",
-      note: "Quiz mode keeps the overlay lightweight and routes you to the next best same-topic task.",
-      primaryAction: quizNextSteps.primary
-        ? {
-            label: quizNextSteps.primary.label,
-            href: quizNextSteps.primary.href,
-            kind: quizNextSteps.primary.actionKind,
-          }
-        : null,
-      secondaryAction: quizNextSteps.secondary
-        ? {
-            label: quizNextSteps.secondary.label,
-            href: quizNextSteps.secondary.href,
-            kind: quizNextSteps.secondary.actionKind,
-          }
-        : null,
-    });
-  }, [overlay, overlaySurfaceId, overlayTopicId, quizNextSteps.primary, quizNextSteps.secondary, scorePercent, stage]);
+  }, [quizStarted, quizFinished, currentIndex, currentQuestion?.id]);
 
   async function persistTopicQuizProgress(finalScore: number, finalTotal: number) {
     const progressTopicId = selectedTopicId ?? topicIds?.[0];
@@ -797,9 +663,13 @@ export function QuickQuiz({
       return;
     }
 
-    const isCorrect =
+    const shortResult =
       currentQuestion.type === "short-answer"
-        ? evaluatePracticeShortAnswer(typedAnswer, currentQuestion).isCorrect
+        ? evaluatePracticeShortAnswer(typedAnswer, currentQuestion)
+        : null;
+    const isCorrect =
+      shortResult !== null
+        ? shortResult.isCorrect
         : selectedAnswer === currentQuestion.correctAnswer;
 
     if (isCorrect) {
@@ -809,6 +679,39 @@ export function QuickQuiz({
     setRippleState(isCorrect ? "correct" : "incorrect");
     setHasSubmitted(true);
     setAnsweredCount((prev) => prev + 1);
+
+    if (user && quizSessionId) {
+      const started = questionStartedAtRef.current;
+      const durationMs =
+        typeof started === "number" ? Math.max(0, Date.now() - started) : null;
+      const questionKind =
+        currentQuestion.type === "short-answer" ? "short_written" : "mcq";
+      const verdict = shortResult?.verdict ?? null;
+      const tagCodes = deriveRevisionPracticeTagCodes({
+        questionKind,
+        correct: isCorrect,
+        verdict,
+      });
+
+      void logRevisionPracticeEvent({
+        topicId: currentQuestion.topicId,
+        questionId: currentQuestion.id,
+        questionKind,
+        sessionId: quizSessionId,
+        source: "quick_quiz",
+        correct: isCorrect,
+        durationMs,
+        verdict,
+        tagCodes,
+        isRevisionAttempt: false,
+        context: {
+          routeLabel: routeMeta.routeLabel,
+          quizContext: context.kind,
+          paper: lockedPaper ?? null,
+          difficulty: currentQuestion.difficulty,
+        },
+      });
+    }
   }
 
   function handleNext() {
@@ -826,17 +729,20 @@ export function QuickQuiz({
   }
 
   function restartCurrentQuiz() {
+    setQuizSessionId(crypto.randomUUID());
     resetQuestionState();
     setQuizStarted(true);
   }
 
   function returnToLauncher() {
+    setQuizSessionId(null);
     resetQuestionState();
     setSelectedTopicId(topicId ?? null);
     setQuizStarted(false);
   }
 
   function startQuiz(nextTopicId?: string | null) {
+    setQuizSessionId(crypto.randomUUID());
     resetQuestionState();
     setSelectedTopicId(nextTopicId ?? null);
     setQuizStarted(true);
@@ -859,7 +765,7 @@ export function QuickQuiz({
         .filter(Boolean) as (typeof TOPICS)[number][];
 
       return (
-        <div ref={surfaceRef}>
+        <div>
           <Card variant="accent" className="rounded-[32px] p-6 sm:p-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div className="space-y-4">
@@ -909,7 +815,7 @@ export function QuickQuiz({
       : 0;
 
     return (
-      <div ref={surfaceRef}>
+      <div>
         <QuickQuizLauncher
           routeMeta={routeMeta}
           availableTopics={availableTopics}
@@ -925,20 +831,20 @@ export function QuickQuiz({
 
   if (stage === "results") {
     return (
-      <div ref={surfaceRef}>
+      <div>
         <QuickQuizResults
           context={context}
           selectedTopicId={selectedTopicId}
           progressAnchorTopicId={selectedTopicId ?? topicIds?.[0] ?? null}
           score={score}
-        totalQuestions={totalQuestions}
-        isSavingProgress={isSavingProgress}
-        saveError={saveError}
-        onRetry={restartCurrentQuiz}
-        routeMeta={routeMeta}
-        primaryRecommendation={quizNextSteps.primary}
-        secondaryRecommendation={quizNextSteps.secondary}
-      />
+          totalQuestions={totalQuestions}
+          isSavingProgress={isSavingProgress}
+          saveError={saveError}
+          onRetry={restartCurrentQuiz}
+          routeMeta={routeMeta}
+          primaryRecommendation={quizNextSteps.primary}
+          secondaryRecommendation={quizNextSteps.secondary}
+        />
       </div>
     );
   }
@@ -959,7 +865,6 @@ export function QuickQuiz({
   }
   const TypeIcon = typeIcon[currentQuestion.type];
   const topicInfo = TOPICS.find((topic) => topic.id === currentQuestion.topicId);
-  const examQuestionsHref = `/revision/${currentQuestion.topicId}/exam-questions`;
   const acceptedAnswerCues =
     currentQuestion.type === "short-answer"
       ? getAcceptedAnswerCues(currentQuestion)
@@ -978,7 +883,12 @@ export function QuickQuiz({
   const railItems = buildIndexedRailItems(
     questions.map((question, index) => ({
       label: `Question ${index + 1}`,
-      meta: question.type === "multiple-choice" ? "MCQ" : "Quick written",
+      meta:
+        index === currentIndex
+          ? question.type === "multiple-choice"
+            ? "MCQ"
+            : "Written"
+          : undefined,
       description:
         index === currentIndex
           ? question.subtopicLabel ?? question.sourceLabel
@@ -988,9 +898,10 @@ export function QuickQuiz({
   );
 
   return (
-    <div ref={surfaceRef}>
+    <div>
       <AnswerRipple state={rippleState} />
       <ActiveLearningLayout
+      hideRail
       railTitle={
         context.kind === "paper"
           ? context.paperId === "paper-1"
@@ -1017,6 +928,7 @@ export function QuickQuiz({
       mobileSummaryLabel={routeMeta.routeLabel}
       contextStrip={
         <TaskContextStrip
+          key={currentQuestion.id}
           eyebrow={routeMeta.routeLabel}
           breadcrumb={
             <div className="flex flex-wrap items-center gap-2 text-sm text-foreground">
@@ -1036,104 +948,48 @@ export function QuickQuiz({
               ) : null}
             </div>
           }
-          meta={routeMeta.routeFocus}
           status={
-            <span className="tabular-nums text-xs font-medium uppercase tracking-[0.18em] text-muted">
-              {currentIndex + 1} / {totalQuestions}
-            </span>
-          }
-        >
-          <div className="flex flex-wrap gap-2">
-            {currentQuestion.paper ? (
-              <Badge
-                variant={currentQuestion.paper === "Paper 1" ? "paper-1" : "paper-2"}
+            <div className="flex flex-wrap items-center justify-end gap-2">
+              <span
+                className={cn(
+                  "rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.14em]",
+                  difficultyColor[currentQuestion.difficulty]
+                )}
               >
-                {currentQuestion.paper}
-              </Badge>
-            ) : null}
-            <Badge variant="default">
-              {currentQuestion.type === "multiple-choice" ? "Fast Q/A" : "Quick written"}
-            </Badge>
-            <span
-              className={cn(
-                "rounded-full border px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.16em]",
-                difficultyColor[currentQuestion.difficulty]
-              )}
-            >
-              {currentQuestion.difficulty}
-            </span>
-          </div>
-        </TaskContextStrip>
+                {currentQuestion.difficulty}
+              </span>
+              <span className="tabular-nums text-xs font-medium uppercase tracking-[0.18em] text-muted">
+                {currentIndex + 1} / {totalQuestions}
+              </span>
+            </div>
+          }
+        />
       }
       task={
         (() => {
           const cw = currentQuestion.type === "short-answer"
-            ? extractCommandWord(currentQuestion.question)
+            ? extractCommandWordFromPrompt(currentQuestion.question)
             : null;
           return (
             <TaskPanel
+              key={currentQuestion.id}
               title={currentQuestion.question}
-              subtitle={
-                currentQuestion.type === "multiple-choice"
-                  ? "Choose the option that best fits the prompt."
-                  : "Write a short answer in your own words, then compare it with the fast cue-based feedback. This is not the full Exam questions marker."
-              }
+              subtitle={undefined}
               commandWord={cw}
-            >
-              <motion.div
-                key={currentQuestion.id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.22 }}
-                className="flex flex-wrap items-center gap-2 border-t border-border pt-4"
-              >
-                {currentQuestion.sourceLabel ? <Badge variant="default">{currentQuestion.sourceLabel}</Badge> : null}
-                <Badge variant="default">
-                  {currentQuestion.type === "multiple-choice" ? "Fast check" : "Simple revision"}
-                </Badge>
-                {currentQuestion.type === "short-answer" ? (
-                  <Link
-                    href={examQuestionsHref}
-                    className="inline-flex items-center gap-1 rounded-full border border-warning/20 bg-warning/10 px-2.5 py-1 text-[11px] font-medium text-warning transition-colors hover:bg-warning/15"
-                  >
-                    Open Exam questions
-                    <ArrowRight size={12} />
-                  </Link>
-                ) : null}
-              </motion.div>
-            </TaskPanel>
+              commandWordStyle="exam-inline"
+            />
           );
         })()
       }
       response={
         <TaskResponsePanel
-          label={currentQuestion.type === "multiple-choice" ? "Your response" : "Quick response"}
+          key={currentQuestion.id}
+          label={currentQuestion.type === "multiple-choice" ? "Your response" : "Answer"}
           description={
-            currentQuestion.type === "multiple-choice"
-              ? "Select one option before checking the answer."
-              : "Type a short answer for a fast check. Use Exam questions when you want a full written response and AI marking."
+            currentQuestion.type === "multiple-choice" ? "Choose one option, then check." : undefined
           }
         >
           <div className="space-y-3">
-            {currentQuestion.type === "short-answer" ? (
-              <div className="rounded-2xl border border-warning/20 bg-warning/10 px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-warning">
-                  Simple revision
-                </p>
-                <p className="mt-1 text-xs leading-relaxed text-foreground/90">
-                  This route gives you a quick written check on one idea. For a fuller 6/8/12-mark style answer with AI rubric feedback, switch to Exam questions.
-                </p>
-                <div className="mt-3">
-                  <Link
-                    href={examQuestionsHref}
-                    className="inline-flex items-center gap-1 text-xs font-medium text-warning hover:text-warning/80"
-                  >
-                    Open Exam questions
-                    <ArrowRight size={12} />
-                  </Link>
-                </div>
-              </div>
-            ) : null}
             {currentQuestion.type === "multiple-choice" &&
               currentQuestion.options?.map((option, index) => {
                 const isSelected = selectedAnswer === option;
@@ -1159,20 +1015,65 @@ export function QuickQuiz({
                   bgClass = "bg-accent/10";
                 }
 
+                const showPickMotion = isSelected && !hasSubmitted && !reduceMotion;
+
                 return (
-                  <button
+                  <motion.button
                     key={option}
                     type="button"
+                    layout={false}
+                    initial={false}
+                    animate={
+                      reduceMotion || hasSubmitted
+                        ? { scale: 1, y: 0 }
+                        : isSelected
+                          ? { scale: [1, 1.085, 1.028, 1], y: 0 }
+                          : { scale: 1, y: 0 }
+                    }
+                    transition={
+                      reduceMotion || hasSubmitted
+                        ? { duration: 0.12 }
+                        : isSelected
+                          ? {
+                              duration: 0.62,
+                              times: [0, 0.18, 0.4, 1],
+                              ease: [0.22, 1, 0.36, 1],
+                            }
+                          : { duration: 0.2, ease: [0.22, 1, 0.36, 1] }
+                    }
+                    whileHover={
+                      hasSubmitted || isSelected || reduceMotion
+                        ? undefined
+                        : { y: -3, transition: { duration: 0.18, ease: [0.22, 1, 0.36, 1] } }
+                    }
+                    whileTap={
+                      hasSubmitted || reduceMotion
+                        ? undefined
+                        : { scale: 0.97, y: 0, transition: { duration: 0.07 } }
+                    }
                     onClick={() => handleSelectAnswer(option)}
                     disabled={hasSubmitted}
                     className={cn(
-                      "w-full cursor-pointer rounded-2xl border px-4 py-3.5 text-left transition-all disabled:cursor-default",
+                      "relative w-full cursor-pointer overflow-hidden rounded-2xl border px-4 py-3.5 text-left shadow-sm transition-shadow duration-200 hover:shadow-md disabled:cursor-default disabled:hover:shadow-sm",
                       borderClass,
                       bgClass
                     )}
                   >
-                    <div className="flex items-center gap-3">
-                      <span
+                    <AnimatePresence initial={false}>
+                      {showPickMotion ? (
+                        <motion.span
+                          key="accent-ring"
+                          aria-hidden
+                          className="pointer-events-none absolute inset-0 z-0 rounded-2xl border-2 border-accent/70"
+                          initial={{ opacity: 0.95, scale: 0.94 }}
+                          animate={{ opacity: 0, scale: 1.08 }}
+                          exit={{ opacity: 0 }}
+                          transition={{ duration: 0.58, ease: [0.16, 0.84, 0.24, 1] }}
+                        />
+                      ) : null}
+                    </AnimatePresence>
+                    <div className="relative z-10 flex items-center gap-3">
+                      <motion.span
                         className={cn(
                           "flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-xs font-bold",
                           hasSubmitted && isCorrectOption
@@ -1183,6 +1084,24 @@ export function QuickQuiz({
                                 ? "bg-accent/20 text-accent"
                                 : "bg-border/50 text-muted-foreground"
                         )}
+                        animate={
+                          reduceMotion || hasSubmitted
+                            ? { scale: 1, rotate: 0 }
+                            : isSelected
+                              ? { scale: [1, 1.22, 1.06, 1], rotate: [0, -10, 6, 0] }
+                              : { scale: 1, rotate: 0 }
+                        }
+                        transition={
+                          reduceMotion || hasSubmitted
+                            ? { duration: 0.12 }
+                            : isSelected
+                              ? {
+                                  duration: 0.55,
+                                  times: [0, 0.2, 0.45, 1],
+                                  ease: [0.22, 1, 0.36, 1],
+                                }
+                              : { duration: 0.18 }
+                        }
                       >
                         {hasSubmitted && isCorrectOption ? (
                           <CheckCircle2 size={14} />
@@ -1191,10 +1110,10 @@ export function QuickQuiz({
                         ) : (
                           letter
                         )}
-                      </span>
+                      </motion.span>
                       <span
                         className={cn(
-                          "text-sm",
+                          "text-[15px] leading-snug sm:text-[16px] sm:leading-relaxed",
                           hasSubmitted && !isCorrectOption && !isSelected
                             ? "text-muted-foreground"
                             : "text-foreground"
@@ -1203,7 +1122,7 @@ export function QuickQuiz({
                         {option}
                       </span>
                     </div>
-                  </button>
+                  </motion.button>
                 );
               })}
 
@@ -1285,7 +1204,7 @@ export function QuickQuiz({
                         </span>
                       ))
                     ) : (
-                      <span className="text-xs text-muted-foreground">No rubric slots were clearly covered.</span>
+                      <span className="text-xs text-muted-foreground">No marking points were clearly matched.</span>
                     )}
                   </div>
                 </div>

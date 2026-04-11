@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { motion } from "framer-motion";
 import { ArrowLeft, Check, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ReactNode } from "react";
@@ -22,6 +23,22 @@ const summaryToneClasses: Record<NonNullable<LearningRailSummary["tone"]>, strin
   warning: "border-warning/25 bg-warning/10 text-warning",
   danger: "border-danger/25 bg-danger/10 text-danger",
 };
+
+const railListVariants = {
+  hidden: {},
+  show: {
+    transition: { staggerChildren: 0.045, delayChildren: 0.06 },
+  },
+} as const;
+
+const railItemVariants = {
+  hidden: { opacity: 0, x: -10 },
+  show: {
+    opacity: 1,
+    x: 0,
+    transition: { type: "spring", stiffness: 380, damping: 26 },
+  },
+} as const;
 
 function RailItemInner({ item }: { item: LearningRailItem }) {
   const stateClasses = {
@@ -102,31 +119,49 @@ export function LearningRail({
         </div>
       </div>
 
-      <div className="al-rail-list">
-        {railItems.map((item) =>
-          item.href ? (
-            <Link key={item.id} href={item.href} className="block focus-ring rounded-2xl">
+      <motion.div
+        className="al-rail-list"
+        variants={railListVariants}
+        initial="hidden"
+        animate="show"
+      >
+        {railItems.map((item) => (
+          <motion.div key={item.id} variants={railItemVariants} layout="position">
+            {item.href ? (
+              <Link href={item.href} className="block focus-ring rounded-2xl">
+                <RailItemInner item={item} />
+              </Link>
+            ) : (
               <RailItemInner item={item} />
-            </Link>
-          ) : (
-            <RailItemInner key={item.id} item={item} />
-          )
-        )}
-      </div>
+            )}
+          </motion.div>
+        ))}
+      </motion.div>
 
       {railSummary?.length ? (
         <div className="mt-auto flex flex-wrap gap-2 pt-5">
-          {railSummary.map((summary) => (
-            <div
+          {railSummary.map((summary, index) => (
+            <motion.div
               key={`${summary.label}-${summary.value}`}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.12 + index * 0.05, duration: 0.22 }}
               className={cn(
-                "rounded-full border px-3 py-2 text-xs font-medium",
+                "rounded-full border px-3 py-2 text-xs font-medium transition-shadow duration-300 hover:shadow-sm",
                 summaryToneClasses[summary.tone ?? "default"]
               )}
             >
               <span className="text-muted">{summary.label}</span>{" "}
-              <span className="text-foreground">{summary.value}</span>
-            </div>
+              <motion.span
+                key={String(summary.value)}
+                className="inline-block text-foreground"
+                initial={{ scale: 0.92 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 500, damping: 22 }}
+              >
+                {summary.value}
+              </motion.span>
+            </motion.div>
           ))}
         </div>
       ) : null}

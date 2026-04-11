@@ -191,6 +191,9 @@ export function buildCurriculumSeedPayload() {
     expectation: question.expectation,
     practice_prompt: question.practicePrompt,
     legacy_topic_ids: question.legacyTopicIds,
+    exam_metadata: question.examMetadata ?? {},
+    reviewed: question.reviewed ?? false,
+    active: question.active ?? true,
   }));
 
   const questionPoints = QUESTION_METADATA.flatMap((question) =>

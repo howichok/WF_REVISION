@@ -3,8 +3,10 @@
 import {
   createContext,
   startTransition,
+  useCallback,
   useContext,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -13,6 +15,7 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 import {
   getNextAppRoute,
   loadAppState,
+  logRevisionPracticeEvent,
   saveDiagnosticResult,
   saveFocusBreakdown,
   saveMaterialProgress,
@@ -21,6 +24,7 @@ import {
   saveTopicCoachingMemoryEntries,
   saveWeakAreas,
   toggleSubtopicProgress,
+  type LogRevisionPracticeEventInput,
 } from "@/lib/app-data";
 import {
   getTopicCoachingMemoryStorageKey,
@@ -138,6 +142,8 @@ type AppDataContextValue = {
     recommendedAction?: string | null;
     recommendedHref?: string | null;
   }) => void;
+  /** Best-effort analytics write; fails quietly if the table is not migrated yet. */
+  logRevisionPracticeEvent: (input: LogRevisionPracticeEventInput) => Promise<void>;
 };
 
 const AppDataContext = createContext<AppDataContextValue | null>(null);
@@ -165,6 +171,7 @@ export function AppDataProvider({
 }) {
   const router = useRouter();
   const config = getSupabaseConfig();
+  const hasSupabaseConfig = Boolean(config);
   const supabaseRef = useRef(
     config ? getBrowserSupabaseClient() : null
   );
@@ -187,6 +194,8 @@ export function AppDataProvider({
   const topicCoachingMemoryRef = useRef<TopicCoachingMemoryMap>(
     initialState?.topicCoachingMemory ?? {}
   );
+  const stateRef = useRef(state);
+  stateRef.current = state;
 
   function readLocalTopicCoachingMemory(userId?: string | null) {
     if (typeof window === "undefined") {
@@ -208,26 +217,30 @@ export function AppDataProvider({
     );
   }
 
-  function persistTopicCoachingEntries(entries: TopicCoachingMemoryEntry[]) {
-    if (!supabaseRef.current || !state.user || entries.length === 0) {
-      return;
-    }
-
-    void saveTopicCoachingMemoryEntries(
-      supabaseRef.current,
-      state.user.id,
-      entries
-    ).catch((error) => {
-      const message = error instanceof Error ? error.message : String(error ?? "");
-
-      if (
-        process.env.NODE_ENV !== "production" &&
-        !message.includes("topic_coaching_memory")
-      ) {
-        console.warn("Unable to persist topic coaching memory.", error);
+  const persistTopicCoachingEntries = useCallback(
+    (entries: TopicCoachingMemoryEntry[]) => {
+      const user = stateRef.current.user;
+      if (!supabaseRef.current || !user || entries.length === 0) {
+        return;
       }
-    });
-  }
+
+      void saveTopicCoachingMemoryEntries(
+        supabaseRef.current,
+        user.id,
+        entries
+      ).catch((error) => {
+        const message = error instanceof Error ? error.message : String(error ?? "");
+
+        if (
+          process.env.NODE_ENV !== "production" &&
+          !message.includes("topic_coaching_memory")
+        ) {
+          console.warn("Unable to persist topic coaching memory.", error);
+        }
+      });
+    },
+    []
+  );
 
   useEffect(() => {
     if (typeof window === "undefined") {
@@ -259,7 +272,7 @@ export function AppDataProvider({
     );
   }, [state.user?.id, topicCoachingMemory]);
 
-  async function hydrate(authUser?: SupabaseUser | null) {
+  const hydrate = useCallback(async (authUser?: SupabaseUser | null) => {
     if (!supabaseRef.current) {
       setIsHydrating(false);
       return null;
@@ -292,7 +305,9 @@ export function AppDataProvider({
 
       const nextState = await loadAppState(supabaseRef.current, user, {
         sharedCurriculum:
-          state.sharedCurriculum ?? initialState?.sharedCurriculum ?? getLocalSharedCurriculumSnapshot(),
+          stateRef.current.sharedCurriculum ??
+          initialState?.sharedCurriculum ??
+          getLocalSharedCurriculumSnapshot(),
       });
       const localTopicCoachingMemory = readLocalTopicCoachingMemory(user.id);
       const mergedTopicCoachingMemory = mergeTopicCoachingMemoryMaps(
@@ -350,7 +365,7 @@ export function AppDataProvider({
         setIsHydrating(false);
       }
     }
-  }
+  }, [initialState?.sharedCurriculum]);
 
   useEffect(() => {
     if (!supabaseRef.current) {
@@ -385,77 +400,77 @@ export function AppDataProvider({
       hydrateRequestRef.current += 1;
       subscription.unsubscribe();
     };
-  }, []);
+  }, [hydrate]);
 
-  async function refreshAppState() {
-    return hydrate();
-  }
+  const refreshAppState = useCallback(() => hydrate(), [hydrate]);
 
-  async function signUp(input: {
-    nickname: string;
-    email: string;
-    password: string;
-  }) {
-    if (!supabaseRef.current) {
-      throw new Error(configError ?? "Supabase is not configured.");
-    }
+  const signUp = useCallback(
+    async (input: { nickname: string; email: string; password: string }) => {
+      if (!supabaseRef.current) {
+        throw new Error(configError ?? "Supabase is not configured.");
+      }
 
-    const redirectTo = buildAuthRedirectUrl("/auth/callback");
+      const redirectTo = buildAuthRedirectUrl("/auth/callback");
 
-    const { data, error } = await supabaseRef.current.auth.signUp({
-      email: input.email,
-      password: input.password,
-      options: {
-        data: {
-          nickname: input.nickname,
+      const { data, error } = await supabaseRef.current.auth.signUp({
+        email: input.email,
+        password: input.password,
+        options: {
+          data: {
+            nickname: input.nickname,
+          },
+          emailRedirectTo: redirectTo,
         },
-        emailRedirectTo: redirectTo,
-      },
-    });
+      });
 
-    if (error) {
-      throw error;
-    }
+      if (error) {
+        throw error;
+      }
 
-    if (!data.user) {
-      throw new Error("Sign up did not return a user.");
-    }
+      if (!data.user) {
+        throw new Error("Sign up did not return a user.");
+      }
 
-    const nextState = data.session ? await hydrate(data.user) : null;
+      const nextState = data.session ? await hydrate(data.user) : null;
 
-    return {
-      requiresEmailVerification: !data.session,
-      nextPath: nextState ? getAuthRedirectPath(nextState) : "/auth",
-    };
-  }
+      return {
+        requiresEmailVerification: !data.session,
+        nextPath: nextState ? getAuthRedirectPath(nextState) : "/auth",
+      };
+    },
+    [configError, hydrate]
+  );
 
-  async function signIn(input: { email: string; password: string }) {
-    if (!supabaseRef.current) {
-      throw new Error(configError ?? "Supabase is not configured.");
-    }
+  const signIn = useCallback(
+    async (input: { email: string; password: string }) => {
+      if (!supabaseRef.current) {
+        throw new Error(configError ?? "Supabase is not configured.");
+      }
 
-    const { data, error } = await supabaseRef.current.auth.signInWithPassword({
-      email: input.email,
-      password: input.password,
-    });
+      const { data, error } = await supabaseRef.current.auth.signInWithPassword({
+        email: input.email,
+        password: input.password,
+      });
 
-    if (error) {
-      throw error;
-    }
+      if (error) {
+        throw error;
+      }
 
-    if (!data.user) {
-      throw new Error("Sign in did not return a user.");
-    }
+      if (!data.user) {
+        throw new Error("Sign in did not return a user.");
+      }
 
-    const nextState = await hydrate(data.user);
+      const nextState = await hydrate(data.user);
 
-    return {
-      requiresEmailVerification: false,
-      nextPath: nextState ? getAuthRedirectPath(nextState) : "/revision",
-    };
-  }
+      return {
+        requiresEmailVerification: false,
+        nextPath: nextState ? getAuthRedirectPath(nextState) : "/revision",
+      };
+    },
+    [configError, hydrate]
+  );
 
-  async function signOut() {
+  const signOut = useCallback(async () => {
     if (!supabaseRef.current) {
       setState((current) => ({
         ...EMPTY_STATE,
@@ -484,41 +499,46 @@ export function AppDataProvider({
       router.push("/auth");
       router.refresh();
     });
-  }
+  }, [router]);
 
-  async function updateNickname(nickname: string) {
-    if (!supabaseRef.current || !state.user) {
-      throw new Error("You need to be signed in to update your profile.");
-    }
+  const updateNickname = useCallback(
+    async (nickname: string) => {
+      const user = stateRef.current.user;
+      if (!supabaseRef.current || !user) {
+        throw new Error("You need to be signed in to update your profile.");
+      }
 
-    const trimmedNickname = nickname.trim();
-    await saveProfileNickname(supabaseRef.current, state.user.id, trimmedNickname);
+      const trimmedNickname = nickname.trim();
+      await saveProfileNickname(supabaseRef.current, user.id, trimmedNickname);
 
-    try {
-      const { error: metadataError } = await supabaseRef.current.auth.updateUser({
-        data: {
-          nickname: trimmedNickname,
-        },
-      });
+      try {
+        const { error: metadataError } = await supabaseRef.current.auth.updateUser({
+          data: {
+            nickname: trimmedNickname,
+          },
+        });
 
-      if (metadataError) {
+        if (metadataError) {
+          // Profile rows are canonical; metadata sync is best-effort fallback only.
+        }
+      } catch {
         // Profile rows are canonical; metadata sync is best-effort fallback only.
       }
-    } catch {
-      // Profile rows are canonical; metadata sync is best-effort fallback only.
-    }
 
-    const nextState = await hydrate();
+      const nextState = await hydrate();
 
-    if (!nextState) {
-      throw new Error("Unable to refresh profile state.");
-    }
+      if (!nextState) {
+        throw new Error("Unable to refresh profile state.");
+      }
 
-    return nextState;
-  }
+      return nextState;
+    },
+    [hydrate]
+  );
 
-  async function sendPasswordReset() {
-    if (!supabaseRef.current || !state.user?.email) {
+  const sendPasswordReset = useCallback(async () => {
+    const user = stateRef.current.user;
+    if (!supabaseRef.current || !user?.email) {
       throw new Error("Your account email is unavailable for password reset.");
     }
 
@@ -526,243 +546,335 @@ export function AppDataProvider({
       "/auth/callback?next=/auth/update-password"
     );
 
-    const { error } = await supabaseRef.current.auth.resetPasswordForEmail(
-      state.user.email,
-      {
-        redirectTo,
-      }
-    );
+    const { error } = await supabaseRef.current.auth.resetPasswordForEmail(user.email, {
+      redirectTo,
+    });
 
     if (error) {
       throw error;
     }
-  }
+  }, []);
 
-  async function updateWeakAreas(weakAreas: string[]) {
-    if (!supabaseRef.current || !state.user) {
-      throw new Error("You need to be signed in to update onboarding.");
-    }
-
-    await saveWeakAreas(supabaseRef.current, state.user.id, weakAreas);
-    const nextState = await hydrate();
-
-    if (!nextState) {
-      throw new Error("Unable to refresh onboarding state.");
-    }
-
-    return nextState;
-  }
-
-  async function updateFocusBreakdown(input: {
-    weakAreas: string[];
-    selectedSubtopics: FocusBreakdownData["selectedSubtopics"];
-    freeTextNotes: FocusBreakdownData["freeTextNotes"];
-    globalNote?: string;
-  }) {
-    if (!supabaseRef.current || !state.user) {
-      throw new Error("You need to be signed in to update focus breakdown.");
-    }
-
-    await saveFocusBreakdown(supabaseRef.current, state.user.id, input);
-    const nextState = await hydrate();
-
-    if (!nextState) {
-      throw new Error("Unable to refresh onboarding state.");
-    }
-
-    return nextState;
-  }
-
-  async function updateDiagnosticResult(result: DiagnosticResult) {
-    if (!supabaseRef.current || !state.user) {
-      throw new Error("You need to be signed in to save diagnostics.");
-    }
-
-    await saveDiagnosticResult(supabaseRef.current, state.user.id, result);
-    const nextState = await hydrate();
-
-    if (!nextState) {
-      throw new Error("Unable to refresh diagnostic state.");
-    }
-
-    return nextState;
-  }
-
-  async function updateSubtopicReview(input: {
-    topicId: string;
-    subtopicId: string;
-    subtopicLabel: string;
-    completed: boolean;
-  }) {
-    if (!supabaseRef.current || !state.user) {
-      throw new Error("You need to be signed in to update progress.");
-    }
-
-    await toggleSubtopicProgress(supabaseRef.current, state.user.id, input);
-    const nextState = await hydrate();
-
-    if (!nextState) {
-      throw new Error("Unable to refresh revision progress.");
-    }
-
-    return nextState;
-  }
-
-  async function updateMaterialProgress(input: {
-    materialId: string;
-    topicId: string;
-    title: string;
-    activityType: string;
-    currentProgressPercent?: number;
-    estimatedMinutes?: number;
-  }) {
-    if (!supabaseRef.current || !state.user) {
-      throw new Error("You need to be signed in to update progress.");
-    }
-
-    await saveMaterialProgress(supabaseRef.current, state.user.id, input);
-    const nextState = await hydrate();
-
-    if (!nextState) {
-      throw new Error("Unable to refresh material progress.");
-    }
-
-    return nextState;
-  }
-
-  async function updatePracticeSetProgress(input: {
-    practiceSetId: string;
-    topicId: string;
-    title: string;
-    progressPercent: number;
-    minutesSpent?: number;
-  }) {
-    if (!supabaseRef.current || !state.user) {
-      throw new Error("You need to be signed in to update practice progress.");
-    }
-
-    await savePracticeSetProgress(supabaseRef.current, state.user.id, input);
-    const nextState = await hydrate();
-
-    if (!nextState) {
-      throw new Error("Unable to refresh practice progress.");
-    }
-
-    return nextState;
-  }
-
-  function updateTopicCoachingMemory(
-    updater: (current: TopicCoachingMemoryMap) => TopicCoachingMemoryMap,
-    topicId?: string
-  ) {
-    const nextTopicCoachingMemory = updater(topicCoachingMemoryRef.current);
-    setTopicCoachingMemory(nextTopicCoachingMemory);
-    topicCoachingMemoryRef.current = nextTopicCoachingMemory;
-
-    if (topicId) {
-      const nextEntry = nextTopicCoachingMemory[topicId];
-
-      if (nextEntry) {
-        persistTopicCoachingEntries([nextEntry]);
+  const updateWeakAreas = useCallback(
+    async (weakAreas: string[]) => {
+      const user = stateRef.current.user;
+      if (!supabaseRef.current || !user) {
+        throw new Error("You need to be signed in to update onboarding.");
       }
-    }
-  }
 
-  function recordAskCoaching(input: {
-    topicId: string;
-    intent: string;
-    recommendedAction?: string | null;
-    recommendedHref?: string | null;
-  }) {
-    updateTopicCoachingMemory(
-      (current) => recordAskTopicCoaching(current, input),
-      input.topicId
-    );
-  }
+      await saveWeakAreas(supabaseRef.current, user.id, weakAreas);
+      const nextState = await hydrate();
 
-  function recordAnswerCheckCoaching(input: {
-    topicId: string;
-    questionId?: string | null;
-    pointId?: string | null;
-    scorePercent: number;
-    misconceptionLabels?: string[];
-    recommendedAction?: string | null;
-    recommendedHref?: string | null;
-  }) {
-    updateTopicCoachingMemory(
-      (current) => recordAnswerCheckTopicCoaching(current, input),
-      input.topicId
-    );
-  }
+      if (!nextState) {
+        throw new Error("Unable to refresh onboarding state.");
+      }
 
-  function recordExamDrillCoaching(input: {
-    topicId: string;
-    drillId?: string | null;
-    pointId?: string | null;
-    readinessPercent: number;
-    rating?: "needs-work" | "ready";
-    recommendedAction?: string | null;
-    recommendedHref?: string | null;
-  }) {
-    updateTopicCoachingMemory(
-      (current) => recordExamDrillTopicCoaching(current, input),
-      input.topicId
-    );
-  }
+      return nextState;
+    },
+    [hydrate]
+  );
 
-  function recordRecallCoaching(input: {
-    topicId: string;
-    masteryPercent: number;
-    recommendedAction?: string | null;
-    recommendedHref?: string | null;
-  }) {
-    updateTopicCoachingMemory(
-      (current) => recordRecallTopicCoaching(current, input),
-      input.topicId
-    );
-  }
+  const updateFocusBreakdown = useCallback(
+    async (input: {
+      weakAreas: string[];
+      selectedSubtopics: FocusBreakdownData["selectedSubtopics"];
+      freeTextNotes: FocusBreakdownData["freeTextNotes"];
+      globalNote?: string;
+    }) => {
+      const user = stateRef.current.user;
+      if (!supabaseRef.current || !user) {
+        throw new Error("You need to be signed in to update focus breakdown.");
+      }
 
-  function recordQuizCoaching(input: {
-    topicId: string;
-    scorePercent: number;
-    recommendedAction?: string | null;
-    recommendedHref?: string | null;
-  }) {
-    updateTopicCoachingMemory(
-      (current) => recordQuizTopicCoaching(current, input),
-      input.topicId
-    );
-  }
+      await saveFocusBreakdown(supabaseRef.current, user.id, input);
+      const nextState = await hydrate();
 
-  const value: AppDataContextValue = {
-    configError,
-    isConfigured: Boolean(config),
-    isHydrating,
-    user: state.user,
-    sharedCurriculum: state.sharedCurriculum,
-    onboarding: state.onboarding,
-    diagnostic: state.diagnostic,
-    revisionProgress: state.revisionProgress,
-    topicCoachingMemory,
-    activityHistory: state.activityHistory,
-    refreshAppState,
-    signUp,
-    signIn,
-    signOut,
-    updateNickname,
-    sendPasswordReset,
-    saveWeakAreas: updateWeakAreas,
-    saveFocusBreakdown: updateFocusBreakdown,
-    saveDiagnosticResult: updateDiagnosticResult,
-    toggleSubtopicReview: updateSubtopicReview,
-    trackMaterialProgress: updateMaterialProgress,
-    trackPracticeSetProgress: updatePracticeSetProgress,
-    recordAskCoaching,
-    recordAnswerCheckCoaching,
-    recordExamDrillCoaching,
-    recordRecallCoaching,
-    recordQuizCoaching,
-  };
+      if (!nextState) {
+        throw new Error("Unable to refresh onboarding state.");
+      }
+
+      return nextState;
+    },
+    [hydrate]
+  );
+
+  const updateDiagnosticResult = useCallback(
+    async (result: DiagnosticResult) => {
+      const user = stateRef.current.user;
+      if (!supabaseRef.current || !user) {
+        throw new Error("You need to be signed in to save diagnostics.");
+      }
+
+      await saveDiagnosticResult(supabaseRef.current, user.id, result);
+      const nextState = await hydrate();
+
+      if (!nextState) {
+        throw new Error("Unable to refresh diagnostic state.");
+      }
+
+      return nextState;
+    },
+    [hydrate]
+  );
+
+  const updateSubtopicReview = useCallback(
+    async (input: {
+      topicId: string;
+      subtopicId: string;
+      subtopicLabel: string;
+      completed: boolean;
+    }) => {
+      const user = stateRef.current.user;
+      if (!supabaseRef.current || !user) {
+        throw new Error("You need to be signed in to update progress.");
+      }
+
+      await toggleSubtopicProgress(supabaseRef.current, user.id, input);
+      const nextState = await hydrate();
+
+      if (!nextState) {
+        throw new Error("Unable to refresh revision progress.");
+      }
+
+      return nextState;
+    },
+    [hydrate]
+  );
+
+  const updateMaterialProgress = useCallback(
+    async (input: {
+      materialId: string;
+      topicId: string;
+      title: string;
+      activityType: string;
+      currentProgressPercent?: number;
+      estimatedMinutes?: number;
+    }) => {
+      const user = stateRef.current.user;
+      if (!supabaseRef.current || !user) {
+        throw new Error("You need to be signed in to update progress.");
+      }
+
+      await saveMaterialProgress(supabaseRef.current, user.id, input);
+      const nextState = await hydrate();
+
+      if (!nextState) {
+        throw new Error("Unable to refresh material progress.");
+      }
+
+      return nextState;
+    },
+    [hydrate]
+  );
+
+  const updatePracticeSetProgress = useCallback(
+    async (input: {
+      practiceSetId: string;
+      topicId: string;
+      title: string;
+      progressPercent: number;
+      minutesSpent?: number;
+    }) => {
+      const user = stateRef.current.user;
+      if (!supabaseRef.current || !user) {
+        throw new Error("You need to be signed in to update practice progress.");
+      }
+
+      await savePracticeSetProgress(supabaseRef.current, user.id, input);
+      const nextState = await hydrate();
+
+      if (!nextState) {
+        throw new Error("Unable to refresh practice progress.");
+      }
+
+      return nextState;
+    },
+    [hydrate]
+  );
+
+  const updateTopicCoachingMemory = useCallback(
+    (updater: (current: TopicCoachingMemoryMap) => TopicCoachingMemoryMap, topicId?: string) => {
+      const nextTopicCoachingMemory = updater(topicCoachingMemoryRef.current);
+      setTopicCoachingMemory(nextTopicCoachingMemory);
+      topicCoachingMemoryRef.current = nextTopicCoachingMemory;
+
+      if (topicId) {
+        const nextEntry = nextTopicCoachingMemory[topicId];
+
+        if (nextEntry) {
+          persistTopicCoachingEntries([nextEntry]);
+        }
+      }
+    },
+    [persistTopicCoachingEntries]
+  );
+
+  const recordAskCoaching = useCallback(
+    (input: {
+      topicId: string;
+      intent: string;
+      recommendedAction?: string | null;
+      recommendedHref?: string | null;
+    }) => {
+      updateTopicCoachingMemory(
+        (current) => recordAskTopicCoaching(current, input),
+        input.topicId
+      );
+    },
+    [updateTopicCoachingMemory]
+  );
+
+  const recordAnswerCheckCoaching = useCallback(
+    (input: {
+      topicId: string;
+      questionId?: string | null;
+      pointId?: string | null;
+      scorePercent: number;
+      misconceptionLabels?: string[];
+      recommendedAction?: string | null;
+      recommendedHref?: string | null;
+    }) => {
+      updateTopicCoachingMemory(
+        (current) => recordAnswerCheckTopicCoaching(current, input),
+        input.topicId
+      );
+    },
+    [updateTopicCoachingMemory]
+  );
+
+  const recordExamDrillCoaching = useCallback(
+    (input: {
+      topicId: string;
+      drillId?: string | null;
+      pointId?: string | null;
+      readinessPercent: number;
+      rating?: "needs-work" | "ready";
+      recommendedAction?: string | null;
+      recommendedHref?: string | null;
+    }) => {
+      updateTopicCoachingMemory(
+        (current) => recordExamDrillTopicCoaching(current, input),
+        input.topicId
+      );
+    },
+    [updateTopicCoachingMemory]
+  );
+
+  const recordRecallCoaching = useCallback(
+    (input: {
+      topicId: string;
+      masteryPercent: number;
+      recommendedAction?: string | null;
+      recommendedHref?: string | null;
+    }) => {
+      updateTopicCoachingMemory(
+        (current) => recordRecallTopicCoaching(current, input),
+        input.topicId
+      );
+    },
+    [updateTopicCoachingMemory]
+  );
+
+  const recordQuizCoaching = useCallback(
+    (input: {
+      topicId: string;
+      scorePercent: number;
+      recommendedAction?: string | null;
+      recommendedHref?: string | null;
+    }) => {
+      updateTopicCoachingMemory(
+        (current) => recordQuizTopicCoaching(current, input),
+        input.topicId
+      );
+    },
+    [updateTopicCoachingMemory]
+  );
+
+  const logRevisionPracticeEventFn = useCallback(
+    async (input: LogRevisionPracticeEventInput) => {
+      const client = supabaseRef.current;
+      const userId = stateRef.current.user?.id;
+      if (!client || !userId) {
+        return;
+      }
+
+      try {
+        await logRevisionPracticeEvent(client, userId, input);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error ?? "");
+        if (
+          process.env.NODE_ENV !== "production" &&
+          !message.includes("revision_practice_events")
+        ) {
+          console.warn("Unable to log revision practice event.", error);
+        }
+      }
+    },
+    []
+  );
+
+  const value = useMemo<AppDataContextValue>(
+    () => ({
+      configError,
+      isConfigured: hasSupabaseConfig,
+      isHydrating,
+      user: state.user,
+      sharedCurriculum: state.sharedCurriculum,
+      onboarding: state.onboarding,
+      diagnostic: state.diagnostic,
+      revisionProgress: state.revisionProgress,
+      topicCoachingMemory,
+      activityHistory: state.activityHistory,
+      refreshAppState,
+      signUp,
+      signIn,
+      signOut,
+      updateNickname,
+      sendPasswordReset,
+      saveWeakAreas: updateWeakAreas,
+      saveFocusBreakdown: updateFocusBreakdown,
+      saveDiagnosticResult: updateDiagnosticResult,
+      toggleSubtopicReview: updateSubtopicReview,
+      trackMaterialProgress: updateMaterialProgress,
+      trackPracticeSetProgress: updatePracticeSetProgress,
+      recordAskCoaching,
+      recordAnswerCheckCoaching,
+      recordExamDrillCoaching,
+      recordRecallCoaching,
+      recordQuizCoaching,
+      logRevisionPracticeEvent: logRevisionPracticeEventFn,
+    }),
+    [
+      configError,
+      hasSupabaseConfig,
+      isHydrating,
+      state.user,
+      state.sharedCurriculum,
+      state.onboarding,
+      state.diagnostic,
+      state.revisionProgress,
+      state.activityHistory,
+      topicCoachingMemory,
+      refreshAppState,
+      signUp,
+      signIn,
+      signOut,
+      updateNickname,
+      sendPasswordReset,
+      updateWeakAreas,
+      updateFocusBreakdown,
+      updateDiagnosticResult,
+      updateSubtopicReview,
+      updateMaterialProgress,
+      updatePracticeSetProgress,
+      recordAskCoaching,
+      recordAnswerCheckCoaching,
+      recordExamDrillCoaching,
+      recordRecallCoaching,
+      recordQuizCoaching,
+      logRevisionPracticeEventFn,
+    ]
+  );
 
   return (
     <AppDataContext.Provider value={value}>{children}</AppDataContext.Provider>

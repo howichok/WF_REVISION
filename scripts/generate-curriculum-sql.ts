@@ -14,6 +14,29 @@ const SCHEMA_FILE = path.join(OUTPUT_DIR, "full_site_schema.sql");
 const SEED_FILE = path.join(OUTPUT_DIR, "full_site_seed.sql");
 const BOOTSTRAP_FILE = path.join(OUTPUT_DIR, "full_site_bootstrap.sql");
 
+function delay(milliseconds: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+async function writeFileWithRetry(filePath: string, contents: string) {
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await fs.writeFile(filePath, contents, "utf8");
+      return;
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+
+      await delay(250 * attempt);
+    }
+  }
+}
+
 function sqlString(value: string) {
   return `'${value.replace(/'/g, "''")}'`;
 }
@@ -148,6 +171,7 @@ async function main() {
       tableName: "curriculum_questions",
       rows: seed.questions,
       conflictColumns: ["id"],
+      jsonColumns: ["exam_metadata"],
     },
     {
       tableName: "curriculum_question_points",
@@ -186,7 +210,7 @@ async function main() {
   const seedFooter = ["commit;", ""].join("\n");
   const seedSql = `${seedHeader}${seedBody}${seedFooter}`;
 
-  await fs.writeFile(SEED_FILE, seedSql, "utf8");
+  await writeFileWithRetry(SEED_FILE, seedSql);
 
   const [schemaSql] = await Promise.all([
     fs.readFile(SCHEMA_FILE, "utf8"),
@@ -204,7 +228,7 @@ async function main() {
     "",
   ].join("\n");
 
-  await fs.writeFile(BOOTSTRAP_FILE, bootstrapSql, "utf8");
+  await writeFileWithRetry(BOOTSTRAP_FILE, bootstrapSql);
 
   console.log(
     JSON.stringify(

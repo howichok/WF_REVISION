@@ -35,7 +35,7 @@ export const DIGITAL_SOFTWARE_DEVELOPMENT_QUALIFICATION: QualificationOverview =
     },
     {
       id: "core-exam-2",
-      title: "Applied written-response route",
+      title: "Applied exam route (Paper 2 style)",
       summary:
         "The applied exam-style element emphasises context, scenario reasoning, design choices, quality, user needs, and justified written responses. Align timing and marks expectations with the 2025 spec: 90 marks per core paper.",
       focus:
@@ -44,7 +44,7 @@ export const DIGITAL_SOFTWARE_DEVELOPMENT_QUALIFICATION: QualificationOverview =
     },
     {
       id: "occupational-specialism",
-      title: "Digital Software Development occupational specialism",
+      title: "Occupational specialism (DSD)",
       summary:
         "The qualification also expects project-based software delivery skills: turning requirements into tested, usable, secure solutions that match user and business needs.",
       focus:

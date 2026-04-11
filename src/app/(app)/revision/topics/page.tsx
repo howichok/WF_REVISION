@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, startTransition, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, Check, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, Sparkles } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
 import { ExamConditionsLaunchWizard } from "@/components/revision/exam-conditions-launch-wizard";
 import { RevisionFocusNav } from "@/components/revision/revision-focus-nav";
@@ -98,6 +98,13 @@ function RevisionTopicsPageContent() {
 
   const primaryExamTopicId = examTopicOrder[0] ?? "";
 
+  useEffect(() => {
+    if (!examMode || !primaryExamTopicId) {
+      return;
+    }
+    void router.prefetch(`/revision/${primaryExamTopicId}/exam-questions`);
+  }, [examMode, primaryExamTopicId, router]);
+
   const openExamWithConfig = useCallback(
     (options: {
       setSize: ExamQuestionSetSize;
@@ -116,7 +123,9 @@ function RevisionTopicsPageContent() {
         difficulty: options.difficultyMode,
         alloc: serializeExamTopicAllocationsParam(allocRecord),
       });
-      router.push(`/revision/${primaryExamTopicId}/exam-questions?${params.toString()}`);
+      startTransition(() => {
+        router.push(`/revision/${primaryExamTopicId}/exam-questions?${params.toString()}`);
+      });
     },
     [router, primaryExamTopicId]
   );
@@ -137,59 +146,65 @@ function RevisionTopicsPageContent() {
 
   return (
     <PageContainer size="lg">
-      <div className="space-y-8 sm:space-y-10">
-        <RevisionFocusNav activeMode={focusMode} fromHub={fromHub} />
+      <div className={cn("space-y-8 sm:space-y-10", examMode && examTopicOrder.length > 0 && "pb-28 sm:pb-24")}>
+        {examMode ? (
+          <Link
+            href="/revision"
+            className="inline-flex items-center gap-1.5 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            <ArrowLeft size={14} />
+            Revision home
+          </Link>
+        ) : (
+          <RevisionFocusNav activeMode={focusMode} fromHub={fromHub} />
+        )}
 
-        <header className="space-y-2">
+        {examMode ? (
           <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            {titleSubtitle.title}
+            Exam paper
           </h1>
-          <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-            {titleSubtitle.subtitle}
-          </p>
-        </header>
+        ) : (
+          <header className="space-y-2">
+            <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+              {titleSubtitle.title}
+            </h1>
+            <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
+              {titleSubtitle.subtitle}
+            </p>
+          </header>
+        )}
 
-        <div
-          className={cn(
-            "flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/80 px-4 py-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-5"
-          )}
-        >
-          <p className="text-sm text-foreground">
-            {!examMode && selectedCount > 0
-              ? `${selectedCount} / ${maxTopics} selected`
-              : examMode && selectedCount > 0
-                ? "Set paper length and topic split below."
-                : examMode
-                  ? "Select at least one topic"
-                  : "Select topics or open a single hub below"}
-          </p>
-          <div className="flex flex-wrap gap-2">
-            {!examMode ? (
-              <>
-                <Button type="button" variant="outline" size="sm" onClick={selectAll}>
-                  All
-                </Button>
-                <Button type="button" variant="ghost" size="sm" onClick={clearSelection} disabled={selectedCount === 0}>
-                  Clear
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  className="gap-1.5"
-                  disabled={selectedCount === 0}
-                  onClick={startSimpleSession}
-                >
-                  <Sparkles size={14} />
-                  Quick Q/A
-                </Button>
-              </>
-            ) : selectedCount > 0 ? (
-              <Button type="button" variant="ghost" size="sm" onClick={clearSelection}>
-                Clear topics
+        {!examMode ? (
+          <div
+            className={cn(
+              "flex flex-col gap-3 rounded-2xl border border-border/60 bg-card/80 px-4 py-4 backdrop-blur-sm sm:flex-row sm:items-center sm:justify-between sm:px-5"
+            )}
+          >
+            <p className="text-sm text-foreground">
+              {selectedCount > 0
+                ? `${selectedCount} / ${maxTopics} selected`
+                : "Select topics or open a single hub below"}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" size="sm" onClick={selectAll}>
+                All
               </Button>
-            ) : null}
+              <Button type="button" variant="ghost" size="sm" onClick={clearSelection} disabled={selectedCount === 0}>
+                Clear
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                className="gap-1.5"
+                disabled={selectedCount === 0}
+                onClick={startSimpleSession}
+              >
+                <Sparkles size={14} />
+                Quick Q/A
+              </Button>
+            </div>
           </div>
-        </div>
+        ) : null}
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {topics.map((topic) => {
@@ -208,7 +223,7 @@ function RevisionTopicsPageContent() {
                 key={topic.id}
                 variant="navigation"
                 className={cn(
-                  "relative flex flex-col rounded-2xl border p-4 transition-colors",
+                  "relative flex flex-col rounded-2xl border p-3 transition-colors sm:p-4",
                   isSelected
                     ? "border-accent/40 bg-accent/[0.06] ring-1 ring-accent/20"
                     : "border-border/60 bg-card hover:border-border"
@@ -275,7 +290,7 @@ function RevisionTopicsPageContent() {
         </div>
 
         {examMode && examTopicOrder.length > 0 ? (
-          <ExamConditionsLaunchWizard selectedTopicIds={examTopicOrder} onStart={openExamWithConfig} />
+          <ExamConditionsLaunchWizard selectedTopicIds={examTopicOrder} onStart={openExamWithConfig} onClear={clearSelection} />
         ) : null}
       </div>
     </PageContainer>

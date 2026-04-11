@@ -9,6 +9,30 @@ export type Json =
 export interface Database {
   public: {
     Tables: {
+      curriculum_topics: {
+        Row: {
+          id: string;
+          label: string;
+          icon: string;
+          short_label: string | null;
+          sort_order: number;
+        };
+        Insert: {
+          id: string;
+          label: string;
+          icon: string;
+          short_label?: string | null;
+          sort_order?: number;
+        };
+        Update: {
+          id?: string;
+          label?: string;
+          icon?: string;
+          short_label?: string | null;
+          sort_order?: number;
+        };
+        Relationships: [];
+      };
       activity_history: {
         Row: {
           id: string;
@@ -212,6 +236,189 @@ export interface Database {
           },
         ];
       };
+      revision_historical_rollup: {
+        Row: {
+          id: string;
+          user_id: string;
+          period_start: string;
+          period_end: string;
+          topic_id: string;
+          stats: Json;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          period_start: string;
+          period_end: string;
+          topic_id: string;
+          stats?: Json;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          period_start?: string;
+          period_end?: string;
+          topic_id?: string;
+          stats?: Json;
+          created_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "revision_historical_rollup_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      revision_practice_events: {
+        Row: {
+          id: string;
+          user_id: string;
+          occurred_at: string;
+          topic_id: string;
+          question_id: string;
+          question_kind: string;
+          session_id: string;
+          source: string;
+          correct: boolean;
+          duration_ms: number | null;
+          verdict: string | null;
+          tag_codes: string[];
+          is_revision_attempt: boolean;
+          weekly_plan_id: string | null;
+          srs_snapshot: Json;
+          context: Json;
+        };
+        Insert: {
+          id?: string;
+          user_id: string;
+          occurred_at?: string;
+          topic_id: string;
+          question_id: string;
+          question_kind: string;
+          session_id: string;
+          source?: string;
+          correct: boolean;
+          duration_ms?: number | null;
+          verdict?: string | null;
+          tag_codes?: string[];
+          is_revision_attempt?: boolean;
+          weekly_plan_id?: string | null;
+          srs_snapshot?: Json;
+          context?: Json;
+        };
+        Update: {
+          id?: string;
+          user_id?: string;
+          occurred_at?: string;
+          topic_id?: string;
+          question_id?: string;
+          question_kind?: string;
+          session_id?: string;
+          source?: string;
+          correct?: boolean;
+          duration_ms?: number | null;
+          verdict?: string | null;
+          tag_codes?: string[];
+          is_revision_attempt?: boolean;
+          weekly_plan_id?: string | null;
+          srs_snapshot?: Json;
+          context?: Json;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "revision_practice_events_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      revision_practice_tags: {
+        Row: {
+          id: string;
+          topic_id: string | null;
+          code: string;
+          label: string;
+          description: string | null;
+          sort_order: number;
+          created_at: string;
+        };
+        Insert: {
+          id?: string;
+          topic_id?: string | null;
+          code: string;
+          label: string;
+          description?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Update: {
+          id?: string;
+          topic_id?: string | null;
+          code?: string;
+          label?: string;
+          description?: string | null;
+          sort_order?: number;
+          created_at?: string;
+        };
+        Relationships: [];
+      };
+      revision_srs_items: {
+        Row: {
+          user_id: string;
+          deck: string;
+          item_key: string;
+          ease: number;
+          interval_days: number;
+          repetitions: number;
+          due_on: string;
+          last_grade: number | null;
+          last_reviewed_at: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          user_id: string;
+          deck: string;
+          item_key: string;
+          ease?: number;
+          interval_days?: number;
+          repetitions?: number;
+          due_on?: string;
+          last_grade?: number | null;
+          last_reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          user_id?: string;
+          deck?: string;
+          item_key?: string;
+          ease?: number;
+          interval_days?: number;
+          repetitions?: number;
+          due_on?: string;
+          last_grade?: number | null;
+          last_reviewed_at?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "revision_srs_items_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       profiles: {
         Row: {
           id: string;
@@ -325,8 +532,26 @@ export interface Database {
         ];
       };
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Views: {
+      revision_user_week_stats: {
+        Row: {
+          user_id: string;
+          week_start: string;
+          topic_id: string;
+          event_count: number;
+          correct_count: number;
+          wrong_count: number;
+          revision_attempt_count: number;
+        };
+        Relationships: [];
+      };
+    };
+    Functions: {
+      get_revision_user_week_stats: {
+        Args: Record<PropertyKey, never>;
+        Returns: Database["public"]["Views"]["revision_user_week_stats"]["Row"][];
+      };
+    };
     Enums: {
       revision_entity_type: "subtopic" | "material" | "practice-set";
       revision_progress_status: "not-started" | "in-progress" | "completed";

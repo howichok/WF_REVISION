@@ -121,6 +121,72 @@ export interface QuestionEvaluationProfile {
   slots: AnswerRubricSlot[];
 }
 
+export type ExamMetadataPaper = "paper_1" | "paper_2";
+
+export type ExamMetadataCommandWord =
+  | "give"
+  | "state"
+  | "name"
+  | "identify"
+  | "write"
+  | "describe"
+  | "explain"
+  | "explain with additional justification"
+  | "discuss"
+  | "evaluate"
+  | "draw"
+  | "complete";
+
+export type ExamMetadataAssessmentObjective =
+  | "AO1a"
+  | "AO1b"
+  | "AO2"
+  | "AO3a"
+  | "AO3b";
+
+export type ExamMetadataDifficulty = "low" | "medium" | "high";
+
+export interface ExamMetadataIndicativeMarkScheme {
+  type: "points_based" | "levels_based";
+  points: string[];
+  judgementRequired: boolean;
+  modelAnswerOutline: string;
+}
+
+export interface ExamMetadataValidation {
+  fitsPaperBoundary: boolean;
+  fitsCommandWord: boolean;
+  fitsMarkDemand: boolean;
+  specGrounded: boolean;
+  sourceGrounded: boolean;
+  notDuplicate: boolean;
+  scenarioDistinct: boolean;
+  answerLogicDistinct: boolean;
+}
+
+export interface QuestionExamMetadata {
+  paper?: ExamMetadataPaper;
+  contentArea?: string;
+  subtopic?: string;
+  commandWord?: ExamMetadataCommandWord;
+  assessmentObjectives?: ExamMetadataAssessmentObjective[];
+  stimulus?: string;
+  difficulty?: ExamMetadataDifficulty;
+  indicativeMarkScheme?: ExamMetadataIndicativeMarkScheme;
+  sourceReference?: string;
+  sourceFile?: string;
+  sourceExcerptHash?: string;
+  generationBatch?: string;
+  validation?: ExamMetadataValidation;
+  examinerRationale?: string;
+  reviewDecision?: "keep" | "revise" | "reject";
+  duplicationRisk?: "low" | "medium" | "high";
+  realismScore?: number;
+  scenarioSignature?: string;
+  answerLogicSignature?: string;
+  responseFormat?: "written" | "code" | "diagram" | "table" | "mixed";
+}
+
 export interface ContentResource {
   id: string;
   title: string;
@@ -159,6 +225,9 @@ export interface QuestionMetadata {
   practicePrompt: string;
   markSchemeConceptIds: string[];
   evaluationProfile?: QuestionEvaluationProfile;
+  examMetadata?: QuestionExamMetadata;
+  reviewed?: boolean;
+  active?: boolean;
 }
 
 export type CoverageQuestionVariant =

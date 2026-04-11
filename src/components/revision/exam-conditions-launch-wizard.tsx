@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Target } from "lucide-react";
+import { ChevronDown, Target } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useAppData } from "@/components/providers/app-data-provider";
 import {
@@ -17,21 +17,6 @@ import {
 import { getTopicById } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
-function difficultyModeLabel(mode: ExamConditionsDifficultyMode): string {
-  switch (mode) {
-    case "mixed":
-      return "Mixed";
-    case "easy":
-      return "Easy";
-    case "medium":
-      return "Medium";
-    case "hard":
-      return "Hard";
-    default:
-      return mode;
-  }
-}
-
 export interface ExamConditionsLaunchWizardProps {
   /** Topic ids in the order the learner picked them (first = primary route segment). */
   selectedTopicIds: string[];
@@ -40,16 +25,20 @@ export interface ExamConditionsLaunchWizardProps {
     difficultyMode: ExamConditionsDifficultyMode;
     allocations: ExamTopicAllocationInput[];
   }) => void;
+  /** Optional callback to clear the topic selection. */
+  onClear?: () => void;
 }
 
 export function ExamConditionsLaunchWizard({
   selectedTopicIds,
   onStart,
+  onClear,
 }: ExamConditionsLaunchWizardProps) {
   const { sharedCurriculum } = useAppData();
   const [difficultyMode, setDifficultyMode] = useState<ExamConditionsDifficultyMode>("mixed");
   const [setSize, setSetSize] = useState<ExamQuestionSetSize>(10);
   const [allocByTopic, setAllocByTopic] = useState<Record<string, number>>({});
+  const [splitOpen, setSplitOpen] = useState(false);
 
   const caps = useMemo(() => {
     const out: Record<string, number> = {};
@@ -93,6 +82,10 @@ export function ExamConditionsLaunchWizard({
       return changed ? next : prev;
     });
   }, [caps, selectedTopicIds]);
+
+  useEffect(() => {
+    if (selectedTopicIds.length <= 1) setSplitOpen(false);
+  }, [selectedTopicIds.length]);
 
   const canStart = useMemo(() => {
     if (selectedTopicIds.length === 0 || totalPool === 0) {
@@ -145,176 +138,209 @@ export function ExamConditionsLaunchWizard({
           : null;
 
   return (
-    <div
-      className={cn(
-        "rounded-2xl border border-border/70 bg-card/90 p-6 shadow-sm backdrop-blur-sm sm:p-8",
-        "ring-1 ring-accent/10"
-      )}
-    >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">Step 2</p>
-          <h2 className="mt-1 text-lg font-semibold tracking-tight text-foreground sm:text-xl">
-            Configure exam questions
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Choose paper length (10 / 20 / 30), split questions across your topics, then start a timed session.
+    <div className="fixed bottom-3 inset-x-3 z-30 overflow-hidden rounded-xl border border-border bg-background/95 shadow-lg backdrop-blur-md sm:bottom-4 sm:inset-x-6 sm:rounded-2xl lg:inset-x-10">
+      {/* Per-topic split panel */}
+      {selectedTopicIds.length > 1 && splitOpen ? (
+        <div className="border-b border-border bg-card/60">
+          <div className="px-4 py-3 sm:px-5">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+              {selectedTopicIds.map((id) => {
+                const topic = getTopicById(id);
+                const cap = caps[id] ?? 0;
+                return (
+                  <label key={id} className="flex items-center gap-2">
+                    <span className="text-[13px] font-medium text-foreground">
+                      {topic?.icon ? `${topic.icon} ` : ""}
+                      {topic?.label ?? id}
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={cap}
+                      value={allocByTopic[id] ?? 0}
+                      onChange={(e) =>
+                        setTopicAlloc(id, Number.parseInt(e.target.value, 10) || 0)
+                      }
+                      className="h-8 w-16 rounded-lg border border-border/80 bg-background px-2 text-center text-[13px] tabular-nums"
+                    />
+                    <span className="text-xs text-muted-foreground">/{cap}</span>
+                  </label>
+                );
+              })}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="ml-auto shrink-0"
+                onClick={() =>
+                  setAllocByTopic(
+                    splitExamAllocationsEvenly(selectedTopicIds, effectiveSize)
+                  )
+                }
+              >
+                Even split
+              </Button>
+            </div>
+            <p className="mt-1.5 text-[11px] text-muted-foreground">
+              Total:{" "}
+              <span
+                className={cn(
+                  "font-semibold tabular-nums",
+                  allocationSum !== effectiveSize
+                    ? "text-destructive"
+                    : "text-foreground"
+                )}
+              >
+                {allocationSum}
+              </span>{" "}
+              / {effectiveSize}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {/* Validation message */}
+      {poolHint ? (
+        <div className="border-b border-amber-200/60 bg-amber-50/50 dark:border-amber-800/40 dark:bg-amber-950/20">
+          <p className="px-4 py-1.5 text-[11px] text-amber-900 dark:text-amber-200 sm:px-5">
+            {poolHint}
           </p>
         </div>
-      </div>
+      ) : null}
 
-      <div className="mt-6 space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Paper length</p>
-        <div className="flex flex-wrap gap-2">
-          {EXAM_QUESTION_SET_SIZES.map((size) => {
-            const active = setSize === size;
-            const achievable = Math.min(size, totalPool);
-            const disabled = totalPool === 0 || !examSessionMeetsMinimum(totalPool, achievable);
-            return (
-              <button
-                key={size}
-                type="button"
-                disabled={disabled}
-                onClick={() => setSetSize(size)}
-                className={cn(
-                  "rounded-xl border px-4 py-2.5 text-left text-[13px] font-semibold transition-all",
-                  disabled
-                    ? "cursor-not-allowed border-border/40 bg-muted/30 text-muted-foreground/50"
-                    : active
-                      ? "border-accent/50 bg-accent/[0.08] text-foreground shadow-sm ring-1 ring-accent/20"
-                      : "border-border/70 bg-background text-muted-foreground hover:border-accent/25 hover:bg-muted/20"
-                )}
-              >
-                {size} questions
-                <span className="mt-0.5 block text-[10px] font-normal tabular-nums text-muted-foreground">
-                  min {EXAM_CONDITIONS_SESSION_MIN_QUESTIONS} when the pool allows
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      <div className="mt-6 space-y-2">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">Difficulty</p>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              { mode: "mixed" as const, label: "Mixed" },
-              { mode: "easy" as const, label: "Easy" },
-              { mode: "medium" as const, label: "Medium" },
-              { mode: "hard" as const, label: "Hard" },
-            ] as const
-          ).map(({ mode, label }) => {
-            const active = difficultyMode === mode;
-            const poolForMode = selectedTopicIds.reduce((s, id) => {
-              const c = getTopicExamAllocCap(id, mode, sharedCurriculum);
-              return s + c;
-            }, 0);
-            const disabled = poolForMode === 0;
-            return (
-              <button
-                key={mode}
-                type="button"
-                disabled={disabled}
-                onClick={() => setDifficultyMode(mode)}
-                className={cn(
-                  "rounded-xl border px-3.5 py-2 text-left text-[12px] font-medium transition-all",
-                  disabled
-                    ? "cursor-not-allowed border-border/40 bg-muted/30 text-muted-foreground/50"
-                    : active
-                      ? "border-accent/50 bg-accent/[0.08] text-foreground shadow-sm ring-1 ring-accent/20"
-                      : "border-border/70 bg-background text-muted-foreground hover:border-accent/25 hover:bg-muted/20"
-                )}
-              >
-                <span className="block text-foreground">{label}</span>
-                <span className="mt-0.5 block text-[10px] font-normal tabular-nums text-muted-foreground">
-                  {poolForMode} available
-                </span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {selectedTopicIds.length > 1 ? (
-        <div className="mt-6 space-y-3">
-          <div className="flex flex-wrap items-end justify-between gap-2">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                Questions per topic
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Total <span className="font-semibold tabular-nums text-foreground">{allocationSum}</span> /{" "}
-                <span className="tabular-nums">{effectiveSize}</span>
-                {effectiveSize < setSize ? (
-                  <span className="text-muted-foreground"> (capped from {setSize} by pool)</span>
-                ) : null}
-              </p>
+      {/* Main action row */}
+      <div className="px-4 py-2.5 sm:px-5 sm:py-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:gap-x-3 sm:gap-y-2">
+          {/* Controls */}
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+            {/* Paper length buttons */}
+            <div className="flex shrink-0 items-center gap-1">
+              {EXAM_QUESTION_SET_SIZES.map((size) => {
+                const active = setSize === size;
+                const achievable = Math.min(size, totalPool);
+                const disabled =
+                  totalPool === 0 || !examSessionMeetsMinimum(totalPool, achievable);
+                return (
+                  <button
+                    key={size}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => setSetSize(size)}
+                    className={cn(
+                      "rounded-lg border px-2.5 py-1.5 text-[12px] font-semibold transition-all",
+                      disabled
+                        ? "cursor-not-allowed border-border/40 bg-muted/30 text-muted-foreground/50"
+                        : active
+                          ? "border-accent/50 bg-accent/[0.08] text-foreground ring-1 ring-accent/20"
+                          : "border-border/70 bg-background text-muted-foreground hover:border-accent/25 hover:bg-muted/20"
+                    )}
+                  >
+                    {size}
+                  </button>
+                );
+              })}
             </div>
-            <Button type="button" variant="outline" size="sm" onClick={() => setAllocByTopic(splitExamAllocationsEvenly(selectedTopicIds, effectiveSize))}>
-              Split evenly
+
+            <div className="h-4 w-px bg-border/70" />
+
+            {/* Difficulty buttons */}
+            <div className="flex shrink-0 items-center gap-1">
+              {(
+                [
+                  { mode: "mixed" as const, label: "Mix" },
+                  { mode: "easy" as const, label: "Easy" },
+                  { mode: "medium" as const, label: "Med" },
+                  { mode: "hard" as const, label: "Hard" },
+                ] as const
+              ).map(({ mode, label }) => {
+                const active = difficultyMode === mode;
+                const poolForMode = selectedTopicIds.reduce(
+                  (s, id) => s + getTopicExamAllocCap(id, mode, sharedCurriculum),
+                  0
+                );
+                const disabled = poolForMode === 0;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    disabled={disabled}
+                    onClick={() => setDifficultyMode(mode)}
+                    className={cn(
+                      "rounded-lg border px-2.5 py-1.5 text-[12px] font-medium transition-all",
+                      disabled
+                        ? "cursor-not-allowed border-border/40 bg-muted/30 text-muted-foreground/50"
+                        : active
+                          ? "border-accent/50 bg-accent/[0.08] text-foreground ring-1 ring-accent/20"
+                          : "border-border/70 bg-background text-muted-foreground hover:border-accent/25 hover:bg-muted/20"
+                    )}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Split button — multi-topic only */}
+            {selectedTopicIds.length > 1 ? (
+              <>
+                <div className="h-4 w-px bg-border/70" />
+                <button
+                  type="button"
+                  onClick={() => setSplitOpen((v) => !v)}
+                  className={cn(
+                    "flex items-center gap-1 rounded-lg border px-2.5 py-1.5 text-[12px] font-medium transition-all",
+                    splitOpen
+                      ? "border-accent/50 bg-accent/[0.08] text-foreground ring-1 ring-accent/20"
+                      : "border-border/70 bg-background text-muted-foreground hover:border-accent/25 hover:bg-muted/20"
+                  )}
+                >
+                  Split
+                  <ChevronDown
+                    size={12}
+                    className={cn(
+                      "transition-transform duration-200",
+                      splitOpen && "rotate-180"
+                    )}
+                  />
+                </button>
+              </>
+            ) : null}
+          </div>
+
+          {/* Desktop spacer */}
+          <span className="hidden flex-1 sm:block" />
+
+          {/* Stats + Clear + Start */}
+          <div className="flex items-center gap-2.5">
+            {onClear ? (
+              <>
+                <button
+                  type="button"
+                  onClick={onClear}
+                  className="text-[12px] text-muted-foreground transition-colors hover:text-foreground"
+                >
+                  Clear
+                </button>
+                <span className="h-3.5 w-px bg-border/70" />
+              </>
+            ) : null}
+            <span className="text-[12px] tabular-nums text-muted-foreground">
+              {effectiveSize} q · {previewMinutes} min
+            </span>
+            <Button
+              type="button"
+              size="sm"
+              disabled={!canStart}
+              onClick={handleStart}
+              className="gap-1.5"
+            >
+              <Target size={14} />
+              <span className="hidden sm:inline">Start timed session</span>
+              <span className="sm:hidden">Start</span>
             </Button>
           </div>
-          <div className="space-y-2 rounded-xl border border-border/60 bg-muted/10 p-3">
-            {selectedTopicIds.map((id) => {
-              const topic = getTopicById(id);
-              const cap = caps[id] ?? 0;
-              return (
-                <label key={id} className="flex flex-wrap items-center gap-3 text-sm">
-                  <span className="min-w-[8rem] font-medium text-foreground">
-                    {topic?.icon ? `${topic.icon} ` : ""}
-                    {topic?.label ?? id}
-                  </span>
-                  <input
-                    type="number"
-                    min={0}
-                    max={cap}
-                    value={allocByTopic[id] ?? 0}
-                    onChange={(e) => setTopicAlloc(id, Number.parseInt(e.target.value, 10) || 0)}
-                    className="h-9 w-20 rounded-lg border border-border/80 bg-background px-2 text-center text-sm tabular-nums"
-                  />
-                  <span className="text-xs text-muted-foreground">max {cap}</span>
-                </label>
-              );
-            })}
-          </div>
-        </div>
-      ) : selectedTopicIds.length === 1 ? (
-        <p className="mt-6 text-sm text-muted-foreground">
-          You will get {effectiveSize} question{effectiveSize === 1 ? "" : "s"} from{" "}
-          <span className="font-medium text-foreground">{getTopicById(selectedTopicIds[0]!)?.label}</span>
-          {effectiveSize < setSize ? ` (pool limit; you chose a ${setSize}-question paper).` : "."}
-        </p>
-      ) : null}
-
-      {poolHint ? (
-        <p className="mt-4 rounded-lg border border-amber-200/60 bg-amber-50/50 px-3 py-2 text-xs text-amber-900">
-          {poolHint}
-        </p>
-      ) : null}
-
-      <div className="mt-6 flex flex-wrap gap-3 border-t border-border/50 pt-6">
-        <div className="flex min-w-[5rem] flex-1 flex-col rounded-xl border border-border/60 bg-muted/15 px-4 py-3 text-center">
-          <span className="text-lg font-bold tabular-nums text-foreground">{effectiveSize}</span>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Questions</span>
-        </div>
-        <div className="flex min-w-[5rem] flex-1 flex-col rounded-xl border border-border/60 bg-muted/15 px-4 py-3 text-center">
-          <span className="text-lg font-bold tabular-nums text-foreground">{previewMinutes}</span>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Minutes</span>
-        </div>
-        <div className="flex min-w-[5rem] flex-1 flex-col rounded-xl border border-border/60 bg-muted/15 px-4 py-3 text-center">
-          <span className="text-lg font-bold text-foreground">
-            {difficultyMode === "mixed" ? "Mix" : difficultyModeLabel(difficultyMode)}
-          </span>
-          <span className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">Level</span>
         </div>
       </div>
-
-      <Button type="button" className="mt-6 w-full gap-2 sm:w-auto" disabled={!canStart} onClick={handleStart}>
-        <Target size={16} />
-        Start timed session
-      </Button>
     </div>
   );
 }

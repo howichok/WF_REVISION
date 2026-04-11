@@ -156,6 +156,94 @@ export interface GeminiExamMarkItem {
   level?: ExamGeminiItemLevel;
 }
 
+/**
+ * Compact highlight contract: UTF-16 code-unit offsets into the candidate answer string
+ * (same indexing as JavaScript `String`). Each span is half-open [start, end).
+ * The client clamps and renders — the model must not echo answer text for highlighting.
+ */
+export interface AnswerHighlightSpans {
+  c?: [number, number][];
+  i?: [number, number][];
+}
+
+/** Verbatim substrings of the candidate answer for highlight anchoring when spans drift. */
+export interface AnswerHighlightQuotes {
+  c?: string[];
+  i?: string[];
+}
+
+function highlightSpansCoherent(text: string, hl: AnswerHighlightSpans): boolean {
+  const n = text.length;
+  const checkPairs = (pairs?: [number, number][]) => {
+    if (!pairs?.length) {
+      return true;
+    }
+    for (const pair of pairs) {
+      if (!Array.isArray(pair) || pair.length !== 2) {
+        return false;
+      }
+      const lo = Math.min(Math.round(pair[0]), Math.round(pair[1]));
+      const hi = Math.max(Math.round(pair[0]), Math.round(pair[1]));
+      if (!Number.isFinite(lo) || !Number.isFinite(hi) || lo < 0 || hi > n || hi <= lo) {
+        return false;
+      }
+    }
+    return true;
+  };
+  return checkPairs(hl.c) && checkPairs(hl.i);
+}
+
+function quotesToUtf16SpanPairs(text: string, quotes: string[]): [number, number][] {
+  const spans: [number, number][] = [];
+  let from = 0;
+  for (const raw of quotes) {
+    const s = raw.replace(/\s+/g, " ").trim();
+    if (s.length < 2) {
+      continue;
+    }
+    const idx = text.indexOf(s, from);
+    if (idx === -1) {
+      continue;
+    }
+    const end = idx + s.length;
+    spans.push([idx, end]);
+    from = end;
+  }
+  return spans;
+}
+
+function highlightSpansFromQuotes(text: string, q: AnswerHighlightQuotes): AnswerHighlightSpans | undefined {
+  const c = quotesToUtf16SpanPairs(text, q.c ?? []);
+  const blocked = c.map(([s, e]) => ({ start: s, end: e }));
+  const iRaw = quotesToUtf16SpanPairs(text, q.i ?? []);
+  const i = iRaw.filter((pair) => !blocked.some((b) => pair[0] < b.end && pair[1] > b.start));
+  if (c.length === 0 && i.length === 0) {
+    return undefined;
+  }
+  return { ...(c.length ? { c } : {}), ...(i.length ? { i } : {}) };
+}
+
+/**
+ * Prefer coherent `hl` spans; otherwise derive spans from optional verbatim quotes.
+ */
+export function mergeHlQuotesIntoHighlightSpans(
+  answerTrimmed: string,
+  hl?: AnswerHighlightSpans,
+  hlQuotes?: AnswerHighlightQuotes
+): AnswerHighlightSpans | undefined {
+  if (hl && highlightSpansCoherent(answerTrimmed, hl)) {
+    const hasC = (hl.c?.length ?? 0) > 0;
+    const hasI = (hl.i?.length ?? 0) > 0;
+    if (hasC || hasI) {
+      return hl;
+    }
+  }
+  if (!hlQuotes) {
+    return hl;
+  }
+  return highlightSpansFromQuotes(answerTrimmed, hlQuotes) ?? hl;
+}
+
 /** One step of the examiner “walking through” the paper (same order as questions). */
 export interface ExaminerWalkthroughBeat {
   id: string;
@@ -163,6 +251,16 @@ export interface ExaminerWalkthroughBeat {
   line: string;
   /** Voice note on that answer (2–3 sentences). */
   note: string;
+  /** Preferred: machine spans only — minimal tokens vs verbatim `credit`/`improve` strings. */
+  hl?: AnswerHighlightSpans;
+  /** Optional verbatim quotes from the candidate answer (paired with hl when spans are unreliable). */
+  hlQuotes?: AnswerHighlightQuotes;
+  /**
+   * Legacy: verbatim snippets (older cached marks). UI falls back when `hl` is absent.
+   * @deprecated Prefer {@link hl}
+   */
+  credit?: string[];
+  improve?: string[];
 }
 
 export interface GeminiExamMarkResponse {
@@ -408,6 +506,58 @@ function shuffleExamStemPriority(pool: ExamConditionsQuestion[]) {
   const paperSet = shuffleArray(pool.filter((q) => q.stemOrigin === "paper-set"));
   const rest = shuffleArray(pool.filter((q) => q.stemOrigin === "practice"));
   return [...past, ...paperSet, ...rest];
+}
+
+/** Drop duplicate curriculum rows (same id or same displayed stem) while keeping stem priority order. */
+function dedupeExamEligibleQuestions(
+  orderedRaw: QuestionMetadata[],
+  snapshot?: SharedCurriculumSnapshot | null
+): QuestionMetadata[] {
+  const seenIds = new Set<string>();
+  const seenPrompts = new Set<string>();
+  const out: QuestionMetadata[] = [];
+
+  for (const q of orderedRaw) {
+    if (seenIds.has(q.id)) {
+      continue;
+    }
+    const { prompt } = buildExamDisplayPrompt(q, snapshot);
+    const key = prompt.replace(/\s+/g, " ").trim().toLowerCase();
+    if (key.length >= 32 && seenPrompts.has(key)) {
+      continue;
+    }
+    seenIds.add(q.id);
+    if (key.length >= 32) {
+      seenPrompts.add(key);
+    }
+    out.push(q);
+  }
+
+  return out;
+}
+
+/** Final guard: unique ids and stems in the ordered session list (e.g. after multi-topic merge). */
+function dedupeExamConditionsQuestionList(questions: ExamConditionsQuestion[]): ExamConditionsQuestion[] {
+  const seenId = new Set<string>();
+  const seenPrompt = new Set<string>();
+  const out: ExamConditionsQuestion[] = [];
+
+  for (const q of questions) {
+    if (seenId.has(q.id)) {
+      continue;
+    }
+    const key = q.prompt.replace(/\s+/g, " ").trim().toLowerCase();
+    if (key.length >= 32 && seenPrompt.has(key)) {
+      continue;
+    }
+    seenId.add(q.id);
+    if (key.length >= 32) {
+      seenPrompt.add(key);
+    }
+    out.push(q);
+  }
+
+  return out;
 }
 
 function toExamConditionsQuestion(
@@ -742,9 +892,11 @@ export function generateExamConditionsSession(
     eligibleRaw.filter((q) => !isPastSource(q) && isPaperSetSource(q))
   );
   const restRaw = shuffleArray(eligibleRaw.filter((q) => !isPastSource(q) && !isPaperSetSource(q)));
-  const pool = [...pastRaw, ...paperSetRaw, ...restRaw].map((question) =>
-    toExamConditionsQuestion(topicId, question, options.snapshot)
+  const uniqueRaw = dedupeExamEligibleQuestions(
+    [...pastRaw, ...paperSetRaw, ...restRaw],
+    options.snapshot
   );
+  const pool = uniqueRaw.map((question) => toExamConditionsQuestion(topicId, question, options.snapshot));
 
   if (pool.length === 0) {
     return {
@@ -789,7 +941,9 @@ export function generateExamConditionsSession(
     })();
 
   const targetCount = clampExamCountToPool(setSize, eligiblePool.length);
-  const finalQuestions = pickQuestionsForEligiblePool(eligiblePool, targetCount, difficultyMode, preferred);
+  const finalQuestions = dedupeExamConditionsQuestionList(
+    pickQuestionsForEligiblePool(eligiblePool, targetCount, difficultyMode, preferred)
+  );
   const topicInfo = getTopicById(topicId);
   const releasedPastPaperStemCount = finalQuestions.filter((q) => q.stemOrigin === "past-paper").length;
   const examStyleStemCount = finalQuestions.filter((q) => q.stemOrigin !== "practice").length;
@@ -857,9 +1011,11 @@ export function generateMultiTopicExamSession(
       eligibleRaw.filter((q) => !isPastSource(q) && isPaperSetSource(q))
     );
     const restRaw = shuffleArray(eligibleRaw.filter((q) => !isPastSource(q) && !isPaperSetSource(q)));
-    const pool = [...pastRaw, ...paperSetRaw, ...restRaw].map((question) =>
-      toExamConditionsQuestion(topicId, question, options.snapshot)
+    const uniqueRaw = dedupeExamEligibleQuestions(
+      [...pastRaw, ...paperSetRaw, ...restRaw],
+      options.snapshot
     );
+    const pool = uniqueRaw.map((question) => toExamConditionsQuestion(topicId, question, options.snapshot));
     const eligiblePool =
       difficultyMode === "mixed" ? pool : pool.filter((question) => question.difficulty === difficultyMode);
 
@@ -881,7 +1037,7 @@ export function generateMultiTopicExamSession(
     topicMix.push({ topicId, label: topicInfo?.label ?? topicId, count: picked.length });
   }
 
-  const finalQuestions = shuffleArray(collected);
+  const finalQuestions = dedupeExamConditionsQuestionList(shuffleArray(collected));
   const anchorTopicId = allocations.find((a) => a.count > 0)?.topicId ?? "";
   const releasedPastPaperStemCount = finalQuestions.filter((q) => q.stemOrigin === "past-paper").length;
   const examStyleStemCount = finalQuestions.filter((q) => q.stemOrigin !== "practice").length;
@@ -1183,7 +1339,7 @@ export function mergeGeminiExamMarking(
       verdictLabel,
       matchedSlots: hit,
       partialSlots: [],
-      missingSlots: miss.length > 0 ? miss : ["Gap vs mark scheme"],
+      missingSlots: miss,
       feedback: fb.length > 0 ? fb : why.length > 0 ? why : "Marked against the supplied scheme.",
       slotBreakdown: [],
     };
@@ -1222,10 +1378,16 @@ export function mergeGeminiExamMarking(
     const w = walkMap.get(q.id);
     const rev = reviews.find((r) => r.question.id === q.id);
     if (w) {
+      const answerTrimmed = (answers[q.id] ?? "").trim();
+      const hl = mergeHlQuotesIntoHighlightSpans(answerTrimmed, w.hl, w.hlQuotes);
       return {
         id: q.id,
         line: w.line.replace(/\s+/g, " ").trim().slice(0, 220),
         note: w.note.replace(/\s+/g, " ").trim().slice(0, 560),
+        hl,
+        hlQuotes: w.hlQuotes,
+        credit: w.credit,
+        improve: w.improve,
       };
     }
     const fb = rev?.evaluation.feedback ?? rev?.geminiMarking?.why ?? "";

@@ -25,6 +25,7 @@ import {
   getLocalSharedCurriculumSnapshot,
   type SharedCurriculumSnapshot,
 } from "./shared-curriculum";
+import type { RevisionPracticeQuestionKind } from "./revision-practice-analytics";
 
 type AppSupabaseClient = SupabaseClient<Database>;
 
@@ -457,38 +458,67 @@ export async function loadAppState(
 ): Promise<AppBootstrapState> {
   await ensureUserBootstrap(supabase, user);
 
-  const [{ data: profileRow, error: profileError }, { data: onboardingRow, error: onboardingError }, { data: focusRows, error: focusError }, { data: revisionRows, error: revisionError }, { data: activityRows, error: activityError }, { data: diagnosticAttempt, error: attemptError }] =
-    await Promise.all([
-      supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
-      supabase
-        .from("user_onboarding")
-        .select("*")
-        .eq("user_id", user.id)
-        .maybeSingle(),
-      supabase
-        .from("focus_breakdown_entries")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("topic_id", { ascending: true }),
-      supabase
-        .from("revision_progress")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("updated_at", { ascending: false }),
-      supabase
-        .from("activity_history")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("occurred_at", { ascending: false })
-        .limit(50),
-      supabase
-        .from("diagnostic_attempts")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("completed_at", { ascending: false })
-        .limit(1)
-        .maybeSingle(),
-    ]);
+  const [
+    { data: profileRow, error: profileError },
+    { data: onboardingRow, error: onboardingError },
+    { data: focusRows, error: focusError },
+    { data: revisionRows, error: revisionError },
+    { data: activityRows, error: activityError },
+    { data: diagnosticAttempt, error: attemptError },
+    topicCoachingResult,
+  ] = await Promise.all([
+    supabase
+      .from("profiles")
+      .select("id, nickname, email, created_at, updated_at")
+      .eq("id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("user_onboarding")
+      .select("user_id, weak_areas, global_focus_note, completed_at")
+      .eq("user_id", user.id)
+      .maybeSingle(),
+    supabase
+      .from("focus_breakdown_entries")
+      .select("id, user_id, topic_id, selected_subtopics, free_text_note")
+      .eq("user_id", user.id)
+      .order("topic_id", { ascending: true }),
+    supabase
+      .from("revision_progress")
+      .select(
+        "id, user_id, topic_id, entity_id, entity_type, status, progress_percent, completed_at, updated_at, last_interacted_at"
+      )
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false }),
+    supabase
+      .from("activity_history")
+      .select("id, activity_type, title, topic_id, occurred_at, minutes_spent, metadata")
+      .eq("user_id", user.id)
+      .order("occurred_at", { ascending: false })
+      .limit(50),
+    supabase
+      .from("diagnostic_attempts")
+      .select("id, completed_at, overall_score, question_count, version, diagnostic_snapshot")
+      .eq("user_id", user.id)
+      .order("completed_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from("topic_coaching_memory")
+      .select("topic_id, memory_snapshot, updated_at")
+      .eq("user_id", user.id)
+      .order("updated_at", { ascending: false })
+      .then((result) => {
+        if (result.error) {
+          if (isMissingTopicCoachingTableError(result.error)) {
+            return { data: [] as TopicCoachingRow[], error: null };
+          }
+
+          throw result.error;
+        }
+
+        return result;
+      }),
+  ]);
 
   if (profileError) {
     throw profileError;
@@ -521,7 +551,7 @@ export async function loadAppState(
 
     const { data: recoveredProfile, error: recoveredProfileError } = await supabase
       .from("profiles")
-      .select("*")
+      .select("id, nickname, email, created_at, updated_at")
       .eq("id", user.id)
       .single();
 
@@ -538,14 +568,38 @@ export async function loadAppState(
   const activityState = (activityRows ?? []) as ActivityRow[];
   const latestAttempt = diagnosticAttempt as DiagnosticAttemptRow | null;
   let diagnostic: DiagnosticResult | null = null;
-  let topicCoachingMemory: TopicCoachingMemoryMap = {};
+  const topicCoachingMemory = mapTopicCoachingMemory(
+    (topicCoachingResult.data ?? []) as TopicCoachingRow[]
+  );
 
   if (latestAttempt) {
-    const { data: diagnosticScoreRows, error: scoreError } = await supabase
-      .from("diagnostic_topic_scores")
-      .select("*")
-      .eq("attempt_id", latestAttempt.id)
-      .order("created_at", { ascending: true });
+    const detailsPromise = loadPersistedTopicDiagnostics(
+      supabase,
+      user.id,
+      latestAttempt.id
+    ).catch((error) => {
+      const message = error instanceof Error ? error.message : "";
+
+      if (
+        !message.includes("diagnostic_sessions") &&
+        !message.includes("diagnostic_point_assessments") &&
+        !message.includes("curriculum_")
+      ) {
+        throw error;
+      }
+
+      return [];
+    });
+
+    const [{ data: diagnosticScoreRows, error: scoreError }, detailedTopicDiagnostics] =
+      await Promise.all([
+        supabase
+          .from("diagnostic_topic_scores")
+          .select("id, attempt_id, topic_id, topic_label, score, max_score, created_at")
+          .eq("attempt_id", latestAttempt.id)
+          .order("created_at", { ascending: true }),
+        detailsPromise,
+      ]);
 
     if (scoreError) {
       throw scoreError;
@@ -556,52 +610,14 @@ export async function loadAppState(
       (diagnosticScoreRows ?? []) as DiagnosticScoreRow[]
     );
 
-    try {
-      const detailedTopicDiagnostics = await loadPersistedTopicDiagnostics(
-        supabase,
-        user.id,
-        latestAttempt.id
-      );
-
-      if (diagnostic && detailedTopicDiagnostics.length > 0) {
-        diagnostic = {
-          ...diagnostic,
-          latestTopicId:
-            diagnostic.latestTopicId ??
-            detailedTopicDiagnostics[detailedTopicDiagnostics.length - 1]?.topicId,
-          topicDiagnostics: detailedTopicDiagnostics,
-        };
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "";
-
-      if (
-        !message.includes("diagnostic_sessions") &&
-        !message.includes("diagnostic_point_assessments") &&
-        !message.includes("curriculum_")
-      ) {
-        throw error;
-      }
-    }
-  }
-
-  try {
-    const { data: topicCoachingRows, error: topicCoachingError } = await supabase
-      .from("topic_coaching_memory")
-      .select("*")
-      .eq("user_id", user.id)
-      .order("updated_at", { ascending: false });
-
-    if (topicCoachingError) {
-      throw topicCoachingError;
-    }
-
-    topicCoachingMemory = mapTopicCoachingMemory(
-      (topicCoachingRows ?? []) as TopicCoachingRow[]
-    );
-  } catch (error) {
-    if (!isMissingTopicCoachingTableError(error)) {
-      throw error;
+    if (diagnostic && detailedTopicDiagnostics.length > 0) {
+      diagnostic = {
+        ...diagnostic,
+        latestTopicId:
+          diagnostic.latestTopicId ??
+          detailedTopicDiagnostics[detailedTopicDiagnostics.length - 1]?.topicId,
+        topicDiagnostics: detailedTopicDiagnostics,
+      };
     }
   }
 
@@ -1034,6 +1050,49 @@ export async function logActivity(
     topic_id: input.topicId ?? null,
     minutes_spent: input.minutesSpent ?? 0,
     metadata: input.metadata ?? {},
+  });
+
+  if (error) {
+    throw error;
+  }
+}
+
+export type LogRevisionPracticeEventInput = {
+  topicId: string;
+  questionId: string;
+  questionKind: RevisionPracticeQuestionKind;
+  sessionId: string;
+  source?: string;
+  correct: boolean;
+  durationMs?: number | null;
+  verdict?: string | null;
+  tagCodes: string[];
+  isRevisionAttempt?: boolean;
+  weeklyPlanId?: string | null;
+  srsSnapshot?: Json;
+  context?: Json;
+};
+
+export async function logRevisionPracticeEvent(
+  supabase: AppSupabaseClient,
+  userId: string,
+  input: LogRevisionPracticeEventInput
+) {
+  const { error } = await supabase.from("revision_practice_events").insert({
+    user_id: userId,
+    topic_id: input.topicId,
+    question_id: input.questionId,
+    question_kind: input.questionKind,
+    session_id: input.sessionId,
+    source: input.source ?? "quick_quiz",
+    correct: input.correct,
+    duration_ms: input.durationMs ?? null,
+    verdict: input.verdict ?? null,
+    tag_codes: input.tagCodes,
+    is_revision_attempt: input.isRevisionAttempt ?? false,
+    weekly_plan_id: input.weeklyPlanId ?? null,
+    srs_snapshot: input.srsSnapshot ?? {},
+    context: input.context ?? {},
   });
 
   if (error) {

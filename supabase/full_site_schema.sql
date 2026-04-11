@@ -501,8 +501,36 @@ create table if not exists public.curriculum_questions (
   expectation text not null,
   practice_prompt text,
   legacy_topic_ids text[] not null default '{}',
+  exam_metadata jsonb not null default '{}'::jsonb,
+  reviewed boolean not null default false,
+  active boolean not null default true,
   created_at timestamptz not null default timezone('utc', now()),
-  updated_at timestamptz not null default timezone('utc', now())
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint curriculum_questions_exam_metadata_object
+    check (jsonb_typeof(exam_metadata) = 'object'),
+  constraint curriculum_questions_exam_metadata_paper
+    check (
+      not (exam_metadata ? 'paper')
+      or exam_metadata ->> 'paper' in ('paper_1', 'paper_2')
+    ),
+  constraint curriculum_questions_exam_metadata_command_word
+    check (
+      not (exam_metadata ? 'commandWord')
+      or exam_metadata ->> 'commandWord' in (
+        'give',
+        'state',
+        'name',
+        'identify',
+        'write',
+        'describe',
+        'explain',
+        'explain with additional justification',
+        'discuss',
+        'evaluate',
+        'draw',
+        'complete'
+      )
+    )
 );
 
 create table if not exists public.curriculum_question_points (
@@ -913,6 +941,106 @@ for select
 to authenticated
 using (true);
 
+-- Shared curriculum content is non-user-specific and is loaded through a
+-- cookie-less anon Supabase client for cacheability.
+drop policy if exists "curriculum_sources_read_anon" on public.curriculum_sources;
+create policy "curriculum_sources_read_anon"
+on public.curriculum_sources
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_topics_read_anon" on public.curriculum_topics;
+create policy "curriculum_topics_read_anon"
+on public.curriculum_topics
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_subtopics_read_anon" on public.curriculum_subtopics;
+create policy "curriculum_subtopics_read_anon"
+on public.curriculum_subtopics
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_points_read_anon" on public.curriculum_points;
+create policy "curriculum_points_read_anon"
+on public.curriculum_points
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_topic_points_read_anon" on public.curriculum_topic_points;
+create policy "curriculum_topic_points_read_anon"
+on public.curriculum_topic_points
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_terms_read_anon" on public.curriculum_terms;
+create policy "curriculum_terms_read_anon"
+on public.curriculum_terms
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_point_terms_read_anon" on public.curriculum_point_terms;
+create policy "curriculum_point_terms_read_anon"
+on public.curriculum_point_terms
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_materials_read_anon" on public.curriculum_materials;
+create policy "curriculum_materials_read_anon"
+on public.curriculum_materials
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_point_materials_read_anon" on public.curriculum_point_materials;
+create policy "curriculum_point_materials_read_anon"
+on public.curriculum_point_materials
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_questions_read_anon" on public.curriculum_questions;
+create policy "curriculum_questions_read_anon"
+on public.curriculum_questions
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_question_points_read_anon" on public.curriculum_question_points;
+create policy "curriculum_question_points_read_anon"
+on public.curriculum_question_points
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_concepts_read_anon" on public.curriculum_concepts;
+create policy "curriculum_concepts_read_anon"
+on public.curriculum_concepts
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_misconceptions_read_anon" on public.curriculum_misconceptions;
+create policy "curriculum_misconceptions_read_anon"
+on public.curriculum_misconceptions
+for select
+to anon
+using (true);
+
+drop policy if exists "curriculum_practice_prompts_read_anon" on public.curriculum_practice_prompts;
+create policy "curriculum_practice_prompts_read_anon"
+on public.curriculum_practice_prompts
+for select
+to anon
+using (true);
+
 drop policy if exists "diagnostic_sessions_manage_own" on public.diagnostic_sessions;
 create policy "diagnostic_sessions_manage_own"
 on public.diagnostic_sessions
@@ -1018,4 +1146,265 @@ for all
 to authenticated
 using (auth.uid() = user_id)
 with check (auth.uid() = user_id);
+
+-- ============================================================================
+-- Practice analytics (events, SRS, rollups, weekly MV)
+-- Source: 20260411_revision_practice_analytics.sql
+-- ============================================================================
+
+create table if not exists public.revision_practice_tags (
+  id uuid primary key default gen_random_uuid(),
+  topic_id text,
+  code text not null,
+  label text not null,
+  description text,
+  sort_order integer not null default 0,
+  created_at timestamptz not null default timezone('utc', now())
+);
+
+create unique index if not exists revision_practice_tags_global_code_unique
+  on public.revision_practice_tags (code)
+  where topic_id is null;
+
+create unique index if not exists revision_practice_tags_scoped_code_unique
+  on public.revision_practice_tags (topic_id, code)
+  where topic_id is not null;
+
+create index if not exists revision_practice_tags_topic_idx
+  on public.revision_practice_tags (topic_id, sort_order);
+
+create table if not exists public.revision_practice_events (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  occurred_at timestamptz not null default timezone('utc', now()),
+  topic_id text not null,
+  question_id text not null,
+  question_kind text not null,
+  session_id uuid not null,
+  source text not null default 'quick_quiz',
+  correct boolean not null,
+  duration_ms integer check (duration_ms is null or duration_ms >= 0),
+  verdict text,
+  tag_codes text[] not null default '{}'::text[],
+  is_revision_attempt boolean not null default false,
+  weekly_plan_id uuid,
+  srs_snapshot jsonb not null default '{}'::jsonb,
+  context jsonb not null default '{}'::jsonb
+);
+
+create index if not exists revision_practice_events_user_occurred_idx
+  on public.revision_practice_events (user_id, occurred_at desc);
+
+create index if not exists revision_practice_events_user_topic_occurred_idx
+  on public.revision_practice_events (user_id, topic_id, occurred_at desc);
+
+create index if not exists revision_practice_events_session_idx
+  on public.revision_practice_events (session_id);
+
+create table if not exists public.revision_srs_items (
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  deck text not null,
+  item_key text not null,
+  ease real not null default 2.5,
+  interval_days real not null default 0,
+  repetitions integer not null default 0,
+  due_on date not null default (timezone('utc', now()))::date,
+  last_grade smallint,
+  last_reviewed_at timestamptz,
+  created_at timestamptz not null default timezone('utc', now()),
+  updated_at timestamptz not null default timezone('utc', now()),
+  constraint revision_srs_items_pkey primary key (user_id, deck, item_key),
+  constraint revision_srs_items_ease_positive check (ease > 0),
+  constraint revision_srs_items_interval_non_negative check (interval_days >= 0),
+  constraint revision_srs_items_reps_non_negative check (repetitions >= 0)
+);
+
+drop trigger if exists revision_srs_items_set_updated_at on public.revision_srs_items;
+create trigger revision_srs_items_set_updated_at
+before update on public.revision_srs_items
+for each row execute function public.set_updated_at();
+
+create index if not exists revision_srs_items_user_due_idx
+  on public.revision_srs_items (user_id, due_on);
+
+create table if not exists public.revision_historical_rollup (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles (id) on delete cascade,
+  period_start date not null,
+  period_end date not null,
+  topic_id text not null,
+  stats jsonb not null default '{}'::jsonb,
+  created_at timestamptz not null default timezone('utc', now()),
+  constraint revision_historical_rollup_period_unique unique (user_id, period_start, topic_id)
+);
+
+create index if not exists revision_historical_rollup_user_idx
+  on public.revision_historical_rollup (user_id, period_start desc);
+
+drop materialized view if exists public.revision_user_week_stats;
+create materialized view public.revision_user_week_stats as
+select
+  e.user_id,
+  (date_trunc('week', e.occurred_at at time zone 'UTC') at time zone 'UTC')::date as week_start,
+  e.topic_id,
+  count(*)::bigint as event_count,
+  count(*) filter (where e.correct)::bigint as correct_count,
+  count(*) filter (where not e.correct)::bigint as wrong_count,
+  count(*) filter (where e.is_revision_attempt)::bigint as revision_attempt_count
+from public.revision_practice_events e
+group by e.user_id, (date_trunc('week', e.occurred_at at time zone 'UTC') at time zone 'UTC')::date, e.topic_id;
+
+create unique index if not exists revision_user_week_stats_unique_idx
+  on public.revision_user_week_stats (user_id, week_start, topic_id);
+
+refresh materialized view public.revision_user_week_stats;
+
+revoke all on public.revision_user_week_stats from public;
+
+create or replace function public.refresh_revision_user_week_stats()
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  refresh materialized view concurrently public.revision_user_week_stats;
+end;
+$$;
+
+create or replace function public.archive_revision_practice_events_before(p_cutoff timestamptz)
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_inserted bigint;
+  v_deleted bigint;
+begin
+  insert into public.revision_historical_rollup (user_id, period_start, period_end, topic_id, stats)
+  select
+    e.user_id,
+    (date_trunc('month', e.occurred_at at time zone 'UTC') at time zone 'UTC')::date as period_start,
+    ((date_trunc('month', e.occurred_at at time zone 'UTC') + interval '1 month - 1 day')
+      at time zone 'UTC')::date as period_end,
+    e.topic_id,
+    jsonb_build_object(
+      'event_count', count(*),
+      'correct_count', count(*) filter (where e.correct),
+      'wrong_count', count(*) filter (where not e.correct),
+      'revision_attempt_count', count(*) filter (where e.is_revision_attempt),
+      'source', 'archive_revision_practice_events_before'
+    )
+  from public.revision_practice_events e
+  where e.occurred_at < p_cutoff
+  group by
+    e.user_id,
+    (date_trunc('month', e.occurred_at at time zone 'UTC') at time zone 'UTC')::date,
+    ((date_trunc('month', e.occurred_at at time zone 'UTC') + interval '1 month - 1 day')
+      at time zone 'UTC')::date,
+    e.topic_id
+  on conflict (user_id, period_start, topic_id) do update
+  set
+    period_end = excluded.period_end,
+    stats = public.revision_historical_rollup.stats || excluded.stats;
+
+  GET DIAGNOSTICS v_inserted = ROW_COUNT;
+
+  with deleted as (
+    delete from public.revision_practice_events e
+    where e.occurred_at < p_cutoff
+    returning 1
+  )
+  select count(*) into v_deleted from deleted;
+
+  return jsonb_build_object(
+    'inserted_or_merged_monthly_rows', coalesce(v_inserted, 0),
+    'deleted_events', coalesce(v_deleted, 0),
+    'cutoff', p_cutoff
+  );
+end;
+$$;
+
+create or replace function public.get_revision_user_week_stats()
+returns setof public.revision_user_week_stats
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select *
+  from public.revision_user_week_stats
+  where user_id = auth.uid();
+$$;
+
+revoke all on function public.refresh_revision_user_week_stats() from public;
+revoke all on function public.archive_revision_practice_events_before(timestamptz) from public;
+revoke all on function public.get_revision_user_week_stats() from public;
+
+grant execute on function public.refresh_revision_user_week_stats() to service_role;
+grant execute on function public.archive_revision_practice_events_before(timestamptz) to service_role;
+grant execute on function public.get_revision_user_week_stats() to authenticated;
+
+insert into public.revision_practice_tags (topic_id, code, label, description, sort_order)
+select v.topic_id, v.code, v.label, v.description, v.sort_order
+from (
+  values
+    (null::text, 'stable_retrieval'::text, 'Stable retrieval'::text, 'Answer matched expected retrieval.'::text, 10),
+    (null, 'minor_gap', 'Minor gap', 'Mostly correct with small omissions.', 20),
+    (null, 'retrieval_gap', 'Retrieval gap', 'Partial recall or incomplete answer.', 30),
+    (null, 'misconception', 'Misconception', 'Incorrect or misleading understanding.', 40),
+    (null, 'terminology', 'Terminology', 'Vocabulary / definition precision.', 50),
+    (null, 'applied_reasoning', 'Applied reasoning', 'Paper 2 style application.', 60)
+) as v(topic_id, code, label, description, sort_order)
+where not exists (
+  select 1
+  from public.revision_practice_tags t
+  where t.code = v.code
+    and t.topic_id is not distinct from v.topic_id
+);
+
+alter table public.revision_practice_tags enable row level security;
+
+drop policy if exists "revision_practice_tags_select_all" on public.revision_practice_tags;
+create policy "revision_practice_tags_select_all"
+on public.revision_practice_tags
+for select
+to authenticated
+using (true);
+
+alter table public.revision_practice_events enable row level security;
+
+drop policy if exists "revision_practice_events_select_own" on public.revision_practice_events;
+create policy "revision_practice_events_select_own"
+on public.revision_practice_events
+for select
+to authenticated
+using (auth.uid() = user_id);
+
+drop policy if exists "revision_practice_events_insert_own" on public.revision_practice_events;
+create policy "revision_practice_events_insert_own"
+on public.revision_practice_events
+for insert
+to authenticated
+with check (auth.uid() = user_id);
+
+alter table public.revision_srs_items enable row level security;
+
+drop policy if exists "revision_srs_items_manage_own" on public.revision_srs_items;
+create policy "revision_srs_items_manage_own"
+on public.revision_srs_items
+for all
+to authenticated
+using (auth.uid() = user_id)
+with check (auth.uid() = user_id);
+
+alter table public.revision_historical_rollup enable row level security;
+
+drop policy if exists "revision_historical_rollup_select_own" on public.revision_historical_rollup;
+create policy "revision_historical_rollup_select_own"
+on public.revision_historical_rollup
+for select
+to authenticated
+using (auth.uid() = user_id);
 

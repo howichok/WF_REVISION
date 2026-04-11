@@ -1,11 +1,19 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, Flame, Sparkles, Target } from "lucide-react";
+import { ArrowRight, CalendarDays, Flame, Sparkles, Target } from "lucide-react";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Button, Card } from "@/components/ui";
 import { PageContainer } from "@/components/layout/page-container";
 import { revisionTopicsListHref } from "@/lib/revision-routes";
+import {
+  EXAM_MILESTONES,
+  PAPER_LABELS,
+  daysUntilMilestone,
+  examMilestoneKindLabel,
+  resolveMilestoneDate,
+  type ExamMilestone,
+} from "@/lib/exam-plan";
 
 function getLondonGreeting(): string {
   const now = new Date();
@@ -18,6 +26,20 @@ function getLondonGreeting(): string {
     10
   );
   return londonHour < 12 ? "Morning" : londonHour < 18 ? "Afternoon" : "Evening";
+}
+
+function formatMilestoneDate(m: ExamMilestone, now: Date) {
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(resolveMilestoneDate(m, now));
+}
+
+function countdownPhrase(days: number): string {
+  if (days === 0) return "Today";
+  if (days === 1) return "Tomorrow";
+  return `In ${days} days`;
 }
 
 export default function HomePage() {
@@ -34,6 +56,10 @@ export default function HomePage() {
   if (!user) return null;
 
   const greeting = getLondonGreeting();
+  const now = new Date();
+  const milestonesSorted = [...EXAM_MILESTONES].sort(
+    (a, b) => resolveMilestoneDate(a, now).getTime() - resolveMilestoneDate(b, now).getTime(),
+  );
 
   const shortcuts = [
     {
@@ -91,7 +117,87 @@ export default function HomePage() {
           </Card>
         </div>
 
-        <div className="perf-fade-up space-y-2" style={{ animationDelay: "120ms" }}>
+        <div className="perf-fade-up" style={{ animationDelay: "100ms" }}>
+          <div className="mb-3 flex items-center justify-between gap-3 px-1">
+            <div className="flex items-center gap-2">
+              <CalendarDays size={14} className="text-accent" />
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                Exam plan
+              </p>
+            </div>
+            <Link
+              href="/planner"
+              className="text-[11px] font-medium text-accent hover:text-accent/90"
+            >
+              Open planner
+            </Link>
+          </div>
+          <Card className="overflow-hidden border-border/80 p-0">
+            <div className="divide-y divide-border/50 px-3 py-2 sm:px-4">
+              {milestonesSorted.map((m, index) => {
+                const days = daysUntilMilestone(m, now);
+                const isNext = index === 0;
+                const isLast = index === milestonesSorted.length - 1;
+                return (
+                  <div
+                    key={`${m.paper}-${m.shortTitle}-${m.month}-${m.day}`}
+                    className="group flex gap-3 py-3 first:pt-2.5 last:pb-2.5"
+                  >
+                    <div className="flex w-4 shrink-0 flex-col items-center pt-1.5" aria-hidden>
+                      <span
+                        className={`h-2.5 w-2.5 shrink-0 rounded-full border-2 border-card shadow-sm transition-colors ${
+                          isNext
+                            ? "bg-accent ring-2 ring-accent/30"
+                            : "bg-border group-hover:bg-accent/55"
+                        }`}
+                      />
+                      {!isLast ? (
+                        <span className="mt-1 w-px flex-1 min-h-[1.75rem] bg-border/70 group-hover:bg-border" />
+                      ) : null}
+                    </div>
+                    <Link
+                      href={m.href}
+                      className="flex min-w-0 flex-1 flex-col gap-1 rounded-lg py-0.5 pr-1 transition-colors hover:bg-card-hover/35 sm:flex-row sm:items-center sm:gap-4 sm:pr-2"
+                    >
+                      <div className="shrink-0 sm:w-[7.75rem]">
+                        <p className="text-xs font-medium tabular-nums text-muted-foreground">
+                          {formatMilestoneDate(m, now)}
+                        </p>
+                        <p
+                          className={`mt-0.5 text-[11px] font-semibold tabular-nums ${
+                            days === 0
+                              ? "text-warning"
+                              : isNext
+                                ? "text-accent"
+                                : "text-muted-foreground"
+                          }`}
+                        >
+                          {countdownPhrase(days)}
+                        </p>
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-sm font-medium text-foreground">{m.title}</span>
+                          <span className="rounded-full border border-accent/20 bg-accent/10 px-2 py-0.5 text-[10px] font-medium text-accent">
+                            {PAPER_LABELS[m.paper]}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">{examMilestoneKindLabel(m)}</span>
+                        </div>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{m.focusLabel}</p>
+                      </div>
+                      <ArrowRight
+                        size={14}
+                        className="hidden shrink-0 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-accent sm:block"
+                      />
+                    </Link>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+        </div>
+
+        <div className="perf-fade-up space-y-2" style={{ animationDelay: "140ms" }}>
           <p className="px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Jump in
           </p>

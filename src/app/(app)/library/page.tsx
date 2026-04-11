@@ -130,7 +130,7 @@ export default function LibraryPage() {
           className="perf-fade-up grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]"
           style={{ animationDelay: "140ms" }}
         >
-          <div className="rounded-2xl border border-accent/20 bg-[linear-gradient(145deg,rgba(139,92,246,0.16),rgba(17,17,19,0.94)_48%,rgba(17,17,19,1))] p-5">
+          <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/[0.08] via-card to-card p-5 shadow-sm dark:border-accent/20 dark:from-accent/[0.14] dark:via-[#14141a] dark:to-[#0e0e12] dark:shadow-none">
             <div className="flex items-center gap-2">
               <BookOpen size={15} className="text-accent" />
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
@@ -144,11 +144,18 @@ export default function LibraryPage() {
               The current Pearson route is a {qualificationOverview.level.toLowerCase()} {qualificationOverview.duration.toLowerCase()}
               with a {qualificationOverview.industryPlacement.toLowerCase()}. Use the official overview first, then drop into topic practice, paper routes, and mapped resources.
             </p>
-            <div className="mt-5 grid gap-3 md:grid-cols-3">
+            <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
               {qualificationOverview.assessmentComponents.map((component) => (
-                <div key={component.id} className="rounded-xl border border-white/10 bg-black/20 px-4 py-4">
-                  <p className="text-xs font-semibold text-foreground">{component.title}</p>
-                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{component.focus}</p>
+                <div
+                  key={component.id}
+                  className="flex min-h-0 min-w-0 flex-col rounded-xl border border-border bg-surface/70 px-4 py-4 dark:border-white/10 dark:bg-black/25"
+                >
+                  <p className="text-xs font-semibold leading-snug text-foreground break-words">
+                    {component.title}
+                  </p>
+                  <p className="mt-2 flex-1 text-xs leading-relaxed text-muted-foreground break-words">
+                    {component.focus}
+                  </p>
                 </div>
               ))}
             </div>

@@ -11,6 +11,29 @@ const FULL_BOOTSTRAP_FILE = path.join(OUTPUT_DIR, "full_site_bootstrap.sql");
 
 const DEMO_USER_PLACEHOLDER = "00000000-0000-0000-0000-000000000000";
 
+function delay(milliseconds: number) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, milliseconds);
+  });
+}
+
+async function writeFileWithRetry(filePath: string, contents: string) {
+  const maxAttempts = 3;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      await fs.writeFile(filePath, contents, "utf8");
+      return;
+    } catch (error) {
+      if (attempt === maxAttempts) {
+        throw error;
+      }
+
+      await delay(250 * attempt);
+    }
+  }
+}
+
 type DemoTopicId =
   | "security"
   | "business"
@@ -835,7 +858,7 @@ async function main() {
     "",
   ].join("\n");
 
-  await fs.writeFile(DEMO_SEED_FILE, demoSeedSql, "utf8");
+  await writeFileWithRetry(DEMO_SEED_FILE, demoSeedSql);
 
   const fullBootstrapSql = await fs.readFile(FULL_BOOTSTRAP_FILE, "utf8");
   const demoBootstrapSql = [
@@ -850,7 +873,7 @@ async function main() {
     "",
   ].join("\n");
 
-  await fs.writeFile(DEMO_BOOTSTRAP_FILE, demoBootstrapSql, "utf8");
+  await writeFileWithRetry(DEMO_BOOTSTRAP_FILE, demoBootstrapSql);
 
   console.log(
     JSON.stringify(

@@ -135,6 +135,140 @@ export function extractCommandWord(prompt: string): ExtractedCommandWord | null 
 }
 
 /**
+ * Like {@link extractCommandWord} for a leading stem, otherwise the first
+ * recognised command word anywhere in the prompt (word-boundary match).
+ */
+/** Multi-word stems that map to an existing command word (matched before single-word passes). */
+const STEM_PHRASE_PATTERNS: Array<{ pattern: RegExp; id: CommandWordId }> = [
+  { pattern: /\bexplain why\b/gi, id: "explain" },
+  { pattern: /\band why\??\b/gi, id: "explain" },
+];
+
+export type StemCommandWordSpan = {
+  start: number;
+  end: number;
+  command: ExtractedCommandWord;
+};
+
+/**
+ * Finds non-overlapping command-word spans in a stem: multi-word phrases first, then the
+ * primary word (first occurrence only), then any other registered command words. Longer spans win ties.
+ */
+export function collectStemCommandWordSpans(
+  text: string,
+  primary: ExtractedCommandWord | null,
+): StemCommandWordSpan[] {
+  type Cand = StemCommandWordSpan;
+  const candidates: Cand[] = [];
+
+  for (const { pattern, id } of STEM_PHRASE_PATTERNS) {
+    const flags = pattern.flags.includes("g") ? pattern.flags : `${pattern.flags}g`;
+    const r = new RegExp(pattern.source, flags);
+    let m: RegExpExecArray | null;
+    while ((m = r.exec(text)) !== null) {
+      const entry = COMMAND_WORD_MAP.get(id);
+      if (!entry) continue;
+      candidates.push({
+        start: m.index,
+        end: m.index + m[0].length,
+        command: {
+          word: entry.word,
+          id: entry.id,
+          guidance: entry.guidance,
+          examHint: entry.examHint,
+        },
+      });
+    }
+  }
+
+  if (primary) {
+    const lowerText = text.toLowerCase();
+    const lw = primary.word.toLowerCase();
+    const idx = lowerText.indexOf(lw);
+    if (idx !== -1) {
+      candidates.push({
+        start: idx,
+        end: idx + primary.word.length,
+        command: primary,
+      });
+    }
+  }
+
+  for (const entry of COMMAND_WORD_REGISTRY) {
+    const r = new RegExp(`\\b${entry.word}\\b`, "gi");
+    let m: RegExpExecArray | null;
+    while ((m = r.exec(text)) !== null) {
+      candidates.push({
+        start: m.index,
+        end: m.index + m[0].length,
+        command: {
+          word: entry.word,
+          id: entry.id,
+          guidance: entry.guidance,
+          examHint: entry.examHint,
+        },
+      });
+    }
+  }
+
+  const key = (c: Cand) => `${c.start}:${c.end}`;
+  const seen = new Set<string>();
+  const unique = candidates.filter((c) => {
+    const k = key(c);
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
+
+  unique.sort((a, b) => b.end - b.start - (a.end - a.start) || a.start - b.start);
+  const picked: Cand[] = [];
+  for (const c of unique) {
+    if (picked.some((p) => !(c.end <= p.start || c.start >= p.end))) continue;
+    picked.push(c);
+  }
+  picked.sort((a, b) => a.start - b.start);
+  return picked;
+}
+
+export function extractCommandWordFromPrompt(prompt: string): ExtractedCommandWord | null {
+  const trimmed = prompt.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const atStart = extractCommandWord(trimmed);
+  if (atStart) {
+    return atStart;
+  }
+
+  let bestIndex: number | null = null;
+  let bestEntry: CommandWordEntry | null = null;
+
+  for (const entry of COMMAND_WORD_REGISTRY) {
+    const re = new RegExp(`\\b${entry.word}\\b`, "i");
+    const match = trimmed.match(re);
+    if (!match || match.index === undefined) {
+      continue;
+    }
+    if (bestIndex === null || match.index < bestIndex) {
+      bestIndex = match.index;
+      bestEntry = entry;
+    }
+  }
+
+  if (!bestEntry || bestIndex === null) {
+    return null;
+  }
+
+  return {
+    word: bestEntry.word,
+    id: bestEntry.id,
+    guidance: bestEntry.guidance,
+    examHint: bestEntry.examHint,
+  };
+}
+
+/**
  * Returns the full list of recognised command words.
  */
 export function getCommandWordRegistry(): readonly CommandWordEntry[] {

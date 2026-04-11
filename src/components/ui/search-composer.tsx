@@ -45,7 +45,7 @@ export function SearchComposer({ value, onChange, placeholder, className }: Sear
             : "none",
         }}
         transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] as [number, number, number, number] }}
-        className="relative bg-[#0c0c0f] border rounded-2xl overflow-hidden"
+        className="relative overflow-hidden rounded-2xl border border-border bg-card dark:border-border dark:bg-[#0c0c0f]"
       >
         {/* Top glow line */}
         <motion.div

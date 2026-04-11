@@ -2,13 +2,20 @@
 
 import { useReportWebVitals } from "next/web-vitals";
 
+function shouldReportWebVitals() {
+  if (process.env.NODE_ENV === "development") {
+    return true;
+  }
+  return process.env.NEXT_PUBLIC_WEB_VITALS === "1";
+}
+
 /**
- * Dev-only console baseline for LCP / INP / CLS (Google Web Vitals).
- * Run Lighthouse separately for full audits; this gives quick local signal.
+ * LCP / INP / CLS (Web Vitals): always in development; in production set
+ * `NEXT_PUBLIC_WEB_VITALS=1` to log the same metrics (e.g. mobile smoke tests).
  */
 export function WebVitalsReporter() {
   useReportWebVitals((metric) => {
-    if (process.env.NODE_ENV !== "development") {
+    if (!shouldReportWebVitals()) {
       return;
     }
     const displayValue =

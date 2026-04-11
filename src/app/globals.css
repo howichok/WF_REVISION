@@ -97,7 +97,6 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   color-scheme: light dark;
-  transition: background-color 0.3s ease, color 0.3s ease;
   background-image:
     radial-gradient(circle at top, rgba(103, 92, 241, 0.055), transparent 34%),
     radial-gradient(circle at 16% 18%, rgba(245, 158, 11, 0.035), transparent 24%),
@@ -108,6 +107,61 @@ body {
 html {
   background: var(--color-background);
   color-scheme: light dark;
+}
+
+/* One-shot: skip CSS transitions while toggling light/dark so the UI snaps instead of a long global cross-fade */
+html.theme-switching,
+html.theme-switching *,
+html.theme-switching *::before,
+html.theme-switching *::after {
+  transition: none !important;
+}
+
+/* View Transition API — theme toggle (Chrome 111+, Edge, Safari 18+) */
+@supports (view-transition-name: root) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    mix-blend-mode: normal;
+    height: 100%;
+    width: 100%;
+    object-fit: none;
+    object-position: left top;
+  }
+
+  ::view-transition-old(root) {
+    animation: wf-theme-root-out 0.42s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+
+  ::view-transition-new(root) {
+    animation: wf-theme-root-in 0.48s cubic-bezier(0.32, 0.72, 0, 1) both;
+  }
+}
+
+@keyframes wf-theme-root-out {
+  to {
+    opacity: 0.12;
+    filter: brightness(0.88) saturate(0.92);
+  }
+}
+
+@keyframes wf-theme-root-in {
+  from {
+    clip-path: circle(0% at var(--theme-vt-x, 50%) var(--theme-vt-y, 50%));
+    filter: brightness(1.06);
+  }
+  to {
+    clip-path: circle(200vmax at var(--theme-vt-x, 50%) var(--theme-vt-y, 50%));
+    filter: brightness(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  @supports (view-transition-name: root) {
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation-duration: 0.01ms !important;
+    }
+  }
 }
 
 /* Scrollbar */
@@ -147,7 +201,7 @@ html {
   background: var(--glass-bg);
   backdrop-filter: blur(var(--glass-blur));
   border: 1px solid var(--glass-border);
-  transition: background-color 0.3s ease, border-color 0.3s ease;
+  transition: background-color 0.12s ease, border-color 0.12s ease;
 }
 
 .page-shell {
@@ -347,6 +401,9 @@ html {
 /* ── Active learning layout ──────────────────────────────────── */
 .al-shell { width: 100%; padding-bottom: 1.5rem; }
 .al-shell-grid { display: grid; gap: 1.5rem; }
+.al-shell-grid.al-shell-grid--single {
+  grid-template-columns: 1fr;
+}
 
 .al-rail {
   position: sticky; top: 6rem; align-self: start; height: fit-content;
@@ -364,18 +421,44 @@ html {
   display: flex; gap: 0.65rem; border-radius: 0.65rem;
   border-left: 3px solid transparent; border-top: none; border-right: none; border-bottom: none;
   padding: 0.55rem 0.7rem;
-  transition: border-color 0.2s ease, background-color 0.2s ease;
+  transition:
+    border-color 0.22s ease,
+    background-color 0.22s ease,
+    transform 0.2s ease,
+    opacity 0.2s ease,
+    box-shadow 0.25s ease;
 }
-.al-rail-item-current { border-left-color: var(--color-accent); background: color-mix(in oklab, var(--color-accent) 10%, var(--color-card)); }
+.al-rail-item-current {
+  border-left-color: var(--color-accent);
+  background: color-mix(in oklab, var(--color-accent) 10%, var(--color-card));
+  animation: al-rail-current-shimmer 4s ease-in-out infinite;
+}
 .al-rail-item-complete { border-left-color: rgba(34, 197, 94, 0.4); background: transparent; }
 .al-rail-item-upcoming { border-left-color: transparent; background: transparent; opacity: 0.5; }
 .al-rail-item-locked { border-left-color: transparent; background: transparent; opacity: 0.3; }
+
+.al-rail-item:not(.al-rail-item-locked):hover {
+  transform: translateX(2px);
+}
+.al-rail-item-upcoming:not(.al-rail-item-locked):hover { opacity: 0.68; }
+.al-rail-item-complete:not(.al-rail-item-locked):hover { opacity: 0.92; }
+
+@keyframes al-rail-current-shimmer {
+  0%, 100% { box-shadow: inset 0 0 0 0 transparent; }
+  50% {
+    box-shadow: inset 5px 0 14px -6px color-mix(in oklab, var(--color-accent) 45%, transparent);
+  }
+}
 
 .al-mobile-strip {
   display: flex; width: 100%; align-items: center; justify-content: space-between;
   gap: 1rem; border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 1rem;
   background: color-mix(in oklab, var(--color-card) 92%, var(--color-background)); padding: 0.75rem 1rem;
   border-color: var(--color-border);
+  transition: transform 0.18s ease, border-color 0.2s ease, box-shadow 0.25s ease;
+}
+.al-mobile-strip:active {
+  transform: scale(0.992);
 }
 
 .al-task-column {
@@ -394,12 +477,27 @@ html {
   border: 1px solid var(--color-border); border-radius: 1.5rem;
   background: color-mix(in oklab, var(--color-card) 90%, var(--color-background)); padding: 2rem;
   box-shadow: 0 18px 42px -34px rgba(17, 24, 39, 0.16);
+  transition: border-color 0.25s ease, box-shadow 0.35s ease;
+}
+.al-task-panel:hover {
+  box-shadow: 0 22px 48px -30px rgba(17, 24, 39, 0.2);
+}
+
+/* Split stem (instruction + payload): no min-height — card height follows content */
+.al-task-panel.al-task-panel--split-stem {
+  justify-content: flex-start;
 }
 
 .al-response-panel {
   display: flex; flex-direction: column; gap: 0.75rem;
-  border: 1px solid var(--color-border); border-left: 3px solid color-mix(in oklab, var(--color-accent) 35%, white);
-  border-radius: 0.5rem; background: color-mix(in oklab, var(--color-card) 88%, var(--color-background)); padding: 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: 1.25rem;
+  background: color-mix(in oklab, var(--color-card) 88%, var(--color-background)); padding: 1.25rem 1.35rem;
+  transition: border-color 0.25s ease, box-shadow 0.3s ease;
+}
+.al-response-panel:focus-within {
+  border-color: color-mix(in oklab, var(--color-foreground) 14%, var(--color-border));
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-foreground) 10%, transparent);
 }
 
 .al-feedback-panel {
@@ -455,7 +553,10 @@ html {
 }
 
 @media (min-width: 1024px) {
-  .al-shell-grid { grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr); align-items: start; }
+  .al-shell-grid:not(.al-shell-grid--single) {
+    grid-template-columns: minmax(14rem, 17rem) minmax(0, 1fr);
+    align-items: start;
+  }
   .al-task-column { gap: 1.5rem; }
   .al-task-panel { padding: 2.5rem; }
   .al-response-panel, .al-feedback-panel { padding: 1.25rem; }
@@ -570,16 +671,16 @@ html {
 }
 .exam-paper-textarea:focus {
   outline: none;
-  border-color: #1e293b;
-  box-shadow: 0 0 0 1px #1e293b;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
 
 /* Full-bleed exam: seamless answer zone, subtle ruled lines */
 .exam-paper-textarea--immersive {
   border: none;
   border-radius: 0;
-  border-bottom: 2px solid rgba(15, 23, 42, 0.1);
-  background-color: rgba(255, 255, 255, 0.42);
+  border-bottom: 2px solid rgba(15, 23, 42, 0.18);
+  background-color: rgba(255, 255, 255, 0.72);
   background-image: linear-gradient(
     to bottom,
     rgba(100, 116, 139, 0.2) 1px,
@@ -625,8 +726,8 @@ html {
   color: rgb(100 116 139 / 0.85);
 }
 .dark .exam-paper-textarea:focus {
-  border-color: #cbd5e1;
-  box-shadow: 0 0 0 1px #cbd5e1;
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 1px var(--color-accent);
 }
 
 .exam-nav-progress {

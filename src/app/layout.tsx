@@ -4,7 +4,7 @@ import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter"
 import { AppDataProvider } from "@/components/providers/app-data-provider";
 import { AiOverlayProvider } from "@/components/providers/ai-overlay-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { loadSharedCurriculumSnapshotFromDatabase } from "@/lib/curriculum-database";
+import { getCachedSharedCurriculumSnapshot } from "@/lib/cached-shared-curriculum";
 import { loadAppState } from "@/lib/app-data";
 import { getLocalSharedCurriculumSnapshot } from "@/lib/shared-curriculum";
 import { getSupabaseConfig } from "@/lib/supabase/config";
@@ -41,10 +41,13 @@ export default async function RootLayout({
   if (getSupabaseConfig()) {
     try {
       const supabase = await createServerSupabaseClient();
-      const sharedCurriculum = await loadSharedCurriculumSnapshotFromDatabase(supabase);
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
+      const sharedCurriculum = user
+        ? await getCachedSharedCurriculumSnapshot()
+        : getLocalSharedCurriculumSnapshot();
 
       initialState = {
         ...initialState,

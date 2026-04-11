@@ -1,10 +1,13 @@
 import { createHash } from "node:crypto";
 import type {
+  AnswerHighlightQuotes,
+  AnswerHighlightSpans,
   ExaminerWalkthroughBeat,
   GeminiExamMarkItem,
   GeminiExamMarkResponse,
 } from "@/lib/exam-conditions";
 import { parseItemLevel } from "@/lib/exam-conditions-marking-post";
+import { resolveExamMarkCachedContentName } from "@/lib/research/gemini-context-cache";
 import {
   buildGeminiCacheKey,
   createGeminiTimeoutSignal,
@@ -25,8 +28,15 @@ const GEMINI_EXAM_MARK_MODEL =
 const GEMINI_EXAM_MARK_FALLBACK_MODEL =
   process.env.GEMINI_EXAM_MARK_FALLBACK_MODEL?.trim() || "gemini-2.5-flash";
 
+/**
+ * Env knobs (exam marking):
+ * - GEMINI_EXAM_MARK_MODEL / GEMINI_EXAM_MARK_FALLBACK_MODEL
+ * - GEMINI_EXAM_MARK_THINKING_BUDGET (0–24576; when set, overrides default thinking for this call)
+ * - GEMINI_EXAM_MARK_CACHED_CONTENT (resource name, e.g. cachedContents/abc)
+ * - GEMINI_EXAM_MARK_EXPLICIT_CACHE_AUTO=1 + GEMINI_EXAM_MARK_EXPLICIT_CACHE_MIN_CHARS (default 4096) + GEMINI_EXAM_MARK_EXPLICIT_CACHE_TTL_SECONDS (default 3600)
+ */
 /** Bumps when prompt/schema shape changes — avoids stale in-memory cache hits. */
-const EXAM_SESSION_MARK_CACHE_VERSION = "v2";
+const EXAM_SESSION_MARK_CACHE_VERSION = "v6";
 
 export interface GenerateExamSessionGeminiMarksResult {
   response: GeminiExamMarkResponse;
@@ -51,6 +61,7 @@ interface GeminiCandidate {
 
 interface GeminiGenerateContentResponse {
   candidates?: GeminiCandidate[];
+  usageMetadata?: unknown;
   error?: {
     message?: string;
   };
@@ -65,6 +76,129 @@ function extractResponseText(payload: GeminiGenerateContentResponse) {
     ?.map((part) => part.text ?? "")
     .join("")
     .trim();
+}
+
+function extractGeminiResponseTextRaw(payload: GeminiGenerateContentResponse) {
+  return payload.candidates?.[0]?.content?.parts?.map((part) => part.text ?? "").join("") ?? "";
+}
+
+function getNovelChunk(existingText: string, incomingText: string) {
+  if (!incomingText) {
+    return "";
+  }
+  if (!existingText) {
+    return incomingText;
+  }
+  if (incomingText === existingText) {
+    return "";
+  }
+  if (incomingText.startsWith(existingText)) {
+    return incomingText.slice(existingText.length);
+  }
+  const maxOverlap = Math.min(existingText.length, incomingText.length);
+  for (let index = maxOverlap; index > 0; index -= 1) {
+    const suffix = existingText.slice(-index);
+    const prefix = incomingText.slice(0, index);
+    if (suffix === prefix) {
+      return incomingText.slice(index);
+    }
+  }
+  return incomingText;
+}
+
+async function consumeGeminiSseToText(
+  response: Response,
+  onDelta: (chunk: string) => void | Promise<void>
+): Promise<string> {
+  if (!response.body) {
+    throw new Error("Gemini stream did not return a response body.");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8");
+  let buffer = "";
+  let assembled = "";
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      break;
+    }
+    buffer += decoder.decode(value, { stream: true });
+    const blocks = buffer.split(/\r?\n\r?\n/);
+    buffer = blocks.pop() ?? "";
+
+    for (const block of blocks) {
+      const data = block
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith("data: "))
+        .map((line) => line.slice(6))
+        .join("\n")
+        .trim();
+
+      if (!data || data === "[DONE]") {
+        continue;
+      }
+
+      let payload: GeminiGenerateContentResponse;
+      try {
+        payload = JSON.parse(data) as GeminiGenerateContentResponse;
+      } catch {
+        continue;
+      }
+
+      if (payload.error?.message) {
+        throw new Error(payload.error.message);
+      }
+
+      const text = extractGeminiResponseTextRaw(payload);
+      if (!text) {
+        continue;
+      }
+
+      const delta = getNovelChunk(assembled, text);
+      if (!delta) {
+        continue;
+      }
+      assembled += delta;
+      await onDelta(delta);
+    }
+  }
+
+  buffer += decoder.decode();
+  if (buffer.trim()) {
+    const blocks = buffer.split(/\r?\n\r?\n/);
+    for (const block of blocks) {
+      const data = block
+        .split(/\r?\n/)
+        .filter((line) => line.startsWith("data: "))
+        .map((line) => line.slice(6))
+        .join("\n")
+        .trim();
+      if (!data || data === "[DONE]") {
+        continue;
+      }
+      let payload: GeminiGenerateContentResponse;
+      try {
+        payload = JSON.parse(data) as GeminiGenerateContentResponse;
+      } catch {
+        continue;
+      }
+      if (payload.error?.message) {
+        throw new Error(payload.error.message);
+      }
+      const text = extractGeminiResponseTextRaw(payload);
+      if (!text) {
+        continue;
+      }
+      const delta = getNovelChunk(assembled, text);
+      if (delta) {
+        assembled += delta;
+        await onDelta(delta);
+      }
+    }
+  }
+
+  return assembled.trim();
 }
 
 function compactRow(input: {
@@ -84,7 +218,8 @@ function compactRow(input: {
     e: input.expectation.replace(/\s+/g, " ").trim().slice(0, 260),
     q: input.prompt.replace(/\s+/g, " ").trim().slice(0, 180),
     cw: (input.commandWord ?? "").replace(/\s+/g, " ").trim().slice(0, 80),
-    a: input.answer.replace(/\s+/g, " ").trim().slice(0, answerCap),
+    /** Same string the model must use for `hl` UTF-16 spans: trim ends only (do not collapse spaces). */
+    a: input.answer.trim().slice(0, answerCap),
   };
 }
 
@@ -121,6 +256,40 @@ const RESPONSE_SCHEMA = {
           id: { type: "string" },
           line: { type: "string" },
           note: { type: "string" },
+          hl: {
+            type: "object",
+            properties: {
+              c: {
+                type: "array",
+                maxItems: 4,
+                items: {
+                  type: "array",
+                  minItems: 2,
+                  maxItems: 2,
+                  items: { type: "integer" },
+                },
+              },
+              i: {
+                type: "array",
+                maxItems: 4,
+                items: {
+                  type: "array",
+                  minItems: 2,
+                  maxItems: 2,
+                  items: { type: "integer" },
+                },
+              },
+            },
+            additionalProperties: false,
+          },
+          hlq: {
+            type: "object",
+            properties: {
+              c: { type: "array", maxItems: 4, items: { type: "string" } },
+              i: { type: "array", maxItems: 4, items: { type: "string" } },
+            },
+            additionalProperties: false,
+          },
         },
         required: ["id", "line", "note"],
         additionalProperties: false,
@@ -145,21 +314,52 @@ const RESPONSE_SCHEMA = {
   additionalProperties: false,
 };
 
-function buildSystemInstruction(subjectLabel: string): string {
+/** Subject-agnostic rubric tail (stable prefix for implicit cache + optional explicit context cache). */
+const EXAM_MARK_RUBRIC_TAIL =
+  "Output JSON only, no markdown. " +
+  "Tone: calm, professional, second person; you are going through their script question by question, not giving a vague summary only. " +
+  "The last user message JSON has keys in order: n, questionOrderIds, items. Subject and GCSE paper framing are in the system instruction. " +
+  "Field `items`: for each compact row use student answer `a` and scheme `s`,`e`,`q`,`cw`. Integer `m` from 0 to `x` inclusive. " +
+  "`rc`: correct|partial|incorrect|off_topic. `mk`: max 3 short missing keywords (empty array if none). " +
+  "Field `opening`: 1–2 sentences as if you have just finished reading the whole paper before you comment per question. " +
+  "Field `walkthrough`: one object per question in the SAME ORDER as `items`; `id` must equal that row's `i`. " +
+  "`line` is a short lead-in (e.g. 'On this one you…'); `note` is 2–3 sentences on that answer and the marks. " +
+  "For each walkthrough row set optional `hl` ONLY (no long quoted answer text): object with `c` and/or `i`, each an array of up to 4 spans. " +
+  "Each span is two integers [start,end) giving UTF-16 code-unit offsets into that row's answer string `a` exactly as provided in the payload (trimmed ends only; same as JavaScript string indexing on that string; end exclusive). " +
+  "`hl.c` = ranges that earned credit; `hl.i` = ranges that need tightening vs the scheme. Omit `hl` or use empty arrays if none. Keep spans ordered, non-overlapping, within 0..len(a). " +
+  "Optional `hlq`: same shape as `hl` but with verbatim substrings from `a` (max ~120 chars each quote) when spans are uncertain; use single quotes inside strings if the answer contains double quotes. " +
+  "When `m` equals full marks (`m` == `x`), keep `note` to one short positive sentence, omit `hl` unless it genuinely helps revision, and use empty `mk`. " +
+  "Cover every question; if an answer is empty, say so briefly. " +
+  "Field `band`: one of Below | Pass | Merit | Strong (approximate). " +
+  "`oneLiner`: one sentence overall judgement. `examinerNote`: one short caveat about AI marking limits (max ~200 chars). " +
+  "`whatWentWell` and `targetsToImprove`: whole-paper strengths and next steps (not repeating the walkthrough verbatim). " +
+  "Keep each `line` under ~100 chars and each `note` under ~280 chars where possible to save tokens.";
+
+function buildExamMarkSubjectOpener(subjectLabel: string): string {
   const subject = subjectLabel.replace(/\s+/g, " ").trim().slice(0, 96) || "Digital Services & Data";
-  return (
-    `You are a GCSE ${subject} examiner marking one candidate paper in one pass. Output JSON only, no markdown. ` +
-    "Tone: calm, professional, second person; you are going through their script question by question, not giving a vague summary only. " +
-    "Field `items`: for each compact row use student answer `a` and scheme `s`,`e`,`q`,`cw`. Integer `m` from 0 to `x` inclusive. " +
-    "`rc`: correct|partial|incorrect|off_topic. `mk`: max 3 short missing keywords (empty array if none). " +
-    "Field `opening`: 1–2 sentences as if you have just finished reading the whole paper before you comment per question. " +
-    "Field `walkthrough`: one object per question in the SAME ORDER as `items` / payload `items`; `id` must equal that row's `i`. " +
-    "`line` is a short lead-in (e.g. 'On this one you…'); `note` is 2–3 sentences on that answer and the marks. " +
-    "Cover every question; if an answer is empty, say so briefly. " +
-    "Field `band`: one of Below | Pass | Merit | Strong (approximate). " +
-    "`oneLiner`: one sentence overall judgement. `examinerNote`: one short caveat about AI marking limits (max ~200 chars). " +
-    "`whatWentWell` and `targetsToImprove`: whole-paper strengths and next steps (not repeating the walkthrough verbatim)."
-  );
+  return `You are a GCSE ${subject} examiner marking one candidate paper in one pass.`;
+}
+
+function buildSystemInstruction(subjectLabel: string): string {
+  return `${buildExamMarkSubjectOpener(subjectLabel)} ${EXAM_MARK_RUBRIC_TAIL}`;
+}
+
+function buildSystemInstructionWithCachedRubric(subjectLabel: string): string {
+  return `${buildExamMarkSubjectOpener(subjectLabel)} Follow the detailed marking contract in the cached context block immediately before this message.`;
+
+}
+
+/** User JSON: stable key order; `items` last to maximise implicit-prefix cache hits on the shared prefix. */
+function buildExamMarkUserPayload(
+  compact: ReturnType<typeof compactRow>[],
+  orderedIds: string[]
+): string {
+  const payload: Record<string, unknown> = {
+    n: compact.length,
+    questionOrderIds: orderedIds,
+    items: compact,
+  };
+  return JSON.stringify(payload);
 }
 
 const REASON_LABEL: Record<string, string> = {
@@ -211,6 +411,76 @@ function expandMicroItem(
   };
 }
 
+function normaliseWalkthroughPhraseList(raw: unknown, maxItems: number, maxLen: number): string[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+  const out = raw
+    .map((v) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, maxLen))
+    .filter((s) => s.length >= 4)
+    .slice(0, maxItems);
+  return out.length > 0 ? out : undefined;
+}
+
+function normaliseSpanPairs(raw: unknown, maxPairs: number): [number, number][] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+  const out: [number, number][] = [];
+  for (const pair of raw) {
+    if (!Array.isArray(pair) || pair.length !== 2) {
+      continue;
+    }
+    const a = Math.round(Number(pair[0]));
+    const b = Math.round(Number(pair[1]));
+    if (!Number.isFinite(a) || !Number.isFinite(b)) {
+      continue;
+    }
+    const start = Math.min(a, b);
+    const end = Math.max(a, b);
+    if (end > start) {
+      out.push([start, end]);
+    }
+    if (out.length >= maxPairs) {
+      break;
+    }
+  }
+  return out.length > 0 ? out : undefined;
+}
+
+function normaliseHighlightSpans(raw: unknown): AnswerHighlightSpans | undefined {
+  if (!raw || typeof raw !== "object") {
+    return undefined;
+  }
+  const o = raw as { c?: unknown; i?: unknown };
+  const c = normaliseSpanPairs(o.c, 4);
+  const i = normaliseSpanPairs(o.i, 4);
+  if (!c && !i) {
+    return undefined;
+  }
+  return { ...(c ? { c } : {}), ...(i ? { i } : {}) };
+}
+
+function normaliseHlQuotes(raw: unknown): AnswerHighlightQuotes | undefined {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+    return undefined;
+  }
+  const o = raw as { c?: unknown; i?: unknown };
+  const norm = (v: unknown) =>
+    Array.isArray(v)
+      ? v
+          .map((x) => String(x ?? "").replace(/\s+/g, " ").trim().slice(0, 120))
+          .filter((s) => s.length >= 2)
+          .slice(0, 4)
+      : [];
+  const c = norm(o.c);
+  const i = norm(o.i);
+  if (c.length === 0 && i.length === 0) {
+    return undefined;
+  }
+  return { ...(c.length ? { c } : {}), ...(i.length ? { i } : {}) };
+}
+
 function normaliseWalkthrough(
   raw: unknown,
   orderedIds: string[]
@@ -228,15 +498,29 @@ function normaliseWalkthrough(
     if (!row || typeof row !== "object") {
       continue;
     }
-    const o = row as { id?: string; line?: string; note?: string };
+    const o = row as {
+      id?: string;
+      line?: string;
+      note?: string;
+      hl?: unknown;
+      hlq?: unknown;
+      credit?: unknown;
+      improve?: unknown;
+    };
     const id = String(o.id ?? "").trim();
     if (!id || byId.has(id)) {
       continue;
     }
+    const hl = normaliseHighlightSpans(o.hl);
+    const hlQuotes = normaliseHlQuotes(o.hlq);
     byId.set(id, {
       id,
       line: String(o.line ?? "").replace(/\s+/g, " ").trim(),
       note: String(o.note ?? "").replace(/\s+/g, " ").trim(),
+      hl,
+      hlQuotes,
+      credit: normaliseWalkthroughPhraseList(o.credit, 4, 200),
+      improve: normaliseWalkthroughPhraseList(o.improve, 4, 200),
     });
   }
 
@@ -317,17 +601,17 @@ function tryParseExamMarkResponse(
   }
 }
 
-async function callGeminiExamMark(
+function buildExamMarkGenerationConfig(
   model: string,
-  userPayload: string,
-  policy: ReturnType<typeof getGeminiModePolicy>,
-  systemInstruction: string
-): Promise<string> {
-  if (!GEMINI_API_KEY) {
-    throw new Error("Missing GEMINI_API_KEY.");
-  }
-
+  policy: ReturnType<typeof getGeminiModePolicy>
+): Record<string, unknown> {
   const useThinkingOff = model.includes("2.5-flash") && !model.includes("lite");
+  const thinkingBudgetRaw = process.env.GEMINI_EXAM_MARK_THINKING_BUDGET?.trim();
+  const thinkingBudgetParsed =
+    thinkingBudgetRaw !== undefined && thinkingBudgetRaw !== ""
+      ? Number.parseInt(thinkingBudgetRaw, 10)
+      : Number.NaN;
+  const useExplicitThinking = Number.isFinite(thinkingBudgetParsed) && thinkingBudgetParsed >= 0;
 
   const generationConfig: Record<string, unknown> = {
     temperature: 0,
@@ -337,11 +621,74 @@ async function callGeminiExamMark(
     responseMimeType: "application/json",
     responseJsonSchema: RESPONSE_SCHEMA,
   };
-  if (useThinkingOff) {
+
+  if (useExplicitThinking) {
+    generationConfig.thinkingConfig = { thinkingBudget: thinkingBudgetParsed };
+  } else if (useThinkingOff) {
     generationConfig.thinkingConfig = { thinkingBudget: 0 };
   }
 
-  const body = {
+  return generationConfig;
+}
+
+function logExamMarkUsage(payload: GeminiGenerateContentResponse) {
+  if (!payload.usageMetadata) {
+    return;
+  }
+  if (process.env.NODE_ENV !== "development" && process.env.EXAM_MARK_ANALYTICS !== "1") {
+    return;
+  }
+  console.info(
+    JSON.stringify({
+      tag: "exam-mark-usage",
+      usageMetadata: payload.usageMetadata,
+    })
+  );
+}
+
+async function resolveExamMarkCachedContentRef(model: string): Promise<string | undefined> {
+  if (!GEMINI_API_KEY) {
+    return undefined;
+  }
+  const minChars =
+    Number.parseInt(process.env.GEMINI_EXAM_MARK_EXPLICIT_CACHE_MIN_CHARS ?? "4096", 10) || 4096;
+  const ttlSeconds =
+    Number.parseInt(process.env.GEMINI_EXAM_MARK_EXPLICIT_CACHE_TTL_SECONDS ?? "3600", 10) || 3600;
+  try {
+    return await resolveExamMarkCachedContentName({
+      apiKey: GEMINI_API_KEY,
+      modelId: model,
+      rubricForCache: EXAM_MARK_RUBRIC_TAIL,
+      minCharsForAuto: minChars,
+      ttlSeconds,
+    });
+  } catch (error) {
+    if (process.env.NODE_ENV === "development") {
+      console.warn("[exam-mark] context cache unavailable:", error);
+    }
+    return undefined;
+  }
+}
+
+async function callGeminiExamMark(
+  model: string,
+  userPayload: string,
+  policy: ReturnType<typeof getGeminiModePolicy>,
+  systemInstructionFull: string,
+  subjectLabel: string
+): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("Missing GEMINI_API_KEY.");
+  }
+
+  const cachedRef = await resolveExamMarkCachedContentRef(model);
+  const systemInstruction = cachedRef
+    ? buildSystemInstructionWithCachedRubric(subjectLabel)
+    : systemInstructionFull;
+
+  const generationConfig = buildExamMarkGenerationConfig(model, policy);
+
+  const body: Record<string, unknown> = {
     systemInstruction: {
       parts: [{ text: systemInstruction }],
     },
@@ -353,6 +700,10 @@ async function callGeminiExamMark(
     ],
     generationConfig,
   };
+
+  if (cachedRef) {
+    body.cachedContent = cachedRef;
+  }
 
   const response = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
@@ -373,11 +724,80 @@ async function callGeminiExamMark(
     throw new Error(payload.error?.message || "Gemini exam marking failed.");
   }
 
+  logExamMarkUsage(payload);
+
   const responseText = extractResponseText(payload);
   if (!responseText) {
     throw new Error("Gemini returned empty marking response.");
   }
   return responseText;
+}
+
+async function callGeminiExamMarkStream(
+  model: string,
+  userPayload: string,
+  policy: ReturnType<typeof getGeminiModePolicy>,
+  systemInstructionFull: string,
+  subjectLabel: string,
+  onDelta: (chunk: string) => void | Promise<void>
+): Promise<string> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("Missing GEMINI_API_KEY.");
+  }
+
+  const cachedRef = await resolveExamMarkCachedContentRef(model);
+  const systemInstruction = cachedRef
+    ? buildSystemInstructionWithCachedRubric(subjectLabel)
+    : systemInstructionFull;
+
+  const generationConfig = buildExamMarkGenerationConfig(model, policy);
+
+  const body: Record<string, unknown> = {
+    systemInstruction: {
+      parts: [{ text: systemInstruction }],
+    },
+    contents: [
+      {
+        role: "user",
+        parts: [{ text: userPayload }],
+      },
+    ],
+    generationConfig,
+  };
+
+  if (cachedRef) {
+    body.cachedContent = cachedRef;
+  }
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-goog-api-key": GEMINI_API_KEY,
+      },
+      body: JSON.stringify(body),
+      cache: "no-store",
+      signal: createGeminiTimeoutSignal("exam-session-mark"),
+    }
+  );
+
+  if (!response.ok) {
+    const errText = await response.text();
+    let message = errText || "Gemini exam marking stream failed.";
+    try {
+      const parsed = JSON.parse(errText) as { error?: { message?: string } };
+      if (parsed.error?.message) {
+        message = parsed.error.message;
+      }
+    } catch {
+      /* keep message */
+    }
+    throw new Error(message);
+  }
+
+  return consumeGeminiSseToText(response, onDelta);
 }
 
 export async function generateExamSessionGeminiMarks(
@@ -410,15 +830,19 @@ export async function generateExamSessionGeminiMarks(
   const subjectLabel = (options?.subjectLabel ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
   const systemInstruction = buildSystemInstruction(subjectLabel);
 
-  const userPayload = JSON.stringify({
-    topic: "exam",
-    subjectLabel,
-    n: compact.length,
-    items: compact,
-    questionOrderIds: orderedIds,
-  });
+  const userPayload = buildExamMarkUserPayload(compact, orderedIds);
   const maxById = new Map(rows.map((r) => [r.id, r.marks]));
-  const payloadHash = createHash("sha256").update(userPayload).digest("hex");
+  const payloadHash = createHash("sha256")
+    .update(
+      JSON.stringify({
+        topic: "exam",
+        subjectLabel,
+        n: compact.length,
+        questionOrderIds: orderedIds,
+        items: compact,
+      })
+    )
+    .digest("hex");
 
   let usedModel = GEMINI_EXAM_MARK_MODEL;
   const tryCacheKey = buildGeminiCacheKey(
@@ -434,7 +858,13 @@ export async function generateExamSessionGeminiMarks(
 
   let responseText: string;
   try {
-    responseText = await callGeminiExamMark(GEMINI_EXAM_MARK_MODEL, userPayload, policy, systemInstruction);
+    responseText = await callGeminiExamMark(
+      GEMINI_EXAM_MARK_MODEL,
+      userPayload,
+      policy,
+      systemInstruction,
+      subjectLabel
+    );
   } catch (primaryError) {
     if (GEMINI_EXAM_MARK_FALLBACK_MODEL && GEMINI_EXAM_MARK_FALLBACK_MODEL !== GEMINI_EXAM_MARK_MODEL) {
       usedModel = GEMINI_EXAM_MARK_FALLBACK_MODEL;
@@ -448,7 +878,7 @@ export async function generateExamSessionGeminiMarks(
       if (fbCached?.response) {
         return { response: fbCached.response, recovered: Boolean(fbCached.recovered) };
       }
-      responseText = await callGeminiExamMark(usedModel, userPayload, policy, systemInstruction);
+      responseText = await callGeminiExamMark(usedModel, userPayload, policy, systemInstruction, subjectLabel);
     } else {
       throw primaryError;
     }
@@ -456,7 +886,128 @@ export async function generateExamSessionGeminiMarks(
 
   let outcome = tryParseExamMarkResponse(responseText, maxById, orderedIds);
   if (!outcome) {
-    responseText = await callGeminiExamMark(usedModel, userPayload, policy, systemInstruction);
+    responseText = await callGeminiExamMark(usedModel, userPayload, policy, systemInstruction, subjectLabel);
+    outcome = tryParseExamMarkResponse(responseText, maxById, orderedIds);
+  }
+
+  if (!outcome) {
+    throw new Error(
+      "The marking service returned data we could not read. Your answers are safe — try submitting again in a moment."
+    );
+  }
+
+  const cachePayload: GeminiExamMarkCachePayload = {
+    response: outcome.response,
+    recovered: outcome.recovered,
+  };
+  writeGeminiCachedResponse(
+    "exam-session-mark",
+    buildGeminiCacheKey("exam-session-mark", EXAM_SESSION_MARK_CACHE_VERSION, usedModel, payloadHash),
+    cachePayload
+  );
+  return outcome;
+}
+
+/**
+ * Same contract as {@link generateExamSessionGeminiMarks}, but uses Gemini streaming for lower perceived latency.
+ */
+export async function streamExamSessionGeminiMarks(
+  rows: Array<{
+    id: string;
+    marks: number;
+    prompt: string;
+    expectation: string;
+    markSchemeSummary: string;
+    commandWord?: string;
+    answer: string;
+  }>,
+  options: { subjectLabel?: string; onDelta: (chunk: string) => void | Promise<void> }
+): Promise<GenerateExamSessionGeminiMarksResult> {
+  if (!GEMINI_API_KEY) {
+    throw new Error("Missing GEMINI_API_KEY.");
+  }
+
+  if (rows.length === 0) {
+    throw new Error("No items to mark.");
+  }
+
+  if (rows.length > 30) {
+    throw new Error("Too many questions for one marking request.");
+  }
+
+  const policy = getGeminiModePolicy("exam-session-mark");
+  const compact = rows.map(compactRow);
+  const orderedIds = rows.map((r) => r.id);
+  const subjectLabel = (options?.subjectLabel ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+  const systemInstruction = buildSystemInstruction(subjectLabel);
+
+  const userPayload = buildExamMarkUserPayload(compact, orderedIds);
+  const maxById = new Map(rows.map((r) => [r.id, r.marks]));
+  const payloadHash = createHash("sha256")
+    .update(
+      JSON.stringify({
+        topic: "exam",
+        subjectLabel,
+        n: compact.length,
+        questionOrderIds: orderedIds,
+        items: compact,
+      })
+    )
+    .digest("hex");
+
+  let usedModel = GEMINI_EXAM_MARK_MODEL;
+  const tryCacheKey = buildGeminiCacheKey(
+    "exam-session-mark",
+    EXAM_SESSION_MARK_CACHE_VERSION,
+    usedModel,
+    payloadHash
+  );
+  const cached = readGeminiCachedResponse<GeminiExamMarkCachePayload>(tryCacheKey);
+  if (cached?.response) {
+    await options.onDelta("");
+    return { response: cached.response, recovered: Boolean(cached.recovered) };
+  }
+
+  let responseText: string;
+  try {
+    responseText = await callGeminiExamMarkStream(
+      GEMINI_EXAM_MARK_MODEL,
+      userPayload,
+      policy,
+      systemInstruction,
+      subjectLabel,
+      options.onDelta
+    );
+  } catch (primaryError) {
+    if (GEMINI_EXAM_MARK_FALLBACK_MODEL && GEMINI_EXAM_MARK_FALLBACK_MODEL !== GEMINI_EXAM_MARK_MODEL) {
+      usedModel = GEMINI_EXAM_MARK_FALLBACK_MODEL;
+      const fbKey = buildGeminiCacheKey(
+        "exam-session-mark",
+        EXAM_SESSION_MARK_CACHE_VERSION,
+        usedModel,
+        payloadHash
+      );
+      const fbCached = readGeminiCachedResponse<GeminiExamMarkCachePayload>(fbKey);
+      if (fbCached?.response) {
+        await options.onDelta("");
+        return { response: fbCached.response, recovered: Boolean(fbCached.recovered) };
+      }
+      responseText = await callGeminiExamMarkStream(
+        usedModel,
+        userPayload,
+        policy,
+        systemInstruction,
+        subjectLabel,
+        options.onDelta
+      );
+    } else {
+      throw primaryError;
+    }
+  }
+
+  let outcome = tryParseExamMarkResponse(responseText, maxById, orderedIds);
+  if (!outcome) {
+    responseText = await callGeminiExamMark(usedModel, userPayload, policy, systemInstruction, subjectLabel);
     outcome = tryParseExamMarkResponse(responseText, maxById, orderedIds);
   }
 

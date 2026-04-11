@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { CalendarDays } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui";
-import { EXAM_MILESTONES, PAPER_LABELS, type ExamMilestone } from "@/lib/exam-plan";
+import { EXAM_MILESTONES, PAPER_LABELS, examMilestoneKindLabel } from "@/lib/exam-plan";
 
 const MONTHS = [
   "",
@@ -18,12 +18,6 @@ const MONTHS = [
   "Nov",
   "Dec",
 ];
-
-function kindLabel(m: ExamMilestone) {
-  if (m.kind === "exam") return "Exam";
-  if (m.kind === "task") return "ESP task";
-  return "Milestone";
-}
 
 export default function PlannerPage() {
   return (
@@ -61,7 +55,7 @@ export default function PlannerPage() {
                   <span className="text-xs px-2 py-0.5 rounded-full bg-accent/10 text-accent border border-accent/20">
                     {PAPER_LABELS[m.paper]}
                   </span>
-                  <span className="text-xs text-muted-foreground">{kindLabel(m)}</span>
+                  <span className="text-xs text-muted-foreground">{examMilestoneKindLabel(m)}</span>
                 </div>
                 <p className="text-sm text-muted mt-1">{m.focusLabel}</p>
               </div>

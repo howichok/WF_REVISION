@@ -1,0 +1,236 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://walthamforest-revision.local/schemas/codex-question-import.json",
+  "title": "Codex / batch import — exam practice questions",
+  "description": "Append-only JSON batches for `QuestionMetadata[]` compatible with `src/data/curriculum/types.ts`. Merge into `questions.ts` or a new module and re-export from `questions.ts` / `index.ts`.",
+  "type": "object",
+  "required": ["version", "questions"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Bump when breaking this wrapper shape."
+    },
+    "notes": {
+      "type": "string",
+      "maxLength": 2000,
+      "description": "Optional provenance for humans (ignored by app)."
+    },
+    "questions": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/questionMetadata" }
+    }
+  },
+  "$defs": {
+    "topicId": {
+      "type": "string",
+      "enum": [
+        "problem-solving",
+        "intro-programming",
+        "emerging-issues",
+        "legislation",
+        "business",
+        "data",
+        "digital-environments",
+        "security",
+        "esp"
+      ],
+      "description": "Must match `TopicId` in `src/lib/types.ts` (`TOPICS`)."
+    },
+    "questionType": {
+      "type": "string",
+      "enum": ["short-open", "medium-open", "extended-response", "scenario", "question-bank-section"]
+    },
+    "answerRubricSlot": {
+      "type": "object",
+      "required": ["id", "label", "weight", "groups", "missingFeedback"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 2, "maxLength": 80 },
+        "label": { "type": "string", "minLength": 4, "maxLength": 200 },
+        "weight": { "type": "number", "minimum": 0.5, "maximum": 10 },
+        "minimumGroups": { "type": "integer", "minimum": 1, "maximum": 6 },
+        "groups": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "object",
+            "required": ["anyOf"],
+            "additionalProperties": false,
+            "properties": {
+              "anyOf": {
+                "type": "array",
+                "minItems": 1,
+                "items": { "type": "string", "minLength": 2, "maxLength": 120 }
+              }
+            }
+          }
+        },
+        "missingFeedback": { "type": "string", "minLength": 8, "maxLength": 500 }
+      }
+    },
+    "evaluationProfile": {
+      "type": "object",
+      "required": ["slots"],
+      "additionalProperties": false,
+      "properties": {
+        "depthExpectation": {
+          "type": "string",
+          "enum": ["brief", "explained", "developed"]
+        },
+        "strongAnswerGuidance": { "type": "string", "maxLength": 1200 },
+        "slots": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/answerRubricSlot" }
+        }
+      }
+    },
+    "examMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "paper": { "type": "string", "enum": ["paper_1", "paper_2"] },
+        "contentArea": { "type": "string", "minLength": 2, "maxLength": 160 },
+        "subtopic": { "type": "string", "minLength": 2, "maxLength": 200 },
+        "commandWord": {
+          "type": "string",
+          "enum": [
+            "give",
+            "state",
+            "name",
+            "identify",
+            "write",
+            "describe",
+            "explain",
+            "explain with additional justification",
+            "discuss",
+            "evaluate",
+            "draw",
+            "complete"
+          ]
+        },
+        "assessmentObjectives": {
+          "type": "array",
+          "items": { "type": "string", "enum": ["AO1a", "AO1b", "AO2", "AO3a", "AO3b"] }
+        },
+        "stimulus": { "type": "string", "maxLength": 2000 },
+        "difficulty": { "type": "string", "enum": ["low", "medium", "high"] },
+        "indicativeMarkScheme": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "points", "judgementRequired", "modelAnswerOutline"],
+          "properties": {
+            "type": { "type": "string", "enum": ["points_based", "levels_based"] },
+            "points": {
+              "type": "array",
+              "items": { "type": "string", "minLength": 4, "maxLength": 500 }
+            },
+            "judgementRequired": { "type": "boolean" },
+            "modelAnswerOutline": { "type": "string", "minLength": 12, "maxLength": 2000 }
+          }
+        },
+        "sourceReference": { "type": "string", "maxLength": 300 },
+        "sourceFile": { "type": "string", "maxLength": 300 },
+        "sourceExcerptHash": { "type": "string", "maxLength": 120 },
+        "generationBatch": { "type": "string", "maxLength": 160 },
+        "validation": {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "fitsPaperBoundary": { "type": "boolean" },
+            "fitsCommandWord": { "type": "boolean" },
+            "fitsMarkDemand": { "type": "boolean" },
+            "specGrounded": { "type": "boolean" },
+            "sourceGrounded": { "type": "boolean" },
+            "notDuplicate": { "type": "boolean" },
+            "scenarioDistinct": { "type": "boolean" },
+            "answerLogicDistinct": { "type": "boolean" }
+          }
+        },
+        "examinerRationale": { "type": "string", "maxLength": 1000 },
+        "reviewDecision": { "type": "string", "enum": ["keep", "revise", "reject"] },
+        "duplicationRisk": { "type": "string", "enum": ["low", "medium", "high"] },
+        "realismScore": { "type": "number", "minimum": 0, "maximum": 10 },
+        "scenarioSignature": { "type": "string", "maxLength": 200 },
+        "answerLogicSignature": { "type": "string", "maxLength": 200 },
+        "responseFormat": { "type": "string", "enum": ["written", "code", "diagram", "table", "mixed"] }
+      }
+    },
+    "questionMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "sourceId",
+        "title",
+        "sourceLabel",
+        "questionType",
+        "summary",
+        "expectation",
+        "practicePrompt",
+        "curriculumPointIds",
+        "legacyTopicIds",
+        "markSchemeConceptIds"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9-]{3,127}$",
+          "description": "Stable unique id, kebab-case."
+        },
+        "sourceId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120,
+          "description": "Must exist in `ContentSource.id` or your new source row if you extend curriculum sources."
+        },
+        "title": { "type": "string", "minLength": 4, "maxLength": 200 },
+        "sourceLabel": { "type": "string", "minLength": 2, "maxLength": 120 },
+        "year": { "type": "integer", "minimum": 2015, "maximum": 2035 },
+        "paper": { "type": "string", "enum": ["Paper 1", "Paper 2"] },
+        "marks": { "type": "integer", "minimum": 1, "maximum": 24 },
+        "questionType": { "$ref": "#/$defs/questionType" },
+        "summary": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 1200,
+          "description": "Exam-style stem for past papers / curated sets; otherwise can mirror practicePrompt."
+        },
+        "expectation": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 2000,
+          "description": "What a full-mark answer should cover."
+        },
+        "curriculumPointIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string", "pattern": "^dsd-[0-9]+\\.[0-9]+$" }
+        },
+        "legacyTopicIds": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/topicId" }
+        },
+        "practicePrompt": {
+          "type": "string",
+          "minLength": 16,
+          "maxLength": 2000,
+          "description": "Shown in-app practice / exam session when stem is practice-origin."
+        },
+        "markSchemeConceptIds": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 4, "maxLength": 120 },
+          "description": "May be empty; link to `MarkSchemeConceptMetadata.id` where possible."
+        },
+        "evaluationProfile": { "$ref": "#/$defs/evaluationProfile" },
+        "examMetadata": { "$ref": "#/$defs/examMetadata" },
+        "reviewed": { "type": "boolean" },
+        "active": { "type": "boolean" }
+      }
+    }
+  }
+}

@@ -1,13 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
   Lightbulb,
   Sparkles,
   Target,
 } from "lucide-react";
-import { useAiOverlay } from "@/components/providers/ai-overlay-provider";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { TopicNextSteps } from "@/components/revision/topic-next-steps";
 import { Badge, Button, Card } from "@/components/ui";
@@ -226,10 +225,7 @@ export function RecallPanel({
   progressPercent: number;
   onComplete: (percent: number) => Promise<unknown>;
 }) {
-  const overlay = useAiOverlay();
   const { recordRecallCoaching, revisionProgress, topicCoachingMemory } = useAppData();
-  const overlaySurfaceId = useMemo(() => `recall-${topicId}`, [topicId]);
-  const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [ratings, setRatings] = useState<Record<string, RecallRating>>({});
@@ -284,108 +280,6 @@ export function RecallPanel({
         : { primary: null, secondary: null },
     [masteryPercent, revisionProgress, sessionComplete, topicCoachingMemory, topicId]
   );
-
-  useEffect(() => {
-    if (!currentCard) {
-      return;
-    }
-
-    overlay.registerRevisionSurface({
-      surfaceId: overlaySurfaceId,
-      topicId,
-      topicLabel,
-      modeGroup: "Simple revision",
-      modeLabel: "Recall card",
-      prompt: currentCard.prompt,
-      anchorRef: surfaceRef,
-    });
-
-    return () => {
-      overlay.unregisterRevisionSurface(overlaySurfaceId);
-    };
-  }, [currentCard, overlay, overlaySurfaceId, topicId, topicLabel]);
-
-  useEffect(() => {
-    if (!currentCard) {
-      return;
-    }
-
-    overlay.syncRevisionSurface({
-      surfaceId: overlaySurfaceId,
-      prompt: currentCard.prompt,
-      answer: revealed ? currentCard.answer : "",
-      canUndoEdits: false,
-      canClearInsertedCues: false,
-    });
-  }, [currentCard, overlay, overlaySurfaceId, revealed]);
-
-  useEffect(() => {
-    if (!currentCard) {
-      return;
-    }
-
-    overlay.streamRevisionProgress({
-      surfaceId: overlaySurfaceId,
-      statusLine: revealed
-        ? "Recall answer revealed. Compare it with what you genuinely remembered."
-        : "Recall mode active. Try retrieval before revealing the answer.",
-      note: sessionComplete
-        ? "Recall mode keeps the overlay lightweight and routes the next same-topic step."
-        : `Card ${currentIndex + 1} of ${cards.length}.`,
-    });
-  }, [cards.length, currentCard, currentIndex, overlay, overlaySurfaceId, revealed, sessionComplete]);
-
-  useEffect(() => {
-    overlay.setSurfaceRecommendations({
-      surfaceId: overlaySurfaceId,
-      primaryAction: recallNextSteps.primary
-        ? {
-            label: recallNextSteps.primary.label,
-            href: recallNextSteps.primary.href,
-            kind: recallNextSteps.primary.actionKind,
-          }
-        : null,
-      secondaryAction: recallNextSteps.secondary
-        ? {
-            label: recallNextSteps.secondary.label,
-            href: recallNextSteps.secondary.href,
-            kind: recallNextSteps.secondary.actionKind,
-          }
-        : null,
-    });
-  }, [overlay, overlaySurfaceId, recallNextSteps.primary, recallNextSteps.secondary]);
-
-  useEffect(() => {
-    if (!sessionComplete) {
-      return;
-    }
-
-    overlay.completeGuidedSession({
-      surfaceId: overlaySurfaceId,
-      phase: masteryPercent >= 70 ? "merit" : masteryPercent >= 40 ? "ready" : "fail",
-      statusLine:
-        masteryPercent >= 70
-          ? "Recall complete. The next same-topic step can now be harder."
-          : masteryPercent >= 40
-            ? "Recall complete. Use the next same-topic task to tighten the weaker ideas."
-            : "Recall complete. Stay in the same topic before jumping to harder routes.",
-      note: "Recall is a lightweight overlay surface, so it only routes you into the next best topic action.",
-      primaryAction: recallNextSteps.primary
-        ? {
-            label: recallNextSteps.primary.label,
-            href: recallNextSteps.primary.href,
-            kind: recallNextSteps.primary.actionKind,
-          }
-        : null,
-      secondaryAction: recallNextSteps.secondary
-        ? {
-            label: recallNextSteps.secondary.label,
-            href: recallNextSteps.secondary.href,
-            kind: recallNextSteps.secondary.actionKind,
-          }
-        : null,
-    });
-  }, [masteryPercent, overlay, overlaySurfaceId, recallNextSteps.primary, recallNextSteps.secondary, sessionComplete]);
 
   async function handleRateCard(rating: RecallRating) {
     if (!currentCard) {
@@ -465,7 +359,7 @@ export function RecallPanel({
 
   if (sessionComplete) {
     return (
-      <div ref={surfaceRef}>
+      <div>
         <LearningOutcomePanel
         eyebrow="Active Recall"
         title="Recall round complete"
@@ -533,7 +427,7 @@ export function RecallPanel({
   }
 
   return (
-    <div ref={surfaceRef}>
+    <div>
       <ActiveLearningLayout
       backHref={`/revision/${topicId}/practice`}
       railTitle={`${topicLabel} recall`}
@@ -686,10 +580,7 @@ export function ExamDrillPanel({
   preferredDrillId?: string;
   onComplete: (percent: number) => Promise<unknown>;
 }) {
-  const overlay = useAiOverlay();
   const { recordExamDrillCoaching, topicCoachingMemory } = useAppData();
-  const overlaySurfaceId = useMemo(() => `exam-drill-${topicId}`, [topicId]);
-  const surfaceRef = useRef<HTMLDivElement | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showChecklist, setShowChecklist] = useState(false);
   const [hintLevel, setHintLevel] = useState(0);
@@ -764,114 +655,6 @@ export function ExamDrillPanel({
     setError("");
     setLastRating(null);
   }, [drills, preferredDrillId]);
-
-  useEffect(() => {
-    if (!currentDrill) {
-      return;
-    }
-
-    overlay.registerRevisionSurface({
-      surfaceId: overlaySurfaceId,
-      topicId,
-      topicLabel,
-      modeGroup: "Exam questions",
-      modeLabel: "Planned exam response",
-      prompt: currentDrill.prompt,
-      anchorRef: surfaceRef,
-    });
-
-    return () => {
-      overlay.unregisterRevisionSurface(overlaySurfaceId);
-    };
-  }, [currentDrill, overlay, overlaySurfaceId, topicId, topicLabel]);
-
-  useEffect(() => {
-    if (!currentDrill) {
-      return;
-    }
-
-    overlay.syncRevisionSurface({
-      surfaceId: overlaySurfaceId,
-      prompt: currentDrill.prompt,
-      answer: notes,
-      canUndoEdits: false,
-      canClearInsertedCues: false,
-    });
-  }, [currentDrill, notes, overlay, overlaySurfaceId]);
-
-  useEffect(() => {
-    if (!currentDrill) {
-      return;
-    }
-
-    overlay.streamRevisionProgress({
-      surfaceId: overlaySurfaceId,
-      statusLine: showChecklist
-        ? "Checklist revealed. Compare your plan against the guided answer focus."
-        : "Planning mode active. Use hints only if you genuinely need them.",
-      note:
-        hintLevel > 0
-          ? `Current scaffold: ${hintLevel} hint${hintLevel === 1 ? "" : "s"} shown.`
-          : "Lightweight drill mode keeps the overlay as a status and next-step shell, not a rewrite tool.",
-    });
-  }, [currentDrill, hintLevel, overlay, overlaySurfaceId, showChecklist]);
-
-  useEffect(() => {
-    overlay.setSurfaceRecommendations({
-      surfaceId: overlaySurfaceId,
-      primaryAction: nextSteps.primary
-        ? {
-            label: nextSteps.primary.label,
-            href: nextSteps.primary.href,
-            kind: nextSteps.primary.actionKind,
-          }
-        : null,
-      secondaryAction: nextSteps.secondary
-        ? {
-            label: nextSteps.secondary.label,
-            href: nextSteps.secondary.href,
-            kind: nextSteps.secondary.actionKind,
-          }
-        : null,
-    });
-  }, [nextSteps.primary, nextSteps.secondary, overlay, overlaySurfaceId]);
-
-  useEffect(() => {
-    if (!sessionComplete || !currentDrill) {
-      return;
-    }
-
-    const phase =
-      lastRating === "ready" && readinessPercent >= 70
-        ? "merit"
-        : lastRating === "needs-work"
-          ? "fail"
-          : "ready";
-
-    overlay.completeGuidedSession({
-      surfaceId: overlaySurfaceId,
-      phase,
-      statusLine:
-        lastRating === "ready"
-          ? "Drill complete. You are ready to step up to the next same-topic task."
-          : "Drill complete. Stay in the same topic and replay the weaker area once more.",
-      note: "This is the planning stage inside Exam questions, so the feedback stays lightweight and routes you into the next same-topic action.",
-      primaryAction: nextSteps.primary
-        ? {
-            label: nextSteps.primary.label,
-            href: nextSteps.primary.href,
-            kind: nextSteps.primary.actionKind,
-          }
-        : null,
-      secondaryAction: nextSteps.secondary
-        ? {
-            label: nextSteps.secondary.label,
-            href: nextSteps.secondary.href,
-            kind: nextSteps.secondary.actionKind,
-          }
-        : null,
-    });
-  }, [currentDrill, lastRating, nextSteps.primary, nextSteps.secondary, overlay, overlaySurfaceId, readinessPercent, sessionComplete]);
 
   function toLearningAction(
     recommendation: TopicNextStepRecommendation | null,
@@ -1048,7 +831,7 @@ export function ExamDrillPanel({
   const hasMoreHints = hintLevel < hintBullets.length;
 
   return (
-    <div ref={surfaceRef}>
+    <div>
       <ActiveLearningLayout
       backHref={`/revision/${topicId}/practice`}
       railTitle={`${topicLabel} exam questions`}

@@ -1,0 +1,63 @@
+{
+  "version": 1,
+  "notes": "Example batch for Codex — do not import verbatim; replace ids and point ids with real curriculum data.",
+  "questions": [
+    {
+      "id": "codex-example-data-integrity-001",
+      "sourceId": "teach-pack-big-data-worksheet",
+      "title": "Explain how checksums detect accidental data corruption",
+      "sourceLabel": "Teaching pack (example)",
+      "marks": 4,
+      "questionType": "medium-open",
+      "summary": "Describe how a checksum helps a system detect that stored or transmitted data has been altered accidentally.",
+      "expectation": "A strong answer explains what a checksum is, when it is computed, what happens on mismatch, and why that indicates corruption rather than malicious attack.",
+      "curriculumPointIds": ["dsd-1.2"],
+      "legacyTopicIds": ["data"],
+      "practicePrompt": "Explain how checksums are used to detect accidental corruption when moving a large backup file between two servers.",
+      "markSchemeConceptIds": ["ms-general-linked-explanation"],
+      "reviewed": true,
+      "active": true,
+      "examMetadata": {
+        "paper": "paper_2",
+        "contentArea": "Data",
+        "subtopic": "Data dimensions and maintenance",
+        "commandWord": "explain",
+        "assessmentObjectives": ["AO1b", "AO2"],
+        "stimulus": "A network administrator moves a large backup file between two servers.",
+        "difficulty": "medium",
+        "indicativeMarkScheme": {
+          "type": "points_based",
+          "points": [
+            "checksum value is generated before or during transfer",
+            "receiving system recalculates or compares the value",
+            "mismatch indicates accidental corruption or an altered file",
+            "answer links the check to backup-file integrity"
+          ],
+          "judgementRequired": false,
+          "modelAnswerOutline": "A strong answer explains how the checksum is generated, compared after transfer, and used to flag accidental corruption."
+        },
+        "sourceReference": "Example only; replace with a real specification/source reference",
+        "sourceFile": "sources/digital-dsd-specification.pdf",
+        "sourceExcerptHash": "example-only",
+        "generationBatch": "example",
+        "validation": {
+          "fitsPaperBoundary": true,
+          "fitsCommandWord": true,
+          "fitsMarkDemand": true,
+          "specGrounded": true,
+          "sourceGrounded": true,
+          "notDuplicate": true,
+          "scenarioDistinct": true,
+          "answerLogicDistinct": true
+        },
+        "examinerRationale": "Example only; do not import verbatim.",
+        "reviewDecision": "keep",
+        "duplicationRisk": "low",
+        "realismScore": 8,
+        "scenarioSignature": "example-paper-2-data-checksum",
+        "answerLogicSignature": "example-checksum-comparison",
+        "responseFormat": "written"
+      }
+    }
+  ]
+}

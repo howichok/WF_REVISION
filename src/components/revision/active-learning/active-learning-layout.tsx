@@ -6,6 +6,7 @@ import { TaskActionBar } from "./task-action-bar";
 import type { ActiveLearningLayoutProps } from "./types";
 
 export function ActiveLearningLayout({
+  hideRail = false,
   backHref,
   railTitle,
   railSubtitle,
@@ -22,26 +23,30 @@ export function ActiveLearningLayout({
   tertiaryAction,
 }: ActiveLearningLayoutProps) {
   return (
-    <div className="al-shell">
-      <MobileLearningRail
-        backHref={backHref}
-        railTitle={railTitle}
-        railSubtitle={railSubtitle}
-        railIcon={railIcon}
-        railItems={railItems}
-        railSummary={railSummary}
-        mobileSummaryLabel={mobileSummaryLabel}
-      />
-
-      <div className="al-shell-grid">
-        <LearningRail
+    <div className={hideRail ? "al-shell al-shell--no-rail" : "al-shell"}>
+      {hideRail ? null : (
+        <MobileLearningRail
           backHref={backHref}
           railTitle={railTitle}
           railSubtitle={railSubtitle}
           railIcon={railIcon}
           railItems={railItems}
           railSummary={railSummary}
+          mobileSummaryLabel={mobileSummaryLabel}
         />
+      )}
+
+      <div className={hideRail ? "al-shell-grid al-shell-grid--single" : "al-shell-grid"}>
+        {hideRail ? null : (
+          <LearningRail
+            backHref={backHref}
+            railTitle={railTitle}
+            railSubtitle={railSubtitle}
+            railIcon={railIcon}
+            railItems={railItems}
+            railSummary={railSummary}
+          />
+        )}
 
         <main className="al-task-column">
           {contextStrip}

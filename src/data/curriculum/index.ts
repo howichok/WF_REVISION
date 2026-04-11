@@ -1,5 +1,9 @@
 export { DSD_CURRICULUM_AREAS, DSD_CURRICULUM_POINTS } from "./curriculum";
 export {
+  CODEX_EXAM_STYLE_QUESTION_METADATA,
+  CODEX_EXAM_STYLE_REJECTION_SUMMARY,
+} from "./codex-exam-style-questions";
+export {
   CURRICULUM_POINT_COVERAGE_NODES,
   TOPIC_COVERAGE_GRAPHS,
 } from "./coverage-graph";
@@ -18,17 +22,25 @@ export type {
   AnswerRubricSlot,
   ContentResource,
   ContentSource,
+  ContentSourceKind,
   CoverageQuestionVariant,
   CurriculumArea,
   CurriculumPointCoverageNode,
   CurriculumPoint,
   ExamGuide,
   ExamGuideEntry,
+  ExamMetadataAssessmentObjective,
+  ExamMetadataCommandWord,
+  ExamMetadataDifficulty,
+  ExamMetadataIndicativeMarkScheme,
+  ExamMetadataPaper,
+  ExamMetadataValidation,
   GlossaryTerm,
   LegacyTopicMapping,
   MarkSchemeConceptMetadata,
   QualificationComponent,
   QualificationOverview,
+  QuestionExamMetadata,
   QuestionEvaluationProfile,
   QuestionMetadata,
   RecommendedMaterial,

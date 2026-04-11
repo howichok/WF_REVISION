@@ -1,4 +1,5 @@
 import type { QuestionMetadata } from "./types";
+import { CODEX_EXAM_STYLE_QUESTION_METADATA } from "./codex-exam-style-questions";
 import { GENERATED_POINT_QUESTION_METADATA } from "./generated-point-questions";
 import { TEACHING_PACK_QUESTION_METADATA } from "./teaching-pack-questions";
 
@@ -764,6 +765,7 @@ export const QUESTION_METADATA: QuestionMetadata[] = [
       "Complete two cells in the matrix and explain why those access levels follow least privilege.",
     markSchemeConceptIds: ["ms-general-linked-explanation"],
   },
+  ...CODEX_EXAM_STYLE_QUESTION_METADATA,
   ...TEACHING_PACK_QUESTION_METADATA,
   ...GENERATED_POINT_QUESTION_METADATA,
 ];

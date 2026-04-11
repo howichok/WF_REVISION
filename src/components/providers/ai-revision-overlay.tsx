@@ -1,0 +1,590 @@
+"use client";
+
+import Link from "next/link";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type MutableRefObject,
+  type RefObject,
+} from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import {
+  AlertCircle,
+  Bot,
+  ChevronDown,
+  Crosshair,
+  GripHorizontal,
+  Maximize2,
+  Minimize2,
+  ScanSearch,
+  Sparkles,
+  Trophy,
+} from "lucide-react";
+import { Badge, Button } from "@/components/ui";
+import type {
+  DockMode,
+  OverlayPhase,
+  OverlayRecommendedAction,
+  OverlaySessionState,
+  OverlaySurfaceMeta,
+  RevisionSurfaceRegistration,
+} from "./ai-overlay-types";
+import { cn } from "@/lib/utils";
+
+const FLOATING_WIDTH = 296;
+const SNAPPED_WIDTH = 340;
+const FLOATING_HEIGHT = 200;
+const SNAPPED_HEIGHT = 252;
+const VIEWPORT_PADDING = 16;
+
+function shorten(value: string, maxLength = 124) {
+  const cleaned = value.replace(/\s+/g, " ").trim();
+  if (cleaned.length <= maxLength) {
+    return cleaned;
+  }
+  return `${cleaned.slice(0, maxLength - 3).trim()}...`;
+}
+
+function clamp(value: number, minimum: number, maximum: number) {
+  return Math.min(Math.max(value, minimum), maximum);
+}
+
+function getToneMeta(phase: OverlayPhase) {
+  switch (phase) {
+    case "distinction":
+      return {
+        label: "Distinction",
+        border: "rgba(250, 204, 21, 0.45)",
+        glow: "rgba(250, 204, 21, 0.28)",
+        surface: "linear-gradient(160deg, rgba(250,204,21,0.20), rgba(20,16,7,0.96) 46%, rgba(10,10,12,0.98))",
+        text: "#fde68a",
+        className: "ai-overlay-glow",
+      };
+    case "merit":
+      return {
+        label: "Merit",
+        border: "rgba(56, 189, 248, 0.38)",
+        glow: "rgba(56, 189, 248, 0.24)",
+        surface: "linear-gradient(160deg, rgba(56,189,248,0.18), rgba(7,17,23,0.96) 46%, rgba(10,10,12,0.98))",
+        text: "#7dd3fc",
+        className: "ai-overlay-breathe",
+      };
+    case "fail":
+    case "error":
+      return {
+        label: phase === "error" ? "Error" : "Fail",
+        border: "rgba(239, 68, 68, 0.38)",
+        glow: "rgba(239, 68, 68, 0.2)",
+        surface: "linear-gradient(160deg, rgba(239,68,68,0.18), rgba(23,9,11,0.97) 46%, rgba(10,10,12,0.98))",
+        text: "#fca5a5",
+        className: "ai-overlay-shake",
+      };
+    case "checking":
+      return {
+        label: "Scanning",
+        border: "rgba(139, 92, 246, 0.34)",
+        glow: "rgba(139, 92, 246, 0.18)",
+        surface: "linear-gradient(160deg, rgba(139,92,246,0.16), rgba(14,10,24,0.96) 46%, rgba(10,10,12,0.98))",
+        text: "#c4b5fd",
+        className: "",
+      };
+    case "ready":
+      return {
+        label: "Ready",
+        border: "rgba(148, 163, 184, 0.28)",
+        glow: "rgba(148, 163, 184, 0.14)",
+        surface: "linear-gradient(160deg, rgba(148,163,184,0.10), rgba(16,17,20,0.96) 46%, rgba(10,10,12,0.98))",
+        text: "#cbd5e1",
+        className: "",
+      };
+    case "idle":
+    default:
+      return {
+        label: "Idle",
+        border: "rgba(255, 255, 255, 0.12)",
+        glow: "rgba(139, 92, 246, 0.12)",
+        surface: "linear-gradient(160deg, rgba(255,255,255,0.05), rgba(16,16,20,0.96) 46%, rgba(10,10,12,0.98))",
+        text: "#e4e4e7",
+        className: "",
+      };
+  }
+}
+
+function getRectFromRef(ref?: RefObject<HTMLElement | null>) {
+  const element = ref?.current;
+  if (!element) {
+    return null;
+  }
+
+  return element.getBoundingClientRect();
+}
+
+function getBlankResponseHint(surface: OverlaySurfaceMeta) {
+  switch (surface.modeLabel) {
+    case "Final written answer":
+      return "Start writing a full exam-style answer and the overlay will track it live.";
+    case "Planned exam response":
+      return "Add a short plan or note structure here. This mode is for planning, not full marking.";
+    case "Quick written check":
+      return "Type a short response for a fast cue-based check.";
+    case "Fast Q/A":
+      return "Pick or type a quick answer and the overlay will stay with this revision route.";
+    case "Topic assistant":
+      return "Submit one focused prompt and the overlay will track the streamed answer.";
+    case "Recall card":
+      return "Use the prompt first, then reveal the answer when you are ready.";
+    default:
+      return "Start working and the overlay will track this revision task live.";
+  }
+}
+
+function getSnapPosition(
+  anchorRect: DOMRect | null,
+  viewportWidth: number,
+  viewportHeight: number
+) {
+  const width = SNAPPED_WIDTH;
+  const height = SNAPPED_HEIGHT;
+
+  if (!anchorRect || viewportWidth < 900) {
+    return {
+      x: clamp(viewportWidth - width - 18, VIEWPORT_PADDING, viewportWidth - width - VIEWPORT_PADDING),
+      y: clamp(viewportHeight - height - 18, 84, viewportHeight - height - VIEWPORT_PADDING),
+    };
+  }
+
+  const preferredRight = anchorRect.right + 18;
+  const canFitRight = preferredRight + width + VIEWPORT_PADDING <= viewportWidth;
+  const x = canFitRight
+    ? preferredRight
+    : clamp(anchorRect.left - width - 18, VIEWPORT_PADDING, viewportWidth - width - VIEWPORT_PADDING);
+  const y = clamp(anchorRect.top + 8, 84, viewportHeight - height - VIEWPORT_PADDING);
+
+  return { x, y };
+}
+
+export default function AiRevisionOverlay({
+  dockMode,
+  setDockMode,
+  floatingPosition,
+  setFloatingPosition,
+  activeSurface,
+  activeSurfaceRef,
+  session,
+  onUndoLastEdit,
+  onClearInsertedCues,
+}: {
+  dockMode: DockMode;
+  setDockMode: (mode: DockMode) => void;
+  floatingPosition: { x: number; y: number };
+  setFloatingPosition: (position: { x: number; y: number }) => void;
+  activeSurface: OverlaySurfaceMeta | null;
+  activeSurfaceRef: MutableRefObject<RevisionSurfaceRegistration | null>;
+  session: OverlaySessionState;
+  onUndoLastEdit: () => void;
+  onClearInsertedCues: () => void;
+}) {
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
+  const [scanRect, setScanRect] = useState<DOMRect | null>(null);
+  const [isCollapsed, setIsCollapsed] = useState(true);
+
+  // Auto-expand on active phases, auto-collapse on idle/ready
+  useEffect(() => {
+    if (session.phase === "checking" || session.phase === "fail" || session.phase === "merit" || session.phase === "distinction" || session.phase === "error") {
+      setIsCollapsed(false);
+    } else if (session.phase === "idle" || session.phase === "ready") {
+      setIsCollapsed(true);
+    }
+  }, [session.phase]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const updateViewport = () => {
+      setViewport({
+        width: window.innerWidth,
+        height: window.innerHeight,
+      });
+    };
+
+    updateViewport();
+    window.addEventListener("resize", updateViewport);
+
+    return () => {
+      window.removeEventListener("resize", updateViewport);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    if (!activeSurface && session.phase !== "checking") {
+      setAnchorRect(null);
+      setScanRect(null);
+      return;
+    }
+
+    let frameId = 0;
+    const updateRects = () => {
+      const runtime = activeSurfaceRef.current;
+      setAnchorRect(getRectFromRef(runtime?.anchorRef));
+      setScanRect(getRectFromRef(runtime?.scanRef ?? runtime?.anchorRef));
+    };
+    const schedule = () => {
+      cancelAnimationFrame(frameId);
+      frameId = requestAnimationFrame(updateRects);
+    };
+
+    updateRects();
+    window.addEventListener("resize", schedule);
+    window.addEventListener("scroll", schedule, true);
+
+    return () => {
+      cancelAnimationFrame(frameId);
+      window.removeEventListener("resize", schedule);
+      window.removeEventListener("scroll", schedule, true);
+    };
+  }, [activeSurface, activeSurfaceRef, session.phase]);
+
+  // Only show the floating overlay when a revision surface is active or a session is in progress.
+  // Listing pages (/revision, /revision/topics, etc.) stay clean until the learner opens a task that registers the overlay.
+  const shouldRender = Boolean(activeSurface) || session.phase !== "idle";
+
+  const tone = getToneMeta(session.phase);
+  const snappedPosition = useMemo(
+    () => getSnapPosition(anchorRect, viewport.width || 1280, viewport.height || 820),
+    [anchorRect, viewport.height, viewport.width]
+  );
+  const currentPosition = dockMode === "snap" ? snappedPosition : floatingPosition;
+  const isSnapped = dockMode === "snap" && Boolean(activeSurface);
+  const panelWidth = isSnapped ? SNAPPED_WIDTH : FLOATING_WIDTH;
+  const showScanline = session.phase === "checking" && Boolean(scanRect);
+
+  const renderRouteAction = (
+    action: OverlayRecommendedAction,
+    className: string
+  ) => {
+    if (action.kind === "external") {
+      return (
+        <a href={action.href} target="_blank" rel="noreferrer" className={className}>
+          {action.label}
+        </a>
+      );
+    }
+
+    return (
+      <Link href={action.href} className={className}>
+        {action.label}
+      </Link>
+    );
+  };
+
+  if (!shouldRender) {
+    return null;
+  }
+
+  return (
+    <>
+      <AnimatePresence>
+        {showScanline && scanRect ? (
+          <motion.div
+            key="scanline"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="pointer-events-none fixed z-[58] overflow-hidden rounded-[26px] border border-accent/15"
+            style={{
+              left: Math.max(8, scanRect.left - 6),
+              top: Math.max(8, scanRect.top - 6),
+              width: Math.max(120, scanRect.width + 12),
+              height: Math.max(120, scanRect.height + 12),
+              boxShadow: "0 0 0 1px rgba(139,92,246,0.08), 0 0 48px -22px rgba(139,92,246,0.35)",
+              background:
+                "linear-gradient(180deg, rgba(139,92,246,0.05), rgba(0,0,0,0.02))",
+            }}
+          >
+            <div className="ai-overlay-scan-grid absolute inset-0" />
+            <motion.div
+              className="ai-overlay-scanline absolute left-0 right-0 h-12"
+              animate={{ y: [-32, Math.max(36, scanRect.height + 22)] }}
+              transition={{ duration: 1.45, repeat: Infinity, ease: "linear" }}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* Collapsed: small icon pill */}
+      <AnimatePresence>
+        {isCollapsed ? (
+          <motion.div
+            key="collapsed-pill"
+            drag
+            dragMomentum={false}
+            onDragEnd={(_event, info) => {
+              if (typeof window === "undefined") return;
+              setFloatingPosition({
+                x: clamp(floatingPosition.x + info.offset.x, VIEWPORT_PADDING, window.innerWidth - 64 - VIEWPORT_PADDING),
+                y: clamp(floatingPosition.y + info.offset.y, 72, window.innerHeight - 64 - VIEWPORT_PADDING),
+              });
+            }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1, x: floatingPosition.x, y: floatingPosition.y }}
+            exit={{ opacity: 0, scale: 0.8 }}
+            transition={{ type: "spring", stiffness: 320, damping: 26, mass: 0.8 }}
+            className="pointer-events-auto fixed left-0 top-0 z-[60]"
+          >
+            <button
+              type="button"
+              onClick={() => setIsCollapsed(false)}
+              className={cn(
+                "flex h-12 w-12 items-center justify-center rounded-2xl border backdrop-blur-xl cursor-pointer transition-all duration-300 hover:scale-110",
+                tone.className
+              )}
+              style={{
+                borderColor: tone.border,
+                background: tone.surface,
+                boxShadow: `0 8px 24px -8px rgba(0,0,0,0.5), 0 0 0 1px ${tone.border}, 0 0 18px -8px ${tone.glow}`,
+                color: tone.text,
+              }}
+              title={session.statusLine}
+            >
+              {session.phase === "checking" ? (
+                <ScanSearch size={20} />
+              ) : session.phase === "distinction" ? (
+                <Trophy size={20} />
+              ) : session.phase === "fail" || session.phase === "error" ? (
+                <AlertCircle size={20} />
+              ) : (
+                <Bot size={20} />
+              )}
+            </button>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* Expanded: full panel */}
+      <AnimatePresence>
+        {!isCollapsed ? (
+      <motion.div
+        key="expanded-panel"
+        drag={dockMode === "float"}
+        dragMomentum={false}
+        onDragEnd={(_event, info) => {
+          if (dockMode !== "float" || typeof window === "undefined") {
+            return;
+          }
+
+          setFloatingPosition({
+            x: clamp(
+              floatingPosition.x + info.offset.x,
+              VIEWPORT_PADDING,
+              window.innerWidth - FLOATING_WIDTH - VIEWPORT_PADDING
+            ),
+            y: clamp(
+              floatingPosition.y + info.offset.y,
+              72,
+              window.innerHeight - FLOATING_HEIGHT - VIEWPORT_PADDING
+            ),
+          });
+        }}
+        initial={{ opacity: 0, scale: 0.9 }}
+        exit={{ opacity: 0, scale: 0.9 }}
+        transition={{
+          type: "spring",
+          stiffness: dockMode === "snap" ? 280 : 320,
+          damping: 26,
+          mass: 0.8,
+        }}
+        animate={{
+          opacity: 1,
+          x: currentPosition.x,
+          y: currentPosition.y,
+          width: panelWidth,
+          scale: session.phase === "checking" ? 1.01 : 1,
+        }}
+        className="pointer-events-auto fixed left-0 top-0 z-[60]"
+      >
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-[28px] border p-4 backdrop-blur-xl transition-shadow duration-300",
+            tone.className
+          )}
+          style={{
+            borderColor: tone.border,
+            background: tone.surface,
+            boxShadow: `0 26px 60px -34px rgba(0,0,0,0.92), 0 0 0 1px ${tone.border}, 0 0 34px -18px ${tone.glow}`,
+          }}
+        >
+          <div
+            className="pointer-events-none absolute inset-0 opacity-70"
+            style={{
+              background:
+                "radial-gradient(circle at top right, var(--overlay-specular), transparent 36%)",
+            }}
+          />
+
+          <div className="relative flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-2xl border"
+                  style={{
+                    borderColor: tone.border,
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                    color: tone.text,
+                  }}
+                >
+                  {session.phase === "checking" ? (
+                    <ScanSearch size={18} />
+                  ) : session.phase === "distinction" ? (
+                    <Trophy size={18} />
+                  ) : session.phase === "fail" || session.phase === "error" ? (
+                    <AlertCircle size={18} />
+                  ) : (
+                    <Bot size={18} />
+                  )}
+                </div>
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-foreground">
+                    {activeSurface?.topicLabel ?? session.topicLabel}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setIsCollapsed(true)}
+                className="rounded-full border border-white/10 bg-white/5 p-2 text-white/55 transition-colors hover:bg-white/10 hover:text-white/80 cursor-pointer"
+                title="Minimize"
+              >
+                <ChevronDown size={14} />
+              </button>
+              <div className="cursor-grab rounded-full border border-white/10 bg-white/5 p-2 text-white/55 active:cursor-grabbing">
+                <GripHorizontal size={14} />
+              </div>
+            </div>
+          </div>
+
+          <div className="relative mt-4 space-y-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                variant="default"
+                className="border-white/10 bg-white/6"
+              >
+                {tone.label}
+              </Badge>
+              {session.scoreLabel ? (
+                <Badge variant="default" className="border-white/10 bg-white/6">
+                  {session.scoreLabel}
+                </Badge>
+              ) : null}
+              {activeSurface ? (
+                <Badge variant="default" className="border-white/10 bg-white/6">
+                  {session.wordCount} words
+                </Badge>
+              ) : null}
+            </div>
+
+            <div className="rounded-[22px] border border-white/8 bg-black/18 px-4 py-3">
+              <p className="text-sm leading-relaxed text-foreground/90">{session.statusLine}</p>
+            </div>
+
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/48">
+                <Crosshair size={12} />
+                Current target
+              </div>
+              <div className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-3">
+                <p className="text-sm font-medium text-foreground">
+                  {shorten(activeSurface?.prompt ?? session.prompt, isSnapped ? 110 : 88)}
+                </p>
+                {session.answerPreview ? (
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    {shorten(session.answerPreview, isSnapped ? 132 : 98)}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+                    {activeSurface ? getBlankResponseHint(activeSurface) : "Open a revision task and the overlay will attach to it."}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {session.note ? (
+              <div className="rounded-[20px] border border-white/8 bg-white/[0.03] px-4 py-3 text-xs leading-relaxed text-muted-foreground">
+                {session.note}
+              </div>
+            ) : null}
+
+            {session.primaryAction || session.secondaryAction ? (
+              <div className="rounded-[20px] border border-white/8 bg-black/18 px-4 py-3">
+                <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-white/48">
+                  <Sparkles size={12} />
+                  Next step
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {session.primaryAction
+                    ? renderRouteAction(
+                        session.primaryAction,
+                        "inline-flex items-center justify-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-accent-soft"
+                      )
+                    : null}
+                  {session.secondaryAction
+                    ? renderRouteAction(
+                        session.secondaryAction,
+                        "inline-flex items-center justify-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-white/8"
+                      )
+                    : null}
+                </div>
+              </div>
+            ) : null}
+
+            <div className="flex flex-wrap gap-2">
+              {activeSurface ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={isSnapped ? "secondary" : "primary"}
+                  onClick={() => setDockMode(isSnapped ? "float" : "snap")}
+                >
+                  {isSnapped ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                  {isSnapped ? "Float" : "Snap to editor"}
+                </Button>
+              ) : null}
+
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() => setDockMode("float")}
+              >
+                <Sparkles size={14} />
+                Hover
+              </Button>
+              {activeSurface?.canUndoEdits ? (
+                <Button type="button" size="sm" variant="ghost" onClick={onUndoLastEdit}>
+                  Undo last edit
+                </Button>
+              ) : null}
+              {activeSurface?.canClearInsertedCues ? (
+                <Button type="button" size="sm" variant="ghost" onClick={onClearInsertedCues}>
+                  Clear cues
+                </Button>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+        ) : null}
+      </AnimatePresence>
+    </>
+  );
+}
