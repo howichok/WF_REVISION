@@ -31,7 +31,7 @@ export default function FocusLayout({
 }) {
   return (
     <FocusThemeLayer>
-      <div className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(247,244,238,1)_38%,rgba(241,236,228,1))] text-slate-900">
+      <div className="flex min-h-0 flex-1 flex-col bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.96),rgba(247,244,238,1)_38%,rgba(241,236,228,1))] text-slate-900">
         {children}
       </div>
     </FocusThemeLayer>

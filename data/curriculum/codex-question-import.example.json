@@ -58,6 +58,67 @@
         "answerLogicSignature": "example-checksum-comparison",
         "responseFormat": "written"
       }
+    },
+    {
+      "id": "codex-example-esp-task2-test-log-001",
+      "sourceId": "codex-reviewed-esp-practice-bank-2026",
+      "title": "Complete a test log after repairing a booking script",
+      "sourceLabel": "Codex reviewed ESP practice bank",
+      "year": 2026,
+      "marks": 6,
+      "questionType": "scenario",
+      "summary": "A small venue has repaired a Python booking script and now needs evidence that the repaired date and ticket-count checks work.",
+      "expectation": "A strong response gives test-log rows with test description, test data, expected outcome, actual outcome, and one sensible retest or intended action.",
+      "curriculumPointIds": ["dsd-6.1", "dsd-7.3"],
+      "legacyTopicIds": ["esp"],
+      "practicePrompt": "Complete test-log entries for the repaired booking script, including normal, boundary and erroneous data.",
+      "markSchemeConceptIds": [],
+      "reviewed": true,
+      "active": true,
+      "examMetadata": {
+        "assessmentTrack": "esp",
+        "espTask": "task_2",
+        "vocationalContext": "A small venue uses a Python booking script for visit dates and ticket quantities.",
+        "briefType": "defect-fix",
+        "deliverableType": "corrected-code-test-log",
+        "relatedContentAreas": ["defect fixing", "Python", "test logs", "validation"],
+        "contentArea": "Employer Set Project",
+        "subtopic": "task_2",
+        "stimulus": "The repaired script needs testing evidence before handover.",
+        "difficulty": "medium",
+        "indicativeMarkScheme": {
+          "type": "points_based",
+          "points": [
+            "test descriptions target repaired behaviours",
+            "test data includes normal, boundary and erroneous cases",
+            "expected and actual outcomes are specific",
+            "intended action or retest is recorded for any failed result"
+          ],
+          "judgementRequired": false,
+          "modelAnswerOutline": "A strong response produces realistic test-log evidence for the repaired defect rather than a generic testing definition."
+        },
+        "sourceReference": "Example only; replace with a reviewed local ESP source reference",
+        "sourceFile": "sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Task 2 pack",
+        "sourceExcerptHash": "example-only",
+        "generationBatch": "example",
+        "validation": {
+          "fitsPaperBoundary": true,
+          "fitsCommandWord": true,
+          "fitsMarkDemand": true,
+          "specGrounded": true,
+          "sourceGrounded": true,
+          "notDuplicate": true,
+          "scenarioDistinct": true,
+          "answerLogicDistinct": true
+        },
+        "examinerRationale": "Example only; do not import verbatim.",
+        "reviewDecision": "keep",
+        "duplicationRisk": "low",
+        "realismScore": 8,
+        "scenarioSignature": "example-esp-task2-booking-test-log",
+        "answerLogicSignature": "example-esp-task2-corrected-code-test-log",
+        "responseFormat": "table"
+      }
     }
   ]
 }

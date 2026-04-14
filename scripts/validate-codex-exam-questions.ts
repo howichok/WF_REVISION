@@ -82,6 +82,16 @@ const DISALLOWED_REVISION_PHRASES = [
   "homework",
 ];
 
+const TEMPLATE_ARTEFACT_PATTERNS = [
+  /\bundefined\b/i,
+  /\bnull\b/i,
+  /\bNaN\b/i,
+  /\[object Object\]/i,
+  /{{|}}/,
+  /\bTODO\b/i,
+  /\blorem ipsum\b/i,
+];
+
 function increment(counts: Record<string, number>, key: string) {
   counts[key] = (counts[key] ?? 0) + 1;
 }
@@ -201,6 +211,17 @@ for (const question of generated) {
   const commandWord = metadata?.commandWord;
   const sourceForPaper = paper ? GENERATED_SOURCE_BY_PAPER[paper] : undefined;
   const validation = metadata?.validation;
+  const artefactText = [
+    question.title,
+    question.summary,
+    question.expectation,
+    question.practicePrompt,
+    metadata?.stimulus,
+    metadata?.scenarioSignature,
+    metadata?.answerLogicSignature,
+  ]
+    .filter(Boolean)
+    .join(" ");
 
   requireCheck(metadata, `${question.id} is missing examMetadata.`, failures);
   requireCheck(paper, `${question.id} is missing examMetadata.paper.`, failures);
@@ -244,6 +265,16 @@ for (const question of generated) {
   requireCheck(
     metadata?.sourceReference && metadata.sourceFile && metadata.sourceExcerptHash,
     `${question.id} must include source reference, source file, and source excerpt hash.`,
+    failures
+  );
+  requireCheck(
+    metadata?.sourceFile?.startsWith("sources/"),
+    `${question.id} must cite a repository-backed source file.`,
+    failures
+  );
+  requireCheck(
+    /^fnv1a-[a-z0-9-]+$/i.test(metadata?.sourceExcerptHash ?? ""),
+    `${question.id} must include a stable generated source excerpt hash.`,
     failures
   );
   requireCheck(
@@ -323,6 +354,13 @@ for (const question of generated) {
     requireCheck(
       !normalisedStem.includes(phrase),
       `${question.id} contains non-exam wording phrase: ${phrase}`,
+      failures
+    );
+  }
+  for (const pattern of TEMPLATE_ARTEFACT_PATTERNS) {
+    requireCheck(
+      !pattern.test(artefactText),
+      `${question.id} contains a template artefact: ${pattern.source}`,
       failures
     );
   }

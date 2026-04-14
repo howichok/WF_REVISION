@@ -496,6 +496,24 @@ export interface Database {
           },
         ];
       };
+      exam_question_global_exposure: {
+        Row: {
+          question_id: string;
+          serve_count: number;
+          updated_at: string;
+        };
+        Insert: {
+          question_id: string;
+          serve_count?: number;
+          updated_at?: string;
+        };
+        Update: {
+          question_id?: string;
+          serve_count?: number;
+          updated_at?: string;
+        };
+        Relationships: [];
+      };
       user_onboarding: {
         Row: {
           user_id: string;
@@ -547,6 +565,10 @@ export interface Database {
       };
     };
     Functions: {
+      bump_exam_question_exposure: {
+        Args: { p_question_ids: string[] };
+        Returns: undefined;
+      };
       get_revision_user_week_stats: {
         Args: Record<PropertyKey, never>;
         Returns: Database["public"]["Views"]["revision_user_week_stats"]["Row"][];

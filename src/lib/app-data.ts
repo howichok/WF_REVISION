@@ -831,19 +831,25 @@ export async function saveMaterialProgress(
         ? "Continued"
         : "Started";
 
-  await logActivity(supabase, userId, {
-    type: input.activityType,
-    title: `${activityVerb} ${input.title}`,
-    topicId: input.topicId,
-    minutesSpent: input.estimatedMinutes
-      ? Math.max(5, Math.min(input.estimatedMinutes, 20))
-      : 10,
-    metadata: {
-      entityId: input.materialId,
-      entityType: "material",
-      progressPercent: nextProgressPercent,
-    },
-  });
+  try {
+    await logActivity(supabase, userId, {
+      type: input.activityType,
+      title: `${activityVerb} ${input.title}`,
+      topicId: input.topicId,
+      minutesSpent: input.estimatedMinutes
+        ? Math.max(5, Math.min(input.estimatedMinutes, 20))
+        : 10,
+      metadata: {
+        entityId: input.materialId,
+        entityType: "material",
+        progressPercent: nextProgressPercent,
+      },
+    });
+  } catch (logError) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("logActivity after material progress save", logError);
+    }
+  }
 }
 
 export async function savePracticeSetProgress(
@@ -887,17 +893,23 @@ export async function savePracticeSetProgress(
   const activityVerb =
     nextProgressPercent >= 100 ? "Completed" : "Updated";
 
-  await logActivity(supabase, userId, {
-    type: "practice",
-    title: `${activityVerb} ${input.title}`,
-    topicId: input.topicId,
-    minutesSpent: input.minutesSpent ?? 12,
-    metadata: {
-      entityId: input.practiceSetId,
-      entityType: "practice-set",
-      progressPercent: nextProgressPercent,
-    },
-  });
+  try {
+    await logActivity(supabase, userId, {
+      type: "practice",
+      title: `${activityVerb} ${input.title}`,
+      topicId: input.topicId,
+      minutesSpent: input.minutesSpent ?? 12,
+      metadata: {
+        entityId: input.practiceSetId,
+        entityType: "practice-set",
+        progressPercent: nextProgressPercent,
+      },
+    });
+  } catch (logError) {
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("logActivity after practice set progress save", logError);
+    }
+  }
 }
 
 export async function saveTopicCoachingMemoryEntries(
@@ -1022,13 +1034,19 @@ export async function toggleSubtopicProgress(
   if (input.completed) {
     const topicLabel = TOPICS.find((topic) => topic.id === input.topicId)?.label;
 
-    await logActivity(supabase, userId, {
-      type: "review",
-      title: `Reviewed ${input.subtopicLabel}`,
-      topicId: input.topicId,
-      minutesSpent: 10,
-      metadata: topicLabel ? { topicLabel } : {},
-    });
+    try {
+      await logActivity(supabase, userId, {
+        type: "review",
+        title: `Reviewed ${input.subtopicLabel}`,
+        topicId: input.topicId,
+        minutesSpent: 10,
+        metadata: topicLabel ? { topicLabel } : {},
+      });
+    } catch (logError) {
+      if (process.env.NODE_ENV !== "production") {
+        console.warn("logActivity after subtopic toggle", logError);
+      }
+    }
   }
 }
 

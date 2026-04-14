@@ -1,0 +1,9 @@
+# Netlify file-based config — https://docs.netlify.com/build/configure-builds/file-based-configuration/
+
+# Deploy Preview URLs (PR previews) should not be indexed by search engines.
+[context.deploy-preview.environment]
+  BLOCK_SEARCH_INDEXING = "1"
+
+# To hide the production site from Google/Bing as well, set in the Netlify UI:
+# Site configuration → Environment variables → Production → BLOCK_SEARCH_INDEXING=1
+# Then redeploy. Remove the variable when you want the site public.

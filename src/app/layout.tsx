@@ -1,20 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 import { Inter } from "next/font/google";
-import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter";
-import { AppDataProvider } from "@/components/providers/app-data-provider";
-import { AiOverlayProvider } from "@/components/providers/ai-overlay-provider";
 import { ThemeProvider } from "@/components/providers/theme-provider";
-import { getCachedSharedCurriculumSnapshot } from "@/lib/cached-shared-curriculum";
-import { loadAppState } from "@/lib/app-data";
-import { getLocalSharedCurriculumSnapshot } from "@/lib/shared-curriculum";
-import { getSupabaseConfig } from "@/lib/supabase/config";
-import { createServerSupabaseClient } from "@/lib/supabase/server";
-import type { AppBootstrapState } from "@/lib/types";
 import "./globals.css";
+import AppBootstrap from "./app-bootstrap";
+import { AppBootstrapFallback } from "./app-bootstrap-fallback";
 
 const inter = Inter({
   variable: "--font-geist-sans",
   subsets: ["latin"],
+  display: "swap",
+  adjustFontFallback: true,
 });
 
 export const metadata: Metadata = {
@@ -23,50 +19,21 @@ export const metadata: Metadata = {
     "Shared revision for Digital Software Development: diagnostics, topics, quizzes, and resources.",
 };
 
-export default async function RootLayout({
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f7f5f1" },
+    { media: "(prefers-color-scheme: dark)", color: "#10131a" },
+  ],
+};
+
+export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  let initialState: AppBootstrapState = {
-    user: null,
-    onboarding: null,
-    diagnostic: null,
-    sharedCurriculum: getLocalSharedCurriculumSnapshot(),
-    revisionProgress: [],
-    topicCoachingMemory: {},
-    activityHistory: [],
-  };
-
-  if (getSupabaseConfig()) {
-    try {
-      const supabase = await createServerSupabaseClient();
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      const sharedCurriculum = user
-        ? await getCachedSharedCurriculumSnapshot()
-        : getLocalSharedCurriculumSnapshot();
-
-      initialState = {
-        ...initialState,
-        sharedCurriculum,
-      };
-
-      if (user) {
-        initialState = await loadAppState(supabase, user, {
-          sharedCurriculum,
-        });
-      }
-    } catch {
-      initialState = {
-        ...initialState,
-        sharedCurriculum: getLocalSharedCurriculumSnapshot(),
-      };
-    }
-  }
-
   return (
     <html lang="en" className="dark" suppressHydrationWarning>
       <head>
@@ -90,14 +57,11 @@ export default async function RootLayout({
           />
           <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-white/35 to-transparent dark:from-white/4" />
         </div>
-        <div className="relative z-10">
+        <div className="relative z-10 flex min-h-screen flex-col">
           <ThemeProvider>
-            <AppDataProvider initialState={initialState}>
-              <AiOverlayProvider>
-                <WebVitalsReporter />
-                {children}
-              </AiOverlayProvider>
-            </AppDataProvider>
+            <Suspense fallback={<AppBootstrapFallback />}>
+              <AppBootstrap>{children}</AppBootstrap>
+            </Suspense>
           </ThemeProvider>
         </div>
       </body>

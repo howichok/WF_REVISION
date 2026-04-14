@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Flame, Sparkles, Target } from "lucide-react";
+import { ArrowRight, Bookmark, CalendarDays, Flame, Layers, Sparkles, Target } from "lucide-react";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Button, Card } from "@/components/ui";
 import { PageContainer } from "@/components/layout/page-container";
@@ -73,6 +73,18 @@ export default function HomePage() {
       label: "Exam questions",
       hint: "Timed paper-style session",
       icon: Target,
+    },
+    {
+      href: "/revision/marked-papers",
+      label: "Saved papers",
+      hint: "Marked papers on this device",
+      icon: Bookmark,
+    },
+    {
+      href: "/revision/topic-flashcards",
+      label: "Revision cards",
+      hint: "Topic flashcards from saved papers",
+      icon: Layers,
     },
   ];
 

@@ -146,6 +146,32 @@ export type ExamMetadataAssessmentObjective =
 
 export type ExamMetadataDifficulty = "low" | "medium" | "high";
 
+export type ExamMetadataAssessmentTrack = "esp";
+
+export type EspTask =
+  | "pre_release"
+  | "task_1"
+  | "task_2"
+  | "task_3"
+  | "task_4a"
+  | "task_4b";
+
+export type EspBriefType =
+  | "brief-analysis"
+  | "project-plan"
+  | "defect-fix"
+  | "solution-design"
+  | "solution-development"
+  | "reflective-evaluation";
+
+export type EspDeliverableType =
+  | "brief-note"
+  | "project-plan-rationale"
+  | "corrected-code-test-log"
+  | "algorithm-design"
+  | "working-code-evidence"
+  | "reflective-evaluation";
+
 export interface ExamMetadataIndicativeMarkScheme {
   type: "points_based" | "levels_based";
   points: string[];
@@ -166,6 +192,12 @@ export interface ExamMetadataValidation {
 
 export interface QuestionExamMetadata {
   paper?: ExamMetadataPaper;
+  assessmentTrack?: ExamMetadataAssessmentTrack;
+  espTask?: EspTask;
+  vocationalContext?: string;
+  briefType?: EspBriefType;
+  deliverableType?: EspDeliverableType;
+  relatedContentAreas?: string[];
   contentArea?: string;
   subtopic?: string;
   commandWord?: ExamMetadataCommandWord;

@@ -6,6 +6,7 @@ export type RevisionRouteId =
   | "quick-quiz"
   | "paper-1"
   | "paper-2"
+  | "esp"
   | "mixed"
   | "progress";
 
@@ -85,6 +86,13 @@ export const REVISION_ROUTE_ITEMS: Array<{
   },
   { id: "paper-1", label: "Paper 1", href: "/revision/paper-1", description: "Simple revision theory route" },
   { id: "paper-2", label: "Paper 2", href: "/revision/paper-2", description: "Simple revision applied route" },
+  // Omitted from RevisionSubnav while ESP is “coming soon” on the revision hub only.
+  {
+    id: "esp",
+    label: "ESP",
+    href: "/revision/esp",
+    description: "Employer Set Project task walkthrough",
+  },
   {
     id: "mixed",
     label: "Mixed",

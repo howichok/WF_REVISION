@@ -195,21 +195,65 @@ function highlightSpansCoherent(text: string, hl: AnswerHighlightSpans): boolean
 
 function quotesToUtf16SpanPairs(text: string, quotes: string[]): [number, number][] {
   const spans: [number, number][] = [];
-  let from = 0;
+  const occupied: Array<{ start: number; end: number }> = [];
+
   for (const raw of quotes) {
     const s = raw.replace(/\s+/g, " ").trim();
     if (s.length < 2) {
       continue;
     }
-    const idx = text.indexOf(s, from);
-    if (idx === -1) {
-      continue;
+    let placed: [number, number] | null = null;
+    let pos = 0;
+    while (pos <= text.length) {
+      const idx = text.indexOf(s, pos);
+      if (idx === -1) {
+        break;
+      }
+      const end = idx + s.length;
+      const overlaps = occupied.some((o) => idx < o.end && end > o.start);
+      if (!overlaps) {
+        placed = [idx, end];
+        break;
+      }
+      pos = idx + 1;
     }
-    const end = idx + s.length;
-    spans.push([idx, end]);
-    from = end;
+    if (placed) {
+      spans.push(placed);
+      occupied.push({ start: placed[0], end: placed[1] });
+    }
   }
   return spans;
+}
+
+function mergeOverlappingSpanPairs(pairs: [number, number][]): [number, number][] {
+  if (pairs.length === 0) {
+    return [];
+  }
+  const norm = pairs
+    .map(([a, b]) => {
+      const lo = Math.min(Math.round(a), Math.round(b));
+      const hi = Math.max(Math.round(a), Math.round(b));
+      return [lo, hi] as [number, number];
+    })
+    .sort((x, y) => x[0] - y[0] || x[1] - y[1]);
+  const out: [number, number][] = [];
+  for (const [s, e] of norm) {
+    const last = out[out.length - 1];
+    if (!last || s > last[1]) {
+      out.push([s, e]);
+    } else {
+      last[1] = Math.max(last[1], e);
+    }
+  }
+  return out;
+}
+
+function unionSpanArrays(
+  a?: [number, number][],
+  b?: [number, number][]
+): [number, number][] | undefined {
+  const merged = mergeOverlappingSpanPairs([...(a ?? []), ...(b ?? [])]);
+  return merged.length > 0 ? merged : undefined;
 }
 
 function highlightSpansFromQuotes(text: string, q: AnswerHighlightQuotes): AnswerHighlightSpans | undefined {
@@ -224,19 +268,32 @@ function highlightSpansFromQuotes(text: string, q: AnswerHighlightQuotes): Answe
 }
 
 /**
- * Prefer coherent `hl` spans; otherwise derive spans from optional verbatim quotes.
+ * Prefer coherent `hl` spans, merged with quote-derived spans so partial model
+ * ranges do not hide extra credit/improve coverage from verbatim quotes.
  */
 export function mergeHlQuotesIntoHighlightSpans(
   answerTrimmed: string,
   hl?: AnswerHighlightSpans,
   hlQuotes?: AnswerHighlightQuotes
 ): AnswerHighlightSpans | undefined {
+  const quoteHl = hlQuotes ? highlightSpansFromQuotes(answerTrimmed, hlQuotes) : undefined;
+
   if (hl && highlightSpansCoherent(answerTrimmed, hl)) {
     const hasC = (hl.c?.length ?? 0) > 0;
     const hasI = (hl.i?.length ?? 0) > 0;
-    if (hasC || hasI) {
-      return hl;
+    if (!hasC && !hasI) {
+      return quoteHl ?? hl;
     }
+    const cOut = unionSpanArrays(hl.c, quoteHl?.c) ?? hl.c;
+    const iOut = unionSpanArrays(hl.i, quoteHl?.i) ?? hl.i;
+    const merged: AnswerHighlightSpans = {};
+    if (cOut?.length) {
+      merged.c = cOut;
+    }
+    if (iOut?.length) {
+      merged.i = iOut;
+    }
+    return Object.keys(merged).length > 0 ? merged : hl;
   }
   if (!hlQuotes) {
     return hl;
@@ -289,6 +346,26 @@ function shuffleArray<T>(values: T[]) {
   }
 
   return result;
+}
+
+/** Lower exposure count → earlier in list (questions seen more often sink). */
+function weightedShuffleByExposure<T extends { id: string }>(
+  items: T[],
+  exposure?: Record<string, number> | null
+): T[] {
+  if (items.length === 0) {
+    return [];
+  }
+  if (!exposure || Object.keys(exposure).length === 0) {
+    return shuffleArray(items);
+  }
+  const jitter = 0.4;
+  const scored = items.map((item) => {
+    const seen = exposure[item.id] ?? 0;
+    return { item, priority: seen + Math.random() * jitter };
+  });
+  scored.sort((a, b) => a.priority - b.priority);
+  return scored.map((row) => row.item);
 }
 
 function inferDifficulty(question: QuestionMetadata): ExamConditionsDifficulty {
@@ -426,7 +503,7 @@ function getExamEligibleRawQuestions(
   );
 }
 
-function getExamRawPoolForTopic(
+export function getExamRawPoolForTopic(
   topicId: string,
   questions: QuestionMetadata[],
   snapshot?: SharedCurriculumSnapshot | null
@@ -501,10 +578,22 @@ function cleanExamPracticePrompt(prompt: string, sourceId: string) {
   return cleaned;
 }
 
-function shuffleExamStemPriority(pool: ExamConditionsQuestion[]) {
-  const past = shuffleArray(pool.filter((q) => q.stemOrigin === "past-paper"));
-  const paperSet = shuffleArray(pool.filter((q) => q.stemOrigin === "paper-set"));
-  const rest = shuffleArray(pool.filter((q) => q.stemOrigin === "practice"));
+function shuffleExamStemPriority(
+  pool: ExamConditionsQuestion[],
+  exposure?: Record<string, number> | null
+) {
+  const past = weightedShuffleByExposure(
+    pool.filter((q) => q.stemOrigin === "past-paper"),
+    exposure
+  );
+  const paperSet = weightedShuffleByExposure(
+    pool.filter((q) => q.stemOrigin === "paper-set"),
+    exposure
+  );
+  const rest = weightedShuffleByExposure(
+    pool.filter((q) => q.stemOrigin === "practice"),
+    exposure
+  );
   return [...past, ...paperSet, ...rest];
 }
 
@@ -788,10 +877,22 @@ function takeFromBucket<T extends { id: string }>(
   return result;
 }
 
-function orderQuestionsForSession(questions: ExamConditionsQuestion[]) {
-  const easy = shuffleExamStemPriority(questions.filter((question) => question.difficulty === "easy"));
-  const medium = shuffleExamStemPriority(questions.filter((question) => question.difficulty === "medium"));
-  const hard = shuffleExamStemPriority(questions.filter((question) => question.difficulty === "hard"));
+function orderQuestionsForSession(
+  questions: ExamConditionsQuestion[],
+  exposure?: Record<string, number> | null
+) {
+  const easy = shuffleExamStemPriority(
+    questions.filter((question) => question.difficulty === "easy"),
+    exposure
+  );
+  const medium = shuffleExamStemPriority(
+    questions.filter((question) => question.difficulty === "medium"),
+    exposure
+  );
+  const hard = shuffleExamStemPriority(
+    questions.filter((question) => question.difficulty === "hard"),
+    exposure
+  );
 
   return [...easy, ...medium, ...hard];
 }
@@ -800,7 +901,8 @@ function pickQuestionsForEligiblePool(
   eligiblePool: ExamConditionsQuestion[],
   questionCount: number,
   difficultyMode: ExamConditionsDifficultyMode,
-  preferred: ExamConditionsQuestion | null
+  preferred: ExamConditionsQuestion | null,
+  exposure?: Record<string, number> | null
 ): ExamConditionsQuestion[] {
   const count = Math.max(0, Math.min(questionCount, eligiblePool.length));
   if (count === 0) {
@@ -816,9 +918,18 @@ function pickQuestionsForEligiblePool(
           hard: difficultyMode === "hard" ? count : 0,
         };
   const selectedIds = new Set<string>();
-  const hardBucket = shuffleExamStemPriority(eligiblePool.filter((question) => question.difficulty === "hard"));
-  const mediumBucket = shuffleExamStemPriority(eligiblePool.filter((question) => question.difficulty === "medium"));
-  const easyBucket = shuffleExamStemPriority(eligiblePool.filter((question) => question.difficulty === "easy"));
+  const hardBucket = shuffleExamStemPriority(
+    eligiblePool.filter((question) => question.difficulty === "hard"),
+    exposure
+  );
+  const mediumBucket = shuffleExamStemPriority(
+    eligiblePool.filter((question) => question.difficulty === "medium"),
+    exposure
+  );
+  const easyBucket = shuffleExamStemPriority(
+    eligiblePool.filter((question) => question.difficulty === "easy"),
+    exposure
+  );
 
   const selected: ExamConditionsQuestion[] = [];
   if (preferred) {
@@ -849,11 +960,11 @@ function pickQuestionsForEligiblePool(
   );
 
   if (selected.length < count) {
-    const fallback = shuffleExamStemPriority(eligiblePool);
+    const fallback = shuffleExamStemPriority(eligiblePool, exposure);
     selected.push(...takeFromBucket(fallback, count - selected.length, selectedIds));
   }
 
-  const ordered = orderQuestionsForSession(selected.slice(0, count));
+  const ordered = orderQuestionsForSession(selected.slice(0, count), exposure);
   if (preferred && ordered.some((question) => question.id === preferred.id)) {
     return [preferred, ...ordered.filter((question) => question.id !== preferred.id)];
   }
@@ -880,18 +991,25 @@ export function generateExamConditionsSession(
     questionCount?: number;
     /** Default `mixed` uses a balanced hard/medium/easy mix; a single level only picks that tier. */
     difficultyMode?: ExamConditionsDifficultyMode;
+    /** Per-question times seen in this account (browser); lowers repeat priority. */
+    exposureCounts?: Record<string, number> | null;
   } = {}
 ): ExamConditionsSession {
+  const exposure = options.exposureCounts;
   const bundle = getTopicContentBundle(topicId, options.snapshot);
   const eligibleRaw = getExamRawPoolForTopic(topicId, bundle.questions, options.snapshot);
   const isPastSource = (q: QuestionMetadata) =>
     getQuestionContentSourceKind(q.sourceId, options.snapshot) === "past-paper";
   const isPaperSetSource = (q: QuestionMetadata) => isCuratedPaperSetSource(q);
-  const pastRaw = shuffleArray(eligibleRaw.filter(isPastSource));
-  const paperSetRaw = shuffleArray(
-    eligibleRaw.filter((q) => !isPastSource(q) && isPaperSetSource(q))
+  const pastRaw = weightedShuffleByExposure(eligibleRaw.filter(isPastSource), exposure);
+  const paperSetRaw = weightedShuffleByExposure(
+    eligibleRaw.filter((q) => !isPastSource(q) && isPaperSetSource(q)),
+    exposure
   );
-  const restRaw = shuffleArray(eligibleRaw.filter((q) => !isPastSource(q) && !isPaperSetSource(q)));
+  const restRaw = weightedShuffleByExposure(
+    eligibleRaw.filter((q) => !isPastSource(q) && !isPaperSetSource(q)),
+    exposure
+  );
   const uniqueRaw = dedupeExamEligibleQuestions(
     [...pastRaw, ...paperSetRaw, ...restRaw],
     options.snapshot
@@ -942,7 +1060,7 @@ export function generateExamConditionsSession(
 
   const targetCount = clampExamCountToPool(setSize, eligiblePool.length);
   const finalQuestions = dedupeExamConditionsQuestionList(
-    pickQuestionsForEligiblePool(eligiblePool, targetCount, difficultyMode, preferred)
+    pickQuestionsForEligiblePool(eligiblePool, targetCount, difficultyMode, preferred, exposure)
   );
   const topicInfo = getTopicById(topicId);
   const releasedPastPaperStemCount = finalQuestions.filter((q) => q.stemOrigin === "past-paper").length;
@@ -981,8 +1099,10 @@ export function generateMultiTopicExamSession(
     difficultyMode?: ExamConditionsDifficultyMode;
     snapshot?: SharedCurriculumSnapshot | null;
     preferredQuestionId?: string;
+    exposureCounts?: Record<string, number> | null;
   }
 ): ExamConditionsSession {
+  const exposure = options.exposureCounts;
   const difficultyMode: ExamConditionsDifficultyMode = options.difficultyMode ?? "mixed";
   const sum = allocations.reduce((s, a) => s + Math.max(0, a.count), 0);
   if (sum === 0) {
@@ -1006,11 +1126,15 @@ export function generateMultiTopicExamSession(
     const isPastSource = (q: QuestionMetadata) =>
       getQuestionContentSourceKind(q.sourceId, options.snapshot) === "past-paper";
     const isPaperSetSource = (q: QuestionMetadata) => isCuratedPaperSetSource(q);
-    const pastRaw = shuffleArray(eligibleRaw.filter(isPastSource));
-    const paperSetRaw = shuffleArray(
-      eligibleRaw.filter((q) => !isPastSource(q) && isPaperSetSource(q))
+    const pastRaw = weightedShuffleByExposure(eligibleRaw.filter(isPastSource), exposure);
+    const paperSetRaw = weightedShuffleByExposure(
+      eligibleRaw.filter((q) => !isPastSource(q) && isPaperSetSource(q)),
+      exposure
     );
-    const restRaw = shuffleArray(eligibleRaw.filter((q) => !isPastSource(q) && !isPaperSetSource(q)));
+    const restRaw = weightedShuffleByExposure(
+      eligibleRaw.filter((q) => !isPastSource(q) && !isPaperSetSource(q)),
+      exposure
+    );
     const uniqueRaw = dedupeExamEligibleQuestions(
       [...pastRaw, ...paperSetRaw, ...restRaw],
       options.snapshot
@@ -1030,14 +1154,17 @@ export function generateMultiTopicExamSession(
       eligiblePool,
       Math.min(count, eligiblePool.length),
       difficultyMode,
-      preferred
+      preferred,
+      exposure
     );
     collected.push(...picked);
     const topicInfo = getTopicById(topicId);
     topicMix.push({ topicId, label: topicInfo?.label ?? topicId, count: picked.length });
   }
 
-  const finalQuestions = dedupeExamConditionsQuestionList(shuffleArray(collected));
+  const finalQuestions = dedupeExamConditionsQuestionList(
+    weightedShuffleByExposure(collected, exposure)
+  );
   const anchorTopicId = allocations.find((a) => a.count > 0)?.topicId ?? "";
   const releasedPastPaperStemCount = finalQuestions.filter((q) => q.stemOrigin === "past-paper").length;
   const examStyleStemCount = finalQuestions.filter((q) => q.stemOrigin !== "practice").length;
@@ -1052,6 +1179,29 @@ export function generateMultiTopicExamSession(
     plannedQuestionCount: options.setSize,
     topicMix,
   };
+}
+
+/** Unique ids in the exam-eligible pool (used to load global serve counts from Supabase). */
+export function collectExamEligibleQuestionIdsForTopic(
+  topicId: string,
+  snapshot?: SharedCurriculumSnapshot | null
+): string[] {
+  const bundle = getTopicContentBundle(topicId, snapshot);
+  const eligibleRaw = getExamRawPoolForTopic(topicId, bundle.questions, snapshot);
+  return [...new Set(eligibleRaw.map((q) => q.id))];
+}
+
+export function collectExamEligibleQuestionIdsForAllocations(
+  allocations: ExamTopicAllocationInput[],
+  snapshot?: SharedCurriculumSnapshot | null
+): string[] {
+  const out = new Set<string>();
+  for (const { topicId } of allocations) {
+    for (const id of collectExamEligibleQuestionIdsForTopic(topicId, snapshot)) {
+      out.add(id);
+    }
+  }
+  return [...out];
 }
 
 function extractMarkSchemeSummaryCues(summary: string): string[] {

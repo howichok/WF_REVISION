@@ -63,3 +63,7 @@ If you use `npm run seed:curriculum`, set `SUPABASE_SERVICE_ROLE_KEY` in `.env.l
 - **“Supabase is not configured”** — `.env.local` is missing or variable names/values are wrong; restart `npm run dev` after changes.
 - **Redirect / invalid link after email** — check `NEXT_PUBLIC_APP_URL` and Supabase redirect URLs above.
 - **Port in use** — run on another port, e.g. `npx next dev -p 3001`, and set `NEXT_PUBLIC_APP_URL` to the same origin.
+
+## Production: HTTPS + Cloudflare + optional site gate
+
+For a concrete checklist (TLS, Cloudflare proxy / Full (strict), WAF, `SITE_GATE_PASSWORD` / `SITE_GATE_SECRET`, HSTS), see **[docs/production-triple-security.md](docs/production-triple-security.md)**. That doc also covers **`BLOCK_SEARCH_INDEXING`** (robots + `X-Robots-Tag`) for staging; Netlify Deploy Previews enable it via **`netlify.toml`**.

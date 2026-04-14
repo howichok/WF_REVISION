@@ -3,6 +3,7 @@ export {
   CODEX_EXAM_STYLE_QUESTION_METADATA,
   CODEX_EXAM_STYLE_REJECTION_SUMMARY,
 } from "./codex-exam-style-questions";
+export { CODEX_ESP_PRACTICE_METADATA } from "./codex-esp-practice";
 export {
   CURRICULUM_POINT_COVERAGE_NODES,
   TOPIC_COVERAGE_GRAPHS,
@@ -27,6 +28,10 @@ export type {
   CurriculumArea,
   CurriculumPointCoverageNode,
   CurriculumPoint,
+  EspBriefType,
+  EspDeliverableType,
+  EspTask,
+  ExamMetadataAssessmentTrack,
   ExamGuide,
   ExamGuideEntry,
   ExamMetadataAssessmentObjective,

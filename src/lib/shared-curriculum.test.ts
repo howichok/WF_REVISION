@@ -140,6 +140,14 @@ test("shared curriculum snapshot merges Supabase rows with local enrichment", ()
         expectation: `${localQuestion.expectation} (Supabase)`,
         practice_prompt: `Explain ${localPoint.title} in one focused paragraph.`,
         legacy_topic_ids: localQuestion.legacyTopicIds,
+        exam_metadata: {
+          assessmentTrack: "esp",
+          espTask: "task_1",
+          contentArea: "Employer Set Project",
+          reviewDecision: "keep",
+        },
+        reviewed: true,
+        active: true,
       },
     ],
     questionPoints: [
@@ -178,4 +186,7 @@ test("shared curriculum snapshot merges Supabase rows with local enrichment", ()
   assert.ok(mergedQuestion);
   assert.equal(mergedQuestion.practicePrompt, `Explain ${localPoint.title} in one focused paragraph.`);
   assert.deepEqual(mergedQuestion.markSchemeConceptIds, localQuestion.markSchemeConceptIds);
+  assert.equal(mergedQuestion.examMetadata?.assessmentTrack, "esp");
+  assert.equal(mergedQuestion.reviewed, true);
+  assert.equal(mergedQuestion.active, true);
 });

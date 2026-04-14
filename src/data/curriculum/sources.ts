@@ -153,6 +153,16 @@ export const CONTENT_SOURCES: ContentSource[] = [
       "Reviewed internal Paper 2 exam-style question bank generated from repository-held official/spec-aligned sources. Metadata records command word, assessment objective emphasis, paper boundary validation, and provenance.",
   },
   {
+    id: "codex-reviewed-esp-practice-bank-2026",
+    title: "Codex Reviewed ESP Practice Bank 2026",
+    kind: "question-bank",
+    classification: "secondary",
+    filePath: "internal://codex-reviewed-esp-practice-bank-2026",
+    year: 2026,
+    notes:
+      "Reviewed internal Employer Set Project practice bank generated from local ESP source evidence. Metadata keeps ESP as a separate assessment track and does not assign Paper 1 or Paper 2.",
+  },
+  {
     id: "core-paper2-autumn-2022",
     title: "Core Paper 2 Autumn 2022",
     kind: "past-paper",

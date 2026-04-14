@@ -33,3 +33,30 @@ test("generated official-point sources are materialized for generated questions"
     /^generated:\/\/official-point-question-factory\//
   );
 });
+
+test("reviewed ESP questions keep ESP separate from paper metadata", () => {
+  const seed = buildCurriculumSeedPayload();
+  const espSource = seed.sources.find(
+    (source) => source.id === "codex-reviewed-esp-practice-bank-2026"
+  );
+  const espQuestions = seed.questions.filter(
+    (question) => question.source_id === "codex-reviewed-esp-practice-bank-2026"
+  );
+
+  assert.ok(espSource, "Expected a dedicated reviewed ESP source row.");
+  assert.ok(espQuestions.length >= 20, "Expected reviewed ESP practice questions.");
+
+  for (const question of espQuestions) {
+    const metadata = question.exam_metadata as {
+      assessmentTrack?: string;
+      paper?: string;
+    };
+
+    assert.equal(question.paper, null);
+    assert.equal(metadata.assessmentTrack, "esp");
+    assert.equal(metadata.paper, undefined);
+    assert.equal(question.reviewed, true);
+    assert.equal(question.active, true);
+    assert.deepEqual(question.legacy_topic_ids, ["esp"]);
+  }
+});

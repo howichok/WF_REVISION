@@ -29,7 +29,7 @@ begin
   delete from public.diagnostic_attempts where user_id = demo_user_id;
 
   insert into public.profiles (id, nickname, email, onboarding_completed_at)
-  values (demo_user_id, demo_nickname, demo_email, '2026-04-05T17:13:37.804Z'::timestamptz)
+  values (demo_user_id, demo_nickname, demo_email, '2026-04-07T21:50:01.480Z'::timestamptz)
   on conflict (id) do update set
     nickname = excluded.nickname,
     email = excluded.email,
@@ -40,7 +40,7 @@ begin
     demo_user_id,
     array['security', 'legislation', 'business']::text[],
     'Focus on security, legislation and business evaluation before the next written-answer round.',
-    '2026-04-05T17:13:37.804Z'::timestamptz
+    '2026-04-07T21:50:01.480Z'::timestamptz
   )
   on conflict (user_id) do update set
     weak_areas = excluded.weak_areas,
@@ -67,16 +67,16 @@ begin
     completed_at
   )
   values
-  (demo_user_id, 'security', 'resource-teach-access-control', 'material', 'in-progress', 75, '2026-04-10T11:13:37.804Z'::timestamptz, null),
-  (demo_user_id, 'business', 'resource-paper2-2023', 'material', 'in-progress', 50, '2026-04-09T13:13:37.804Z'::timestamptz, null),
-  (demo_user_id, 'data', 'resource-teach-csv-formats-ws', 'material', 'completed', 100, '2026-04-08T14:13:37.804Z'::timestamptz, '2026-04-08T14:13:37.804Z'::timestamptz),
-  (demo_user_id, 'security', '8.1', 'subtopic', 'completed', 100, '2026-04-10T11:13:37.804Z'::timestamptz, '2026-04-10T11:13:37.804Z'::timestamptz),
-  (demo_user_id, 'business', '5.2', 'subtopic', 'completed', 100, '2026-04-09T13:13:37.804Z'::timestamptz, '2026-04-09T13:13:37.804Z'::timestamptz),
-  (demo_user_id, 'security', 'practice:recall:security', 'practice-set', 'completed', 100, '2026-04-10T16:13:37.804Z'::timestamptz, '2026-04-10T16:13:37.804Z'::timestamptz),
-  (demo_user_id, 'security', 'practice:exam-drill:security', 'practice-set', 'in-progress', 68, '2026-04-11T09:13:37.804Z'::timestamptz, null),
-  (demo_user_id, 'business', 'practice:quiz:business', 'practice-set', 'in-progress', 82, '2026-04-09T16:13:37.804Z'::timestamptz, null),
-  (demo_user_id, 'data', 'practice:exam-drill:data', 'practice-set', 'completed', 100, '2026-04-08T11:13:37.804Z'::timestamptz, '2026-04-08T11:13:37.804Z'::timestamptz),
-  (demo_user_id, 'digital-environments', 'practice:recall:digital-environments', 'practice-set', 'in-progress', 55, '2026-04-07T12:13:37.804Z'::timestamptz, null)
+  (demo_user_id, 'security', 'resource-teach-access-control', 'material', 'in-progress', 75, '2026-04-12T15:50:01.480Z'::timestamptz, null),
+  (demo_user_id, 'business', 'resource-paper2-2023', 'material', 'in-progress', 50, '2026-04-11T17:50:01.480Z'::timestamptz, null),
+  (demo_user_id, 'data', 'resource-teach-csv-formats-ws', 'material', 'completed', 100, '2026-04-10T18:50:01.480Z'::timestamptz, '2026-04-10T18:50:01.480Z'::timestamptz),
+  (demo_user_id, 'security', '8.1', 'subtopic', 'completed', 100, '2026-04-12T15:50:01.480Z'::timestamptz, '2026-04-12T15:50:01.480Z'::timestamptz),
+  (demo_user_id, 'business', '5.2', 'subtopic', 'completed', 100, '2026-04-11T17:50:01.480Z'::timestamptz, '2026-04-11T17:50:01.480Z'::timestamptz),
+  (demo_user_id, 'security', 'practice:recall:security', 'practice-set', 'completed', 100, '2026-04-12T20:50:01.480Z'::timestamptz, '2026-04-12T20:50:01.480Z'::timestamptz),
+  (demo_user_id, 'security', 'practice:exam-drill:security', 'practice-set', 'in-progress', 68, '2026-04-13T13:50:01.480Z'::timestamptz, null),
+  (demo_user_id, 'business', 'practice:quiz:business', 'practice-set', 'in-progress', 82, '2026-04-11T20:50:01.480Z'::timestamptz, null),
+  (demo_user_id, 'data', 'practice:exam-drill:data', 'practice-set', 'completed', 100, '2026-04-10T15:50:01.480Z'::timestamptz, '2026-04-10T15:50:01.480Z'::timestamptz),
+  (demo_user_id, 'digital-environments', 'practice:recall:digital-environments', 'practice-set', 'in-progress', 55, '2026-04-09T16:50:01.480Z'::timestamptz, null)
   on conflict (user_id, topic_id, entity_id, entity_type) do update set
     status = excluded.status,
     progress_percent = excluded.progress_percent,
@@ -93,13 +93,13 @@ begin
     occurred_at
   )
   values
-  (demo_user_id, 'practice', 'Ran a security exam drill', 'security', '{"entityId":"practice:exam-drill:security","entityType":"practice-set","progressPercent":68}'::jsonb, 14, '2026-04-11T09:13:37.804Z'::timestamptz),
-  (demo_user_id, 'review', 'Reviewed Library: access control scenario + answers', 'security', '{"entityId":"resource-teach-access-control","entityType":"material","progressPercent":75}'::jsonb, 12, '2026-04-10T11:13:37.804Z'::timestamptz),
-  (demo_user_id, 'practice', 'Completed security recall set', 'security', '{"entityId":"practice:recall:security","entityType":"practice-set","progressPercent":100}'::jsonb, 10, '2026-04-10T16:13:37.804Z'::timestamptz),
-  (demo_user_id, 'diagnostic', 'Completed adaptive diagnostic, weakest in Security', 'security', '{"latestTopicId":"security"}'::jsonb, 25, '2026-04-09T11:13:37.804Z'::timestamptz),
-  (demo_user_id, 'practice', 'Completed data exam drill set', 'data', '{"entityId":"practice:exam-drill:data","entityType":"practice-set","progressPercent":100}'::jsonb, 16, '2026-04-08T11:13:37.804Z'::timestamptz),
-  (demo_user_id, 'practice', 'Updated business quiz progress', 'business', '{"entityId":"practice:quiz:business","entityType":"practice-set","progressPercent":82}'::jsonb, 11, '2026-04-09T16:13:37.804Z'::timestamptz),
-  (demo_user_id, 'review', 'Reviewed Paper 2 2023', 'business', '{"entityId":"resource-paper2-2023","entityType":"material","progressPercent":50}'::jsonb, 9, '2026-04-09T13:13:37.804Z'::timestamptz);
+  (demo_user_id, 'practice', 'Ran a security exam drill', 'security', '{"entityId":"practice:exam-drill:security","entityType":"practice-set","progressPercent":68}'::jsonb, 14, '2026-04-13T13:50:01.480Z'::timestamptz),
+  (demo_user_id, 'review', 'Reviewed Library: access control scenario + answers', 'security', '{"entityId":"resource-teach-access-control","entityType":"material","progressPercent":75}'::jsonb, 12, '2026-04-12T15:50:01.480Z'::timestamptz),
+  (demo_user_id, 'practice', 'Completed security recall set', 'security', '{"entityId":"practice:recall:security","entityType":"practice-set","progressPercent":100}'::jsonb, 10, '2026-04-12T20:50:01.480Z'::timestamptz),
+  (demo_user_id, 'diagnostic', 'Completed adaptive diagnostic, weakest in Security', 'security', '{"latestTopicId":"security"}'::jsonb, 25, '2026-04-11T15:50:01.480Z'::timestamptz),
+  (demo_user_id, 'practice', 'Completed data exam drill set', 'data', '{"entityId":"practice:exam-drill:data","entityType":"practice-set","progressPercent":100}'::jsonb, 16, '2026-04-10T15:50:01.480Z'::timestamptz),
+  (demo_user_id, 'practice', 'Updated business quiz progress', 'business', '{"entityId":"practice:quiz:business","entityType":"practice-set","progressPercent":82}'::jsonb, 11, '2026-04-11T20:50:01.480Z'::timestamptz),
+  (demo_user_id, 'review', 'Reviewed Paper 2 2023', 'business', '{"entityId":"resource-paper2-2023","entityType":"material","progressPercent":50}'::jsonb, 9, '2026-04-11T17:50:01.480Z'::timestamptz);
 
   insert into public.diagnostic_attempts (
     id, user_id, overall_score, question_count, version, diagnostic_snapshot, completed_at
@@ -110,8 +110,8 @@ begin
     58,
     16,
     2,
-    '{"version":2,"latestTopicId":"security","assessedTopicIds":["problem-solving","intro-programming","emerging-issues","legislation","business","data","digital-environments","security"],"unassessedTopicIds":["esp"],"recommendedTopicIds":["security","legislation","business"],"topicDiagnostics":[{"topicId":"security","topicLabel":"Security","topicIcon":"🔒","assessedAt":"2026-04-09T11:13:37.804Z","freeformResponse":"Phishing is a security problem because attackers trick users into revealing credentials. Training helps, but I also need to mention access control and patching more clearly.","curriculumPoints":[{"pointId":"8.1","label":"8.1 Security risks","status":"partial","confidence":0.46,"matchedTerms":["phishing","credentials","social engineering"],"missingTerms":["malware","brute force","sql injection"],"evidence":["Mentions phishing and stolen credentials."],"notes":"Good identification of the threat, but the range of risks is still narrow."},{"pointId":"8.2","label":"8.2 Threat mitigation","status":"partial","confidence":0.41,"matchedTerms":["training","access control"],"missingTerms":["patching","multi-factor authentication","backup"],"evidence":["Hints that user training helps reduce risk."],"notes":"Needs sharper explanation of technical controls and layered defence."}],"keyTermsMatched":["phishing","credentials","social engineering","training","access control"],"misconceptions":[],"confidence":0.435,"suggestedNextTargets":["8.1 Security risks","8.2 Threat mitigation"],"recommendedMaterialIds":["resource-teach-access-control","resource-teach-legislation-slides"],"followUps":[{"id":"demo-security-followup-1","targetedPointId":"8.1","question":"Give one other security risk besides phishing and explain how it could affect an organisation.","answer":"Brute-force attacks can repeatedly guess passwords until an attacker gets into an account, which could expose sensitive data or let them misuse systems.","reason":"weak-point"},{"id":"demo-security-followup-2","targetedPointId":"8.2","question":"What technical control would you add alongside staff training to reduce phishing damage?","answer":"Multi-factor authentication adds another check even if a password is stolen, so a phishing attack is less likely to lead to account access.","reason":"missing-point"}]}]}'::jsonb,
-    '2026-04-09T11:13:37.804Z'::timestamptz
+    '{"version":2,"latestTopicId":"security","assessedTopicIds":["problem-solving","intro-programming","emerging-issues","legislation","business","data","digital-environments","security"],"unassessedTopicIds":["esp"],"recommendedTopicIds":["security","legislation","business"],"topicDiagnostics":[{"topicId":"security","topicLabel":"Security","topicIcon":"🔒","assessedAt":"2026-04-11T15:50:01.480Z","freeformResponse":"Phishing is a security problem because attackers trick users into revealing credentials. Training helps, but I also need to mention access control and patching more clearly.","curriculumPoints":[{"pointId":"8.1","label":"8.1 Security risks","status":"partial","confidence":0.46,"matchedTerms":["phishing","credentials","social engineering"],"missingTerms":["malware","brute force","sql injection"],"evidence":["Mentions phishing and stolen credentials."],"notes":"Good identification of the threat, but the range of risks is still narrow."},{"pointId":"8.2","label":"8.2 Threat mitigation","status":"partial","confidence":0.41,"matchedTerms":["training","access control"],"missingTerms":["patching","multi-factor authentication","backup"],"evidence":["Hints that user training helps reduce risk."],"notes":"Needs sharper explanation of technical controls and layered defence."}],"keyTermsMatched":["phishing","credentials","social engineering","training","access control"],"misconceptions":[],"confidence":0.435,"suggestedNextTargets":["8.1 Security risks","8.2 Threat mitigation"],"recommendedMaterialIds":["resource-teach-access-control","resource-teach-legislation-slides"],"followUps":[{"id":"demo-security-followup-1","targetedPointId":"8.1","question":"Give one other security risk besides phishing and explain how it could affect an organisation.","answer":"Brute-force attacks can repeatedly guess passwords until an attacker gets into an account, which could expose sensitive data or let them misuse systems.","reason":"weak-point"},{"id":"demo-security-followup-2","targetedPointId":"8.2","question":"What technical control would you add alongside staff training to reduce phishing damage?","answer":"Multi-factor authentication adds another check even if a password is stolen, so a phishing attack is less likely to lead to account access.","reason":"missing-point"}]}]}'::jsonb,
+    '2026-04-11T15:50:01.480Z'::timestamptz
   )
   on conflict (id) do update set
     overall_score = excluded.overall_score,
@@ -149,8 +149,8 @@ begin
     '🔒',
     0.435,
     2,
-    '2026-04-09T11:13:37.804Z'::timestamptz,
-    '2026-04-09T11:13:37.804Z'::timestamptz
+    '2026-04-11T15:50:01.480Z'::timestamptz,
+    '2026-04-11T15:50:01.480Z'::timestamptz
   )
   on conflict (id) do update set
     confidence = excluded.confidence,
@@ -170,8 +170,8 @@ begin
     session_id, user_id, sequence_number, targeted_subtopic_id, reason, question_text, asked_at
   )
   values
-  (demo_session_id, demo_user_id, 1, '8.1', 'weak-point', 'Give one other security risk besides phishing and explain how it could affect an organisation.', '2026-04-09T11:13:37.804Z'::timestamptz),
-  (demo_session_id, demo_user_id, 2, '8.2', 'missing-point', 'What technical control would you add alongside staff training to reduce phishing damage?', '2026-04-09T11:13:37.804Z'::timestamptz)
+  (demo_session_id, demo_user_id, 1, '8.1', 'weak-point', 'Give one other security risk besides phishing and explain how it could affect an organisation.', '2026-04-11T15:50:01.480Z'::timestamptz),
+  (demo_session_id, demo_user_id, 2, '8.2', 'missing-point', 'What technical control would you add alongside staff training to reduce phishing damage?', '2026-04-11T15:50:01.480Z'::timestamptz)
   on conflict (session_id, sequence_number) do update set
     targeted_subtopic_id = excluded.targeted_subtopic_id,
     reason = excluded.reason,
@@ -182,8 +182,8 @@ begin
     session_id, user_id, sequence_number, response_text, responded_at
   )
   values
-  (demo_session_id, demo_user_id, 1, 'Brute-force attacks can repeatedly guess passwords until an attacker gets into an account, which could expose sensitive data or let them misuse systems.', '2026-04-09T11:13:37.804Z'::timestamptz),
-  (demo_session_id, demo_user_id, 2, 'Multi-factor authentication adds another check even if a password is stolen, so a phishing attack is less likely to lead to account access.', '2026-04-09T11:13:37.804Z'::timestamptz)
+  (demo_session_id, demo_user_id, 1, 'Brute-force attacks can repeatedly guess passwords until an attacker gets into an account, which could expose sensitive data or let them misuse systems.', '2026-04-11T15:50:01.480Z'::timestamptz),
+  (demo_session_id, demo_user_id, 2, 'Multi-factor authentication adds another check even if a password is stolen, so a phishing attack is less likely to lead to account access.', '2026-04-11T15:50:01.480Z'::timestamptz)
   on conflict (session_id, sequence_number) do update set
     response_text = excluded.response_text,
     responded_at = excluded.responded_at;
@@ -220,9 +220,9 @@ begin
 
   insert into public.topic_coaching_memory (user_id, topic_id, memory_snapshot, updated_at)
   values
-  (demo_user_id, 'security', '{"topicId":"security","updatedAt":"2026-04-11T11:13:37.804Z","lastActivityKind":"answer-check","lastRecommendedAction":"Need a hint","lastRecommendedHref":"/revision/security/ask?intent=hint","lastWeakPointId":"8.1","lastSuccessfulPointId":"8.2","lastQuestionId":"paper2-2023-q2b-cia-patient-records","lastDrillId":"8.1","lastAskIntent":"hint","latestAnswerCheckBand":"fail","latestAnswerCheckScorePercent":44,"latestExamDrillReadiness":68,"latestRecallMastery":82,"latestQuizScorePercent":0,"failStreak":2,"distinctionStreak":0,"drillReadyStreak":0,"drillNeedsWorkStreak":1,"recentActivityCount":6,"misconceptionCounts":{"phishing":2,"access control":2},"repeatedMisconceptions":["phishing","access control"]}'::jsonb, '2026-04-11T11:13:37.804Z'::timestamptz),
-  (demo_user_id, 'business', '{"topicId":"business","updatedAt":"2026-04-10T15:13:37.804Z","lastActivityKind":"quiz","lastRecommendedAction":"Move to answer-check","lastRecommendedHref":"/revision/business/answer-check?questionId=paper2-2023-q2a-ui-end-users","lastWeakPointId":"5.3","lastSuccessfulPointId":"5.2","lastQuestionId":"paper2-2023-q2a-ui-end-users","lastAskIntent":"local-answer","latestAnswerCheckBand":"merit","latestAnswerCheckScorePercent":71,"latestExamDrillReadiness":74,"latestRecallMastery":0,"latestQuizScorePercent":82,"failStreak":0,"distinctionStreak":0,"drillReadyStreak":2,"drillNeedsWorkStreak":0,"recentActivityCount":4,"misconceptionCounts":{"stakeholders":1},"repeatedMisconceptions":[]}'::jsonb, '2026-04-10T15:13:37.804Z'::timestamptz),
-  (demo_user_id, 'digital-environments', '{"topicId":"digital-environments","updatedAt":"2026-04-08T09:13:37.804Z","lastActivityKind":"ask","lastRecommendedAction":"Try a question","lastRecommendedHref":"/revision/digital-environments/answer-check?questionId=paper2-2023-q4c-firewall","lastWeakPointId":"7.2","lastSuccessfulPointId":"7.3","lastQuestionId":"paper2-2023-q4c-firewall","lastAskIntent":"local-answer","latestAnswerCheckBand":"merit","latestAnswerCheckScorePercent":76,"latestExamDrillReadiness":55,"latestRecallMastery":55,"latestQuizScorePercent":0,"failStreak":0,"distinctionStreak":0,"drillReadyStreak":0,"drillNeedsWorkStreak":1,"recentActivityCount":3,"misconceptionCounts":{"virtualization":1},"repeatedMisconceptions":[]}'::jsonb, '2026-04-08T09:13:37.804Z'::timestamptz)
+  (demo_user_id, 'security', '{"topicId":"security","updatedAt":"2026-04-13T15:50:01.480Z","lastActivityKind":"answer-check","lastRecommendedAction":"Need a hint","lastRecommendedHref":"/revision/security/ask?intent=hint","lastWeakPointId":"8.1","lastSuccessfulPointId":"8.2","lastQuestionId":"paper2-2023-q2b-cia-patient-records","lastDrillId":"8.1","lastAskIntent":"hint","latestAnswerCheckBand":"fail","latestAnswerCheckScorePercent":44,"latestExamDrillReadiness":68,"latestRecallMastery":82,"latestQuizScorePercent":0,"failStreak":2,"distinctionStreak":0,"drillReadyStreak":0,"drillNeedsWorkStreak":1,"recentActivityCount":6,"misconceptionCounts":{"phishing":2,"access control":2},"repeatedMisconceptions":["phishing","access control"]}'::jsonb, '2026-04-13T15:50:01.480Z'::timestamptz),
+  (demo_user_id, 'business', '{"topicId":"business","updatedAt":"2026-04-12T19:50:01.480Z","lastActivityKind":"quiz","lastRecommendedAction":"Move to answer-check","lastRecommendedHref":"/revision/business/answer-check?questionId=paper2-2023-q2a-ui-end-users","lastWeakPointId":"5.3","lastSuccessfulPointId":"5.2","lastQuestionId":"paper2-2023-q2a-ui-end-users","lastAskIntent":"local-answer","latestAnswerCheckBand":"merit","latestAnswerCheckScorePercent":71,"latestExamDrillReadiness":74,"latestRecallMastery":0,"latestQuizScorePercent":82,"failStreak":0,"distinctionStreak":0,"drillReadyStreak":2,"drillNeedsWorkStreak":0,"recentActivityCount":4,"misconceptionCounts":{"stakeholders":1},"repeatedMisconceptions":[]}'::jsonb, '2026-04-12T19:50:01.480Z'::timestamptz),
+  (demo_user_id, 'digital-environments', '{"topicId":"digital-environments","updatedAt":"2026-04-10T13:50:01.480Z","lastActivityKind":"ask","lastRecommendedAction":"Try a question","lastRecommendedHref":"/revision/digital-environments/answer-check?questionId=paper2-2023-q4c-firewall","lastWeakPointId":"7.2","lastSuccessfulPointId":"7.3","lastQuestionId":"paper2-2023-q4c-firewall","lastAskIntent":"local-answer","latestAnswerCheckBand":"merit","latestAnswerCheckScorePercent":76,"latestExamDrillReadiness":55,"latestRecallMastery":55,"latestQuizScorePercent":0,"failStreak":0,"distinctionStreak":0,"drillReadyStreak":0,"drillNeedsWorkStreak":1,"recentActivityCount":3,"misconceptionCounts":{"virtualization":1},"repeatedMisconceptions":[]}'::jsonb, '2026-04-10T13:50:01.480Z'::timestamptz)
   on conflict (user_id, topic_id) do update set
     memory_snapshot = excluded.memory_snapshot,
     updated_at = excluded.updated_at;

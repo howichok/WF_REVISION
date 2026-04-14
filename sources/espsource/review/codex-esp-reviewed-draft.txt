@@ -1,0 +1,506 @@
+Codex ESP reviewed draft
+Assessment track: esp
+Generated locally from repository ESP source evidence.
+
+Section 1 - extracted source-derived ESP patterns
+
+Pattern note id: esp-source-pattern-pre-release
+assessmentTrack: esp
+espTask: pre_release
+sourceReference: Task 1 and specimen planning booklets in the local ESP source bundle.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: Core Employer Set Project - Task1 - November 2021.pdf; DSD-SAM-ESP-Part1.zip
+sourceExcerptHash: fnv1a-68f3a4f2
+extractedAndCleanedNote: The brief layer gives a vocational client scenario, project facts, constraints, staff-role information and file evidence. In practice this behaves as the pre-release/brief evidence layer even though no file is literally named pre_release.
+useForGeneration: Produce practice prompts that ask students to triage the client need, constraints, deliverables, evidence files and safe planning assumptions before writing a project plan or rationale.
+duplicationRisk: medium - several Task 1 year variants repeat the same planning structure.
+
+Pattern note id: esp-source-pattern-task-1
+assessmentTrack: esp
+espTask: task_1
+sourceReference: Task 1 planning project booklets, project-plan spreadsheets and rationale support decks.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: DSD ESP AUT-22 Task 1.zip; DSD-SAM-ESP-Part1.zip; DSD_ESP_Task1_Project_Plan_Grade_A_Fill_in_the_costs.xlsx; ESP 1 - Points for Rationale 2026.pptx
+sourceExcerptHash: fnv1a-751c4aa0
+extractedAndCleanedNote: Task 1 patterns centre on producing a Gantt-style plan, resource allocation, staff/cost plan and written rationale. Strong evidence explains sequencing, staff allocation, testing points, risks, time constraints, cost impact and methodology choices.
+useForGeneration: Generate planning tasks that require a realistic schedule, resource/cost judgement and rationale rather than a generic list of project-management terms.
+duplicationRisk: medium - avoid copying the same RBSX, Elanp Air or NTEM style scenario.
+
+Pattern note id: esp-source-pattern-task-2
+assessmentTrack: esp
+espTask: task_2
+sourceReference: Task 2 defect-fixing packs with non-working code and test-log templates.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Autumn 24 Task 2.zip; ESP Summer 24 Task 2.zip; ESP Task 2 Autumn 22.zip
+sourceExcerptHash: fnv1a-1b7e90af
+extractedAndCleanedNote: Task 2 gives a defective Python program and a test-log template. Recurring defects include incorrect variable names, misspelled function calls, wrong boolean conditions, tuple/list misuse, date parsing mistakes, file-handle mistakes and missing punctuation.
+useForGeneration: Generate defect-fixing practice that asks for diagnosis, corrected code evidence and a test log with description, test data, expected result, actual result and intended action.
+duplicationRisk: low - defect patterns can vary by domain, but avoid reusing source scenarios unaltered.
+
+Pattern note id: esp-source-pattern-task-3
+assessmentTrack: esp
+espTask: task_3
+sourceReference: Task 3 design-solution packs with supplied CSV data.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Autumn 24 Task 3.zip; ESP Task 3 2022.zip
+sourceExcerptHash: fnv1a-9b3d9f40
+extractedAndCleanedNote: Task 3 asks students to design a data-backed solution before implementation. The evidence pattern is an algorithm design, clear decomposition, data handling choices and enough detail for another developer to implement the system.
+useForGeneration: Generate design tasks requiring pseudocode, flowchart-style logic, data validation, output decisions and explanation of how the design uses the supplied dataset.
+duplicationRisk: medium - generated items should vary dataset fields and decision purpose.
+
+Pattern note id: esp-source-pattern-task-4a
+assessmentTrack: esp
+espTask: task_4a
+sourceReference: Task 4a developing-solution packs with starter Python code and CSV data.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Autumn 24 Task 4a.zip; T Level Core Digital ESP 19538 TASK 4A Nov-2023.zip; Task4a_versere - ORIGINAL.py; Task4a_versere - AM EXAM ANSWER.py
+sourceExcerptHash: fnv1a-2c02a0bd
+extractedAndCleanedNote: Task 4a provides an existing solution or senior-developer code and data file, then asks students to further develop the product. Recurring evidence includes menu structure, pandas-style grouping or filtering, charts, input validation, screen/output evidence and code quality.
+useForGeneration: Generate build tasks that ask students to add a realistic feature, handle data correctly, preserve the existing interface structure and capture implementation/testing evidence.
+duplicationRisk: medium - keep starter-code and solution-code roles distinct.
+
+Pattern note id: esp-source-pattern-task-4b
+assessmentTrack: esp
+espTask: task_4b
+sourceReference: Task 4b reflective evaluation PDFs.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: t-level-core-digital-19538-employer-set-project-task-4b-november-2024.pdf; W76546 T Level Core Digital ESP 19538 ESP TASK 4B AB Nov-2023.pdf
+sourceExcerptHash: fnv1a-46bf0a7a
+extractedAndCleanedNote: Task 4b uses a read-only copy of Task 4a evidence and asks for a reflective evaluation. Strong evidence links the finished product to requirements, testing evidence, quality, constraints, user/client impact and justified improvements.
+useForGeneration: Generate evaluation prompts that require evidence-based reflection rather than generic self-review.
+duplicationRisk: high - the bundle contains repeated copies of the November 2024 Task 4b PDF, so dedupe by task content rather than filename.
+
+Section 2 - generated reviewed ESP practice output
+
+id: codex-esp-pre-release-brief-triage-001
+assessmentTrack: esp
+espTask: pre_release
+title: Triage the supplied project brief before planning
+vocationalContext: A council volunteering team needs a small digital service to match residents with verified volunteering opportunities.
+brief: The client has provided a brief, a list of staff roles, a requested delivery window and a spreadsheet template for planning. The project has sensitive volunteer contact data and the service must be usable by non-technical coordinators.
+studentTask: Produce a pre-planning triage note that identifies the client aim, key constraints, evidence files, main risks and the decisions that must be made before a full Task 1 plan is written.
+expectedDeliverable: A structured brief-analysis note with requirements, constraints, file/evidence checklist, assumptions and risk flags.
+relatedContentAreas: Business Context; Data; Security; Problem Solving
+difficulty: medium
+sourceReference: Task 1 and specimen planning booklets; pre-release/brief pattern inferred from the supplied Task 1 evidence layer.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: Core Employer Set Project - Task1 - November 2021.pdf; DSD-SAM-ESP-Part1.zip
+sourceExcerptHash: fnv1a-101a9a11
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit accurate identification of client aim, deliverables, time/resource constraints, supplied files, data/security risks and assumptions that must be resolved before planning.
+examinerRationale: Kept because it models the pre-release/brief analysis function without treating ESP as a paper or copying source wording.
+
+---
+
+id: codex-esp-task1-community-clinic-plan-001
+assessmentTrack: esp
+espTask: task_1
+title: Plan a phased clinic appointment-reporting project
+vocationalContext: A community clinic wants a web-based appointment reporting tool for reception staff and managers.
+brief: The client needs a first version in six working weeks. The team includes a project manager, junior developer, database engineer, tester and UX specialist. The solution needs a staff interface, appointment data import and a simple management summary.
+studentTask: Create a project plan that sequences analysis, data design, interface design, development, testing, fixes, deployment preparation and staff handover.
+expectedDeliverable: A Gantt-style plan plus a short rationale explaining sequencing, staff allocation, testing points, key risks and cost/time impact.
+relatedContentAreas: Business Context; Data; Digital Environments; Security
+difficulty: high
+sourceReference: Task 1 planning booklets and project-plan spreadsheet structure.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: DSD ESP AUT-22 Task 1.zip; DSD-SAM-ESP-Part1.zip
+sourceExcerptHash: fnv1a-1e23c4e2
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward a feasible task sequence, sensible staff-role allocation, explicit testing/regression time, cost/resource awareness, risk handling and rationale linked to clinic constraints.
+examinerRationale: Kept because it reflects authentic Task 1 planning evidence while using a new vocational context.
+
+---
+
+id: codex-esp-task1-heritage-ticketing-plan-002
+assessmentTrack: esp
+espTask: task_1
+title: Replan a ticketing system around staff absence
+vocationalContext: A heritage venue wants a ticketing and visitor-capacity dashboard before its spring opening period.
+brief: The initial plan assumes every developer is available every weekday, but the project spreadsheet shows likely staff absence and limited testing capacity. The client still expects a safe minimum viable service.
+studentTask: Adjust the planning approach and justify which tasks should run sequentially or in parallel.
+expectedDeliverable: An amended planning note with task ordering, staff allocation, dependency explanation and risk response for absence/testing limits.
+relatedContentAreas: Business Context; Problem Solving; Digital Environments
+difficulty: medium
+sourceReference: Task 1 project-plan spreadsheet and rationale support presentation patterns.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: DSD_ESP_Task1_Project_Plan_Grade_A_Fill_in_the_costs.xlsx; ESP 1 - Points for Rationale 2026.pptx
+sourceExcerptHash: fnv1a-2a7d8923
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit realistic dependencies, adjusted resource allocation, explicit risk mitigation, testing protection and explanation of how the plan still meets client priorities.
+examinerRationale: Kept because it asks for planning judgement, not a generic project-management definition.
+
+---
+
+id: codex-esp-task1-charity-grant-risk-003
+assessmentTrack: esp
+espTask: task_1
+title: Justify risk and cost choices for a grant dashboard
+vocationalContext: A charity finance office needs a dashboard to track grant applications, deadlines and evidence uploads.
+brief: The client wants a low-cost solution but also needs reliable backups, access controls and user training. The project includes database work, user-interface work, acceptance testing and handover.
+studentTask: Write the rationale section that would accompany the project plan.
+expectedDeliverable: A rationale that justifies methodology, task sequencing, staff allocation, testing, cost trade-offs and the main risks.
+relatedContentAreas: Business Context; Security; Data
+difficulty: high
+sourceReference: Task 1 rationale exemplar and planning spreadsheet patterns.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: DSD_ESP_AGrade_TASK-1-ONLY.pdf; ESP 1 - Points for Rationale 1.pptx
+sourceExcerptHash: fnv1a-3d51b17c
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward explicit justification of cost/time/resource decisions, testing placement, risk controls, and business impact for the charity context.
+examinerRationale: Kept because it mirrors the authentic rationale evidence type while avoiding copied exemplar wording.
+
+---
+
+id: codex-esp-task1-retail-returns-schedule-004
+assessmentTrack: esp
+espTask: task_1
+title: Schedule a returns-management system build
+vocationalContext: A small online retailer needs a returns-management system that links customer requests, warehouse checks and refund decisions.
+brief: The client has requested delivery before a seasonal sales period. The system requires interface design, database changes, secure staff permissions and regression testing after each major fix.
+studentTask: Produce a high-level project schedule and explain the most important delivery risk.
+expectedDeliverable: A sequenced project schedule with named stages, responsible roles, test phases and one justified risk response.
+relatedContentAreas: Business Context; Security; Data; Problem Solving
+difficulty: medium
+sourceReference: Task 1 planning booklets and project-plan spreadsheet patterns.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: Core Employer Set Project - Task1 - November 2021.pdf; DSD ESP AUT-22 Task 1.zip
+sourceExcerptHash: fnv1a-4841da56
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit feasible sequencing, role allocation, test/regression planning, security consideration and a risk response tied to the seasonal deadline.
+examinerRationale: Kept because it is vocational and deliverable-focused with clear Task 1 evidence expectations.
+
+---
+
+id: codex-esp-task2-membership-code-fix-001
+assessmentTrack: esp
+espTask: task_2
+title: Diagnose membership-renewal code defects
+vocationalContext: A sports centre uses a Python script to calculate membership renewal fees and print a summary receipt.
+brief: The non-working code has a misspelled function call, a list that cannot be appended to, a reversed length check for member IDs and a file-writing handle error.
+studentTask: Identify and fix the defects, then record how each fix was tested.
+expectedDeliverable: Corrected code evidence and a test log with test description, test data, expected outcome, actual outcome and intended action.
+relatedContentAreas: Introduction to Programming; Data; Security
+difficulty: medium
+sourceReference: Task 2 non-working-code and test-log pattern.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Autumn 24 Task 2.zip :: Task2_NonWorkingCode.txt; Task 2_Test_Log_Template.docx
+sourceExcerptHash: fnv1a-5db22010
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward correct diagnosis, safe code correction, repeatable test data, expected/actual comparison and explanation of remaining action if a test fails.
+examinerRationale: Kept because it adapts authentic Task 2 defect types without reusing the car-sales scenario.
+
+---
+
+id: codex-esp-task2-adventure-booking-date-002
+assessmentTrack: esp
+espTask: task_2
+title: Fix booking-date and ticket-validation defects
+vocationalContext: An outdoor activity park needs a booking script for family tickets and visit dates.
+brief: The supplied script sometimes uses the wrong variable name when parsing a date, returns ticket counts as strings and fails when checking junior-ticket ages.
+studentTask: Correct the code and design tests that prove date entry, ticket counts and age checks work.
+expectedDeliverable: Corrected code snippets plus a completed test log covering normal, boundary and erroneous test data.
+relatedContentAreas: Introduction to Programming; Problem Solving; Data
+difficulty: high
+sourceReference: Task 2 Summer 2024 non-working-code and test-log pattern.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Summer 24 Task 2.zip :: Task2_NonWorkingCode.txt; Task 2_Test_Log_Template.docx
+sourceExcerptHash: fnv1a-644bb19d
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit corrected variable references, type conversion, loop control, appropriate test data and clear evidence that each defect has been retested.
+examinerRationale: Kept because it reflects the date/type-control defect pattern and demands test-log evidence.
+
+---
+
+id: codex-esp-task2-maintenance-record-003
+assessmentTrack: esp
+espTask: task_2
+title: Repair a maintenance-record script
+vocationalContext: A drone maintenance company records service dates, fault categories and whether a drone can return to use.
+brief: The non-working script includes a missing colon, a mistyped return variable, an invalid date calculation and an acceptance condition that rejects valid serial numbers.
+studentTask: Identify the defects, fix them and explain which tests prove the service-record workflow works.
+expectedDeliverable: A defect table, corrected code evidence and a test log for serial number, date and outcome-selection tests.
+relatedContentAreas: Introduction to Programming; Problem Solving; Security
+difficulty: high
+sourceReference: Task 2 Autumn 2022 non-working-code and test-log pattern.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Task 2 Autumn 22.zip :: Task2_NonWorkingCode_November 22.txt; Task2_Test_Log_Template_November 22.docx
+sourceExcerptHash: fnv1a-733af40e
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward accurate defect identification, corrected syntax/variable/date logic, valid test coverage and evidence of expected versus actual outcomes.
+examinerRationale: Kept because it uses the same defect categories as the source while moving to a new domain.
+
+---
+
+id: codex-esp-task2-library-fines-log-004
+assessmentTrack: esp
+espTask: task_2
+title: Build a test log for a library fines fix
+vocationalContext: A library service has a Python script that calculates late-return charges and writes a user summary.
+brief: The script has three known issues: the loop overwrites the running total, an input-validation branch accepts blank member IDs and the summary writes to the wrong file handle.
+studentTask: Write the intended fixes and complete a test log that would demonstrate the corrected behaviour.
+expectedDeliverable: A short fix summary and a test log with at least four tests, including one failed-test retest action.
+relatedContentAreas: Introduction to Programming; Data
+difficulty: medium
+sourceReference: Task 2 test-log template and recurring non-working-code defect patterns.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Autumn 24 Task 2.zip; ESP Task 2 Autumn 22.zip
+sourceExcerptHash: fnv1a-88a07731
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit tests that target each defect, realistic test data, expected/actual outcomes and a clear retest action after correction.
+examinerRationale: Kept because it focuses on Task 2 evidence quality rather than simply asking learners to spot syntax errors.
+
+---
+
+id: codex-esp-task3-car-sales-design-001
+assessmentTrack: esp
+espTask: task_3
+title: Design a sales-summary data service
+vocationalContext: A vehicle dealership wants a data service that summarises sales by model and salesperson.
+brief: The supplied CSV contains sale date, vehicle model, value and salesperson. Managers need a design before a developer builds the analysis feature.
+studentTask: Produce algorithm designs for importing the CSV, validating columns, grouping the data and presenting two summary outputs.
+expectedDeliverable: Pseudocode or flowchart-style algorithm designs with data inputs, processing steps, validation and output descriptions.
+relatedContentAreas: Data; Problem Solving; Digital Environments
+difficulty: high
+sourceReference: Task 3 November 2024 design-solution pattern with Task3_data.csv.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Autumn 24 Task 3.zip :: W77688 T Level Core Digital ESP 19538 ESP TASK 3 Nov-2024.pdf; Task3_data.csv
+sourceExcerptHash: fnv1a-91e73b25
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward clear decomposition, CSV field handling, validation, grouping logic, output choice and enough detail for a developer to implement the solution.
+examinerRationale: Kept because it is grounded in the Task 3 data-service design pattern.
+
+---
+
+id: codex-esp-task3-property-trend-design-002
+assessmentTrack: esp
+espTask: task_3
+title: Design a property-trend comparison algorithm
+vocationalContext: A housing research team wants to compare property trend values across regions and property types.
+brief: The supplied dataset has region, property type and month-by-month numeric values. The client needs a design that can produce a filtered regional comparison and identify missing or zero values.
+studentTask: Design the algorithm and data checks before implementation.
+expectedDeliverable: A structured algorithm design showing input, validation, filtering, calculation, output and exception-handling steps.
+relatedContentAreas: Data; Problem Solving
+difficulty: high
+sourceReference: Task 3 Summer 2022 design-solution pattern with property-style CSV data.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Task 3 2022.zip :: Core Employer Set Project - Task3 - Data - Summer 2022.csv
+sourceExcerptHash: fnv1a-a0659c14
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit treatment of wide monthly data, handling of missing/zero values, filtered comparison logic and clear output design.
+examinerRationale: Kept because it uses a realistic Task 3 dataset structure and asks for design evidence, not code.
+
+---
+
+id: codex-esp-task3-gym-summary-design-003
+assessmentTrack: esp
+espTask: task_3
+title: Design a member workout summary
+vocationalContext: A gym wants members to see a summary of workout type, time spent and calories over a selected date range.
+brief: The supplied data includes member ID, name, date, workout type, duration and calories. The design must support a per-member summary and a comparison by workout type.
+studentTask: Design the data-processing workflow and the outputs that should be built in Task 4a.
+expectedDeliverable: Algorithm steps, input validation rules, grouping/calculation design and output sketches or descriptions.
+relatedContentAreas: Data; Digital Environments; Problem Solving
+difficulty: medium
+sourceReference: Gym data and pitch support materials in the ESP source bundle.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: gym-data.csv; gym-data.xlsx; Pitch for Gym.pdf
+sourceExcerptHash: fnv1a-bd3062e9
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward appropriate data fields, member/date filtering, aggregate calculations, validation and outputs aligned to the client purpose.
+examinerRationale: Kept because it uses a source-backed support dataset while generating a new design-task prompt.
+
+---
+
+id: codex-esp-task3-drinks-stock-design-004
+assessmentTrack: esp
+espTask: task_3
+title: Design a drinks-demand analysis workflow
+vocationalContext: A college canteen wants to understand daily drink demand by product and sugar category.
+brief: The supplied CSV lists drinks, price, type and daily quantity columns. The client wants a design for a report showing total sales value and low-sugar/high-sugar demand.
+studentTask: Design the import, validation, calculation and reporting workflow.
+expectedDeliverable: A data-design note with field mapping, transformations, calculations, outputs and one risk with mitigation.
+relatedContentAreas: Data; Business Context; Problem Solving
+difficulty: medium
+sourceReference: Drinks data support file in the ESP source bundle.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: drinks_data.csv
+sourceExcerptHash: fnv1a-c3adfe52
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit correct treatment of date columns, price/quantity calculation, sugar-category grouping, output design and data-quality risk handling.
+examinerRationale: Kept because it creates a credible Task 3 design item from a local data asset without copying task wording.
+
+---
+
+id: codex-esp-task4a-car-sales-feature-001
+assessmentTrack: esp
+espTask: task_4a
+title: Develop a new-and-used car sales feature
+vocationalContext: A vehicle dealership has starter Python code for a menu-driven sales analysis tool.
+brief: The current code loads a CSV and can calculate total sales by model. The client now wants an additional feature comparing new and used car sales by total value.
+studentTask: Extend the existing code while preserving menu flow, data import and readable output.
+expectedDeliverable: Working code evidence, output screenshots or text evidence, and a short note on the tests run after the feature was added.
+relatedContentAreas: Introduction to Programming; Data; Digital Environments
+difficulty: high
+sourceReference: Task 4a November 2024 starter-code and CSV pattern.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: ESP Autumn 24 Task 4a.zip :: Task4a_versere.py; Task4a_data.csv
+sourceExcerptHash: fnv1a-d24a1b01
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward correct integration with menu flow, use of CSV fields, grouping/calculation, clear output, input handling and retesting evidence.
+examinerRationale: Kept because it aligns with authentic Task 4a development evidence and keeps starter-code context distinct.
+
+---
+
+id: codex-esp-task4a-animal-rescue-chart-002
+assessmentTrack: esp
+espTask: task_4a
+title: Add a social-media chart feature
+vocationalContext: An animal rescue charity has a Python tool for analysing social-media post interactions.
+brief: The supplied code can calculate average interactions from a CSV. The client wants a chart comparing likes, shares and comments by post type so staff can plan future campaigns.
+studentTask: Develop the chart feature and show evidence that it works with the supplied data.
+expectedDeliverable: Updated code, generated chart/output evidence and test notes for menu selection and data grouping.
+relatedContentAreas: Introduction to Programming; Data; Digital Environments
+difficulty: high
+sourceReference: Task 4a November 2023 developing-solution pack.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: T Level Core Digital ESP 19538 TASK 4A Nov-2023.zip :: Task4a_AnimalRescue.py; Task4a_data.csv
+sourceExcerptHash: fnv1a-e60e4290
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit use of the data source, chart generation, integration with existing functions, clear user output and evidence of testing.
+examinerRationale: Kept because it uses the Task 4a development pattern and asks for realistic implementation evidence.
+
+---
+
+id: codex-esp-task4a-gym-member-summary-003
+assessmentTrack: esp
+espTask: task_4a
+title: Build a member workout summary report
+vocationalContext: A gym wants a Python reporting tool that helps trainers review member activity over a period of time.
+brief: The data contains member IDs, names, dates, workout types, duration and calories. The client wants each selected member to receive a concise summary of time spent and calories burned.
+studentTask: Implement a menu option that selects a member and produces the requested summary.
+expectedDeliverable: Working code, evidence of output for at least two members, and tests for valid and invalid member IDs.
+relatedContentAreas: Introduction to Programming; Data; Business Context
+difficulty: medium
+sourceReference: Gym data and pitch support materials in the ESP source bundle.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: gym-data.csv; gym-data.xlsx; Pitch for Gym.pdf
+sourceExcerptHash: fnv1a-f38138cf
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward correct filtering by member, aggregate calculations, readable output, input validation and evidence from multiple test cases.
+examinerRationale: Kept because it converts a source-backed support asset into an authentic Task 4a build prompt.
+
+---
+
+id: codex-esp-task4a-canteen-demand-report-004
+assessmentTrack: esp
+espTask: task_4a
+title: Develop a canteen demand report
+vocationalContext: A college canteen wants a weekly report to decide which drinks to restock.
+brief: The supplied CSV contains product, price, sugar type and daily sales quantities. The client needs a feature that calculates total revenue by drink and compares demand by sugar category.
+studentTask: Develop the reporting feature and document evidence that the output is correct.
+expectedDeliverable: Working code, sample output, and a brief test note showing calculation checks against the CSV.
+relatedContentAreas: Introduction to Programming; Data; Business Context
+difficulty: medium
+sourceReference: Drinks data support file in the ESP source bundle.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: drinks_data.csv
+sourceExcerptHash: fnv1a-0ce7a927
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit correct CSV import, total revenue calculation, grouping by sugar type, clear output and evidence that calculations were checked.
+examinerRationale: Kept because it is a realistic build task using a local dataset while staying separate from Paper 1 and Paper 2.
+
+---
+
+id: codex-esp-task4b-car-sales-reflection-001
+assessmentTrack: esp
+espTask: task_4b
+title: Reflect on a completed car-sales feature
+vocationalContext: A dealership sales-analysis tool has been completed and is being handed over to the client.
+brief: You have read-only access to the Task 4a code, test evidence and outputs. The client asked for reliable summaries by model, new/used status and salesperson.
+studentTask: Evaluate how well the completed solution meets the client requirements and identify justified improvements.
+expectedDeliverable: A reflective evaluation linked to requirements, testing evidence, output quality, limitations and next-step improvements.
+relatedContentAreas: Business Context; Data; Introduction to Programming
+difficulty: high
+sourceReference: Task 4b November 2024 reflective-evaluation pattern and Task 4a car-sales source context.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: t-level-core-digital-19538-employer-set-project-task-4b-november-2024.pdf; ESP Autumn 24 Task 4a.zip
+sourceExcerptHash: fnv1a-19f4d104
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward evidence-based judgement, links to client requirements, testing outcomes, limitations, maintainability and justified improvements.
+examinerRationale: Kept because it follows the Task 4b read-only-evidence evaluation pattern.
+
+---
+
+id: codex-esp-task4b-animal-rescue-reflection-002
+assessmentTrack: esp
+espTask: task_4b
+title: Evaluate an animal-rescue analysis tool
+vocationalContext: An animal rescue charity has received a completed social-media analysis tool.
+brief: The solution imports post-interaction data and produces summaries or charts to help staff plan campaign content.
+studentTask: Write a reflective evaluation of the solution, using testing and output evidence to support your judgement.
+expectedDeliverable: An evaluation covering fitness for purpose, data handling, user usefulness, quality of implementation, constraints and improvements.
+relatedContentAreas: Business Context; Data; Digital Environments
+difficulty: high
+sourceReference: Task 4b November 2023 reflective-evaluation pattern and Task 4a animal-rescue source context.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: W76546 T Level Core Digital ESP 19538 ESP TASK 4B AB Nov-2023.pdf; T Level Core Digital ESP 19538 TASK 4A Nov-2023.zip
+sourceExcerptHash: fnv1a-28fcb71d
+reviewDecision: keep
+realismScore: 9
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit balanced judgement, specific evidence from outputs/tests, explanation of client value and improvements that follow from real limitations.
+examinerRationale: Kept because it uses the reflective-evaluation structure without reusing source wording.
+
+---
+
+id: codex-esp-task4b-gym-dashboard-reflection-003
+assessmentTrack: esp
+espTask: task_4b
+title: Evaluate a gym member-summary dashboard
+vocationalContext: A gym training-data dashboard has been completed for trainers and members.
+brief: The solution provides summaries of workouts, duration and calories from a CSV dataset. Some users need clear evidence that the summary is accurate and easy to interpret.
+studentTask: Evaluate the completed product and recommend two improvements for a future iteration.
+expectedDeliverable: A reflective evaluation that links requirements, test results, usability, data accuracy and justified improvements.
+relatedContentAreas: Business Context; Data; Digital Environments
+difficulty: medium
+sourceReference: Gym data and reflective-evaluation source patterns.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: gym-data.csv; Pitch for Gym.pdf; t-level-core-digital-19538-employer-set-project-task-4b-november-2024.pdf
+sourceExcerptHash: fnv1a-3fd1c890
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Reward evidence-based review of accuracy/usability, testing links, limitations and improvements that would benefit trainers or members.
+examinerRationale: Kept because it is a realistic Task 4b prompt grounded in local support data.
+
+---
+
+id: codex-esp-task4b-canteen-report-reflection-004
+assessmentTrack: esp
+espTask: task_4b
+title: Reflect on a canteen demand-report solution
+vocationalContext: A college canteen demand-reporting tool has been delivered to the catering manager.
+brief: The solution calculates sales totals and demand categories from the supplied drinks CSV. The manager needs to know whether it is reliable enough to inform restocking decisions.
+studentTask: Evaluate the solution using evidence from calculations, output clarity and testing.
+expectedDeliverable: A reflective evaluation with supported judgement, two limitations and two justified improvements.
+relatedContentAreas: Business Context; Data; Security
+difficulty: medium
+sourceReference: Drinks data support file and Task 4b reflective-evaluation source patterns.
+sourceFile: sources/espsource/OneDrive_1_13.04.2026.zip :: drinks_data.csv; t-level-core-digital-19538-employer-set-project-task-4b-november-2024.pdf
+sourceExcerptHash: fnv1a-4acde201
+reviewDecision: keep
+realismScore: 8
+duplicationRisk: low
+indicativeMarkSchemeOutline: Credit judgement linked to calculations, test evidence, usability for the manager, data limitations and improvements that would make restocking decisions more reliable.
+examinerRationale: Kept because it asks for Task 4b reflective evaluation with specific evidence and no paper-label mixing.

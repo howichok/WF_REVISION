@@ -93,6 +93,39 @@
       "additionalProperties": false,
       "properties": {
         "paper": { "type": "string", "enum": ["paper_1", "paper_2"] },
+        "assessmentTrack": { "type": "string", "enum": ["esp"] },
+        "espTask": {
+          "type": "string",
+          "enum": ["pre_release", "task_1", "task_2", "task_3", "task_4a", "task_4b"]
+        },
+        "vocationalContext": { "type": "string", "minLength": 4, "maxLength": 500 },
+        "briefType": {
+          "type": "string",
+          "enum": [
+            "brief-analysis",
+            "project-plan",
+            "defect-fix",
+            "solution-design",
+            "solution-development",
+            "reflective-evaluation"
+          ]
+        },
+        "deliverableType": {
+          "type": "string",
+          "enum": [
+            "brief-note",
+            "project-plan-rationale",
+            "corrected-code-test-log",
+            "algorithm-design",
+            "working-code-evidence",
+            "reflective-evaluation"
+          ]
+        },
+        "relatedContentAreas": {
+          "type": "array",
+          "maxItems": 8,
+          "items": { "type": "string", "minLength": 2, "maxLength": 80 }
+        },
         "contentArea": { "type": "string", "minLength": 2, "maxLength": 160 },
         "subtopic": { "type": "string", "minLength": 2, "maxLength": 200 },
         "commandWord": {

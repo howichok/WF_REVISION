@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -65,6 +66,8 @@ export default function AuthPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [agreedPrivacy, setAgreedPrivacy] = useState(false);
+  const [agreedDisclaimer, setAgreedDisclaimer] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -154,6 +157,11 @@ export default function AuthPage() {
 
       if (trimmedNickname.length < 2) {
         setError("Nickname needs to be at least 2 characters.");
+        return;
+      }
+
+      if (!agreedPrivacy || !agreedDisclaimer) {
+        setError("Please confirm you have read the Privacy notice and the Disclaimer.");
         return;
       }
     }
@@ -361,6 +369,8 @@ export default function AuthPage() {
                         onClick={() => {
                           setMode(nextMode);
                           setError("");
+                          setAgreedPrivacy(false);
+                          setAgreedDisclaimer(false);
                         }}
                         className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all duration-200 cursor-pointer ${
                           mode === nextMode
@@ -448,6 +458,47 @@ export default function AuthPage() {
                       <AlertCircle size={14} className="shrink-0" />
                       {error}
                     </motion.div>
+                  )}
+
+                  {viewState === "form" && mode === "register" && (
+                    <div className="space-y-2.5 rounded-lg border border-border/60 bg-muted/10 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+                      <label className="flex cursor-pointer items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={agreedPrivacy}
+                          onChange={(event) => setAgreedPrivacy(event.target.checked)}
+                          className="mt-0.5 size-4 shrink-0 rounded border-border accent-accent"
+                        />
+                        <span>
+                          I have read the{" "}
+                          <Link
+                            href="/legal/privacy"
+                            className="font-medium text-accent underline-offset-2 hover:underline"
+                          >
+                            Privacy notice
+                          </Link>
+                          .
+                        </span>
+                      </label>
+                      <label className="flex cursor-pointer items-start gap-2.5">
+                        <input
+                          type="checkbox"
+                          checked={agreedDisclaimer}
+                          onChange={(event) => setAgreedDisclaimer(event.target.checked)}
+                          className="mt-0.5 size-4 shrink-0 rounded border-border accent-accent"
+                        />
+                        <span>
+                          I have read the{" "}
+                          <Link
+                            href="/legal/disclaimer"
+                            className="font-medium text-accent underline-offset-2 hover:underline"
+                          >
+                            Disclaimer
+                          </Link>
+                          .
+                        </span>
+                      </label>
+                    </div>
                   )}
 
                   {viewState === "form" ? (

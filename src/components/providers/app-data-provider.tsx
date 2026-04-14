@@ -39,6 +39,13 @@ import {
   type TopicCoachingMemoryEntry,
   type TopicCoachingMemoryMap,
 } from "@/lib/coaching-memory";
+import {
+  mergeRevisionProgressPreferNewer,
+  readLocalRevisionProgress,
+  revisionStatusFromPercent,
+  upsertLocalRevisionProgress,
+  writeLocalRevisionProgress,
+} from "@/lib/revision-progress-local";
 import { getLocalSharedCurriculumSnapshot } from "@/lib/shared-curriculum";
 import { getBrowserSupabaseClient } from "@/lib/supabase/client";
 import { getSupabaseConfig } from "@/lib/supabase/config";
@@ -295,6 +302,7 @@ export function AppDataProvider({
         setState((current) => ({
           ...EMPTY_STATE,
           sharedCurriculum: current.sharedCurriculum,
+          revisionProgress: readLocalRevisionProgress(),
         }));
         setTopicCoachingMemory({});
         topicCoachingMemoryRef.current = {};
@@ -322,9 +330,16 @@ export function AppDataProvider({
         return null;
       }
 
+      const mergedRevisionProgress = mergeRevisionProgressPreferNewer(
+        nextState.revisionProgress,
+        readLocalRevisionProgress(),
+      );
+      writeLocalRevisionProgress(mergedRevisionProgress);
+
       const hydratedState = {
         ...nextState,
         topicCoachingMemory: mergedTopicCoachingMemory,
+        revisionProgress: mergedRevisionProgress,
       };
 
       setState(hydratedState);
@@ -383,6 +398,7 @@ export function AppDataProvider({
         setState((current) => ({
           ...EMPTY_STATE,
           sharedCurriculum: current.sharedCurriculum,
+          revisionProgress: readLocalRevisionProgress(),
         }));
         setTopicCoachingMemory({});
         topicCoachingMemoryRef.current = {};
@@ -475,6 +491,7 @@ export function AppDataProvider({
       setState((current) => ({
         ...EMPTY_STATE,
         sharedCurriculum: current.sharedCurriculum,
+        revisionProgress: readLocalRevisionProgress(),
       }));
       return;
     }
@@ -489,6 +506,7 @@ export function AppDataProvider({
     setState((current) => ({
       ...EMPTY_STATE,
       sharedCurriculum: current.sharedCurriculum,
+      revisionProgress: readLocalRevisionProgress(),
     }));
     setTopicCoachingMemory({});
     topicCoachingMemoryRef.current = {};
@@ -625,11 +643,31 @@ export function AppDataProvider({
       completed: boolean;
     }) => {
       const user = stateRef.current.user;
-      if (!supabaseRef.current || !user) {
-        throw new Error("You need to be signed in to update progress.");
+      const supabase = supabaseRef.current;
+
+      if (!supabase || !user) {
+        const timestamp = new Date().toISOString();
+        const progressPercent = input.completed ? 100 : 0;
+        const entry: RevisionProgressEntry = {
+          id: `local-${input.topicId}-subtopic-${input.subtopicId}`,
+          topicId: input.topicId,
+          entityId: input.subtopicId,
+          entityType: "subtopic",
+          status: revisionStatusFromPercent(progressPercent),
+          progressPercent,
+          completedAt: input.completed ? timestamp : null,
+          updatedAt: timestamp,
+          lastInteractedAt: timestamp,
+        };
+        const prev = stateRef.current;
+        const merged = upsertLocalRevisionProgress(prev.revisionProgress, entry);
+        writeLocalRevisionProgress(merged);
+        const next = { ...prev, revisionProgress: merged };
+        setState(next);
+        return next;
       }
 
-      await toggleSubtopicProgress(supabaseRef.current, user.id, input);
+      await toggleSubtopicProgress(supabase, user.id, input);
       const nextState = await hydrate();
 
       if (!nextState) {
@@ -651,11 +689,38 @@ export function AppDataProvider({
       estimatedMinutes?: number;
     }) => {
       const user = stateRef.current.user;
-      if (!supabaseRef.current || !user) {
-        throw new Error("You need to be signed in to update progress.");
+      const supabase = supabaseRef.current;
+
+      if (!supabase || !user) {
+        const currentProgressPercent = Math.max(
+          0,
+          Math.min(100, Math.round(input.currentProgressPercent ?? 0)),
+        );
+        const nextProgressPercent =
+          currentProgressPercent >= 100
+            ? 100
+            : Math.min(100, currentProgressPercent + 25);
+        const timestamp = new Date().toISOString();
+        const entry: RevisionProgressEntry = {
+          id: `local-${input.topicId}-material-${input.materialId}`,
+          topicId: input.topicId,
+          entityId: input.materialId,
+          entityType: "material",
+          status: revisionStatusFromPercent(nextProgressPercent),
+          progressPercent: nextProgressPercent,
+          completedAt: nextProgressPercent >= 100 ? timestamp : null,
+          updatedAt: timestamp,
+          lastInteractedAt: timestamp,
+        };
+        const prev = stateRef.current;
+        const merged = upsertLocalRevisionProgress(prev.revisionProgress, entry);
+        writeLocalRevisionProgress(merged);
+        const next = { ...prev, revisionProgress: merged };
+        setState(next);
+        return next;
       }
 
-      await saveMaterialProgress(supabaseRef.current, user.id, input);
+      await saveMaterialProgress(supabase, user.id, input);
       const nextState = await hydrate();
 
       if (!nextState) {
@@ -676,11 +741,34 @@ export function AppDataProvider({
       minutesSpent?: number;
     }) => {
       const user = stateRef.current.user;
-      if (!supabaseRef.current || !user) {
-        throw new Error("You need to be signed in to update practice progress.");
+      const supabase = supabaseRef.current;
+
+      if (!supabase || !user) {
+        const nextProgressPercent = Math.max(
+          0,
+          Math.min(100, Math.round(input.progressPercent)),
+        );
+        const timestamp = new Date().toISOString();
+        const entry: RevisionProgressEntry = {
+          id: `local-${input.topicId}-practice-${input.practiceSetId}`,
+          topicId: input.topicId,
+          entityId: input.practiceSetId,
+          entityType: "practice-set",
+          status: revisionStatusFromPercent(nextProgressPercent),
+          progressPercent: nextProgressPercent,
+          completedAt: nextProgressPercent >= 100 ? timestamp : null,
+          updatedAt: timestamp,
+          lastInteractedAt: timestamp,
+        };
+        const prev = stateRef.current;
+        const merged = upsertLocalRevisionProgress(prev.revisionProgress, entry);
+        writeLocalRevisionProgress(merged);
+        const next = { ...prev, revisionProgress: merged };
+        setState(next);
+        return next;
       }
 
-      await savePracticeSetProgress(supabaseRef.current, user.id, input);
+      await savePracticeSetProgress(supabase, user.id, input);
       const nextState = await hydrate();
 
       if (!nextState) {
