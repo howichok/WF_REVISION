@@ -22,6 +22,7 @@ import {
 import { Badge, Button } from "@/components/ui";
 import type { ExamConditionsSessionResult } from "@/lib/exam-conditions";
 import { downloadPng, sharePngOrDownload } from "@/lib/export-marked-summary-image";
+import { formatMarkedPaperTimeRemaining } from "@/lib/marked-papers-storage";
 import { getTopicById } from "@/lib/types";
 import { cn } from "@/lib/utils";
 
@@ -317,6 +318,7 @@ export function ExamAfterMarkingScores({
   onSavePaper,
   savePaperState = "idle",
   topicFlashcardIdsAfterSave = null,
+  autoSavedExpiresAtMs = null,
 }: {
   results: ExamConditionsSessionResult;
   topicIcon?: string;
@@ -328,12 +330,32 @@ export function ExamAfterMarkingScores({
   savePaperState?: "idle" | "saved" | "error";
   /** Distinct topic ids that received merged flashcard decks after the last save (this device). */
   topicFlashcardIdsAfterSave?: string[] | null;
+  /** When set, this session is auto-kept until this timestamp unless the student saves permanently. */
+  autoSavedExpiresAtMs?: number | null;
 }) {
   const [showAll, setShowAll] = useState(results.reviews.length <= 6);
   const [shareBusy, setShareBusy] = useState(false);
+  const [countdownTick, setCountdownTick] = useState(0);
   const summaryCaptureRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (autoSavedExpiresAtMs == null || savePaperState === "saved") return;
+    const id = window.setInterval(() => setCountdownTick((t) => t + 1), 30_000);
+    return () => window.clearInterval(id);
+  }, [autoSavedExpiresAtMs, savePaperState]);
   const visibleReviews = showAll ? results.reviews : results.reviews.slice(0, 5);
   const hiddenCount = results.reviews.length - 5;
+
+  const showAutoSaveBanner =
+    savePaperState !== "saved" &&
+    typeof autoSavedExpiresAtMs === "number" &&
+    autoSavedExpiresAtMs > Date.now();
+
+  const autoSaveRemainingLabel = useMemo(() => {
+    if (autoSavedExpiresAtMs == null) return "";
+    void countdownTick;
+    return formatMarkedPaperTimeRemaining(autoSavedExpiresAtMs);
+  }, [autoSavedExpiresAtMs, countdownTick]);
 
   /* Count full-mark answers */
   const fullMarkCount = results.reviews.filter((r) => r.score === r.maxScore).length;
@@ -445,13 +467,20 @@ export function ExamAfterMarkingScores({
             </Button>
             {onSavePaper ? (
               <Button
-                variant="outline"
+                variant={showAutoSaveBanner ? "primary" : "outline"}
                 size="sm"
                 onClick={onSavePaper}
                 disabled={savePaperState === "saved"}
+                className={showAutoSaveBanner ? "shadow-md shadow-accent/20" : undefined}
               >
                 <Bookmark size={14} />
-                {savePaperState === "saved" ? "Saved" : savePaperState === "error" ? "Retry save" : "Save paper"}
+                {savePaperState === "saved"
+                  ? "Saved permanently"
+                  : savePaperState === "error"
+                    ? "Retry save"
+                    : showAutoSaveBanner
+                      ? "Save permanently"
+                      : "Save paper"}
               </Button>
             ) : null}
             <Button variant="outline" size="sm" onClick={onStartAgain}>
@@ -467,8 +496,24 @@ export function ExamAfterMarkingScores({
       </header>
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-8 sm:px-8">
+        {showAutoSaveBanner ? (
+          <div className="mb-4 rounded-xl border border-amber-400/40 bg-amber-50/80 px-4 py-3 text-[12px] leading-relaxed text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-50">
+            <p className="font-semibold text-foreground dark:text-amber-50">Auto-saved on this device for 3 days</p>
+            <p className="mt-1 text-muted-foreground dark:text-amber-100/90">
+              This paper is in <strong className="text-foreground dark:text-amber-50">Temporarily saved</strong> until{" "}
+              <span className="tabular-nums font-medium text-foreground dark:text-amber-50">
+                {new Date(autoSavedExpiresAtMs!).toLocaleString()}
+              </span>{" "}
+              (<span className="tabular-nums">{autoSaveRemainingLabel}</span> left). Tap{" "}
+              <strong className="text-foreground dark:text-amber-50">Save permanently</strong> to keep it, unlock topic
+              flashcards from this session, and move it to <strong className="text-foreground dark:text-amber-50">Saved</strong>{" "}
+              on your list.
+            </p>
+          </div>
+        ) : null}
+
         <p className="mb-4 text-center text-[11px] leading-relaxed text-muted-foreground sm:text-left">
-          Saved papers live under{" "}
+          Marked papers live under{" "}
           <Link href="/revision/marked-papers" className="font-medium text-accent underline-offset-2 hover:underline">
             Revision → Saved papers
           </Link>{" "}

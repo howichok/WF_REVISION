@@ -6,7 +6,13 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Layers } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
 import { AnnotatedAnswerView } from "@/components/features/revision/annotated-answer-view";
-import { getMarkedPaper, type StoredMarkedPaperV1 } from "@/lib/marked-papers-storage";
+import {
+  formatMarkedPaperTimeRemaining,
+  getMarkedPaper,
+  isMarkedPaperTemporary,
+  type StoredMarkedPaperV1,
+} from "@/lib/marked-papers-storage";
+import { cn } from "@/lib/utils";
 
 export default function MarkedPaperDetailPage() {
   const params = useParams();
@@ -17,6 +23,14 @@ export default function MarkedPaperDetailPage() {
   useEffect(() => {
     setPaper(getMarkedPaper(id));
   }, [id]);
+
+  useEffect(() => {
+    if (!paper || !isMarkedPaperTemporary(paper)) return;
+    const t = window.setInterval(() => {
+      setPaper(getMarkedPaper(id));
+    }, 30_000);
+    return () => window.clearInterval(t);
+  }, [paper, id]);
 
   if (paper === undefined) {
     return (
@@ -63,6 +77,16 @@ export default function MarkedPaperDetailPage() {
               {new Date(paper.savedAt).toLocaleString()} · {paper.results.scorePercent}% ·{" "}
               {paper.results.totalScore}/{paper.results.totalMaxScore} marks
             </p>
+            {isMarkedPaperTemporary(paper) && typeof paper.expiresAtMs === "number" ? (
+              <p
+                className={cn(
+                  "mt-2 inline-flex rounded-lg border px-2.5 py-1 text-xs font-medium tabular-nums",
+                  "border-amber-400/50 bg-amber-50/90 text-amber-950 dark:border-amber-500/35 dark:bg-amber-500/12 dark:text-amber-100",
+                )}
+              >
+                Temporarily saved · {formatMarkedPaperTimeRemaining(paper.expiresAtMs)} left
+              </p>
+            ) : null}
           </div>
           <Link
             href={`/revision/marked-papers/${paper.id}/flashcards`}

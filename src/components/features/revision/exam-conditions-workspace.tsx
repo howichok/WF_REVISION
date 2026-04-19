@@ -60,7 +60,11 @@ import { ExamAfterMarkingScores } from "@/components/features/revision/exam-afte
 import { AnnotatedAnswerView } from "@/components/features/revision/annotated-answer-view";
 import { ExamPaperCommandWord } from "@/components/features/revision/exam-paper-command-word";
 import { extractCommandWordFromPrompt } from "@/lib/command-words";
-import { saveMarkedPaper } from "@/lib/marked-papers-storage";
+import {
+  promoteMarkedPaperToPermanent,
+  saveMarkedPaper,
+  upsertTemporaryMarkedPaper,
+} from "@/lib/marked-papers-storage";
 import { cn } from "@/lib/utils";
 
 interface ExamConditionsWorkspaceProps {
@@ -254,6 +258,11 @@ export function ExamConditionsWorkspace({
   const [savePaperState, setSavePaperState] = useState<"idle" | "saved" | "error">("idle");
   /** Topic ids that received merged flashcards after the last successful save (this session). */
   const [topicFlashcardIdsAfterSave, setTopicFlashcardIdsAfterSave] = useState<string[] | null>(null);
+  /** Stable id for the current marking run (auto-save row is `mp-${id}`). */
+  const markingSessionIdRef = useRef<string | null>(null);
+  const tempPaperSyncedRef = useRef<string | null>(null);
+  /** Auto-save expiry on the scores screen; `expiresAtMs: null` once saved permanently. */
+  const [scoresPaperMeta, setScoresPaperMeta] = useState<{ id: string; expiresAtMs: number | null } | null>(null);
   /** Seconds left in the "return to fullscreen" countdown; null = warning not showing. */
   const [fsWarningSecondsLeft, setFsWarningSecondsLeft] = useState<number | null>(null);
   /** Shows the "Before you start" briefing overlay; dismissed on first click which also starts the timer. */
@@ -300,11 +309,38 @@ export function ExamConditionsWorkspace({
       void document.exitFullscreen().catch(() => undefined);
     }
     clearExamConditionsDraft();
+    markingSessionIdRef.current =
+      typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `ms-${Date.now()}`;
+    tempPaperSyncedRef.current = null;
+    setScoresPaperMeta(null);
     setSavePaperState("idle");
     setTopicFlashcardIdsAfterSave(null);
     setResults(next);
     setAfterMarkingPhase("scores");
   }, []);
+
+  const resetScoresPaperDraft = useCallback(() => {
+    markingSessionIdRef.current = null;
+    tempPaperSyncedRef.current = null;
+    setScoresPaperMeta(null);
+  }, []);
+
+  useEffect(() => {
+    if (!session || !results || afterMarkingPhase !== "scores") return;
+    const sid = markingSessionIdRef.current;
+    if (!sid) return;
+    if (tempPaperSyncedRef.current === sid) return;
+    tempPaperSyncedRef.current = sid;
+    const paperId = `mp-${sid}`;
+    const { expiresAtMs } = upsertTemporaryMarkedPaper({
+      id: paperId,
+      topicId,
+      topicLabel,
+      topicIcon,
+      results,
+    });
+    setScoresPaperMeta({ id: paperId, expiresAtMs });
+  }, [session, results, afterMarkingPhase, topicId, topicLabel, topicIcon]);
 
   const currentQuestion = session?.questions[currentIndex] ?? null;
   const isMarkedPaperReview = Boolean(results && afterMarkingPhase === "marked_paper");
@@ -452,6 +488,7 @@ export function ExamConditionsWorkspace({
     startedAtRef.current = adjustedStartedAt;
     setResults(null);
     setAfterMarkingPhase(null);
+    resetScoresPaperDraft();
     setTopicFlashcardIdsAfterSave(null);
     setIsMarking(false);
     // Show briefing in "resume" mode so user must re-enter fullscreen
@@ -470,6 +507,7 @@ export function ExamConditionsWorkspace({
     setSize,
     difficultyMode,
     preferredQuestionId,
+    resetScoresPaperDraft,
   ]);
 
   useEffect(() => {
@@ -619,6 +657,7 @@ export function ExamConditionsWorkspace({
               setCurrentIndex(0);
               setResults(null);
               setAfterMarkingPhase(null);
+              resetScoresPaperDraft();
               window.location.href = EXAM_TOPIC_LIST_HREF;
             }, 0);
             return null;
@@ -855,6 +894,7 @@ export function ExamConditionsWorkspace({
     setCurrentIndex(0);
     setResults(null);
     setAfterMarkingPhase(null);
+    resetScoresPaperDraft();
     setSavePaperState("idle");
     setTopicFlashcardIdsAfterSave(null);
     markingSentRef.current = false;
@@ -1354,17 +1394,24 @@ export function ExamConditionsWorkspace({
         }}
         onStartAgain={startSession}
         onSavePaper={
-          session
+          session && markingSessionIdRef.current
             ? () => {
                 try {
-                  const saved = saveMarkedPaper({
-                    topicId,
-                    topicLabel,
-                    topicIcon,
-                    results,
-                  });
+                  const id = `mp-${markingSessionIdRef.current}`;
+                  const saved =
+                    promoteMarkedPaperToPermanent(id) ??
+                    saveMarkedPaper({
+                      id,
+                      topicId,
+                      topicLabel,
+                      topicIcon,
+                      results,
+                      persistence: "permanent",
+                      expiresAtMs: null,
+                    });
                   setTopicFlashcardIdsAfterSave(saved.affectedTopicIds);
                   setSavePaperState("saved");
+                  setScoresPaperMeta({ id: saved.id, expiresAtMs: null });
                 } catch {
                   setSavePaperState("error");
                 }
@@ -1373,6 +1420,7 @@ export function ExamConditionsWorkspace({
         }
         savePaperState={savePaperState}
         topicFlashcardIdsAfterSave={topicFlashcardIdsAfterSave}
+        autoSavedExpiresAtMs={scoresPaperMeta?.expiresAtMs ?? null}
       />
     );
   }
@@ -1822,6 +1870,7 @@ export function ExamConditionsWorkspace({
                     setCurrentIndex(0);
                     setResults(null);
                     setAfterMarkingPhase(null);
+                    resetScoresPaperDraft();
                     window.location.href = EXAM_TOPIC_LIST_HREF;
                   }}
                   className="rounded-lg border border-border/60 px-4 py-2 text-sm text-muted-foreground transition-colors hover:border-danger/40 hover:text-danger"

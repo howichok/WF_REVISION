@@ -86,6 +86,52 @@ export function writeSaveProfilePromptDismissed() {
   }
 }
 
+/**
+ * After the user taps “Continue as …”, try to read a matching saved password for this
+ * origin from the browser vault (Chrome/Edge). Requires a secure context + user gesture.
+ */
+export async function tryGetPasswordCredentialForEmail(email: string): Promise<{
+  email: string;
+  password: string;
+} | null> {
+  if (typeof window === "undefined" || !window.isSecureContext) {
+    return null;
+  }
+  if (!navigator.credentials?.get) {
+    return null;
+  }
+  const want = email.trim().toLowerCase();
+  if (!want) {
+    return null;
+  }
+
+  try {
+    const opts: CredentialRequestOptions & { password?: boolean } = {
+      password: true,
+      mediation: "optional",
+    };
+    const cred = (await navigator.credentials.get(opts)) as {
+      type?: string;
+      id?: string;
+      password?: string;
+    } | null;
+    if (!cred || cred.type !== "password") {
+      return null;
+    }
+    const id = cred.id?.trim() ?? "";
+    const password = cred.password ?? "";
+    if (!id || !password) {
+      return null;
+    }
+    if (id.toLowerCase() !== want) {
+      return null;
+    }
+    return { email: id, password };
+  } catch {
+    return null;
+  }
+}
+
 /** Best-effort: store in the browser password manager (Chrome etc.) when supported. */
 export async function tryStorePasswordCredential(params: {
   email: string;

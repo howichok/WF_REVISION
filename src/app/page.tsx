@@ -27,6 +27,7 @@ import {
   clearSavedLoginProfile,
   readSaveProfilePromptDismissed,
   readSavedLoginProfile,
+  tryGetPasswordCredentialForEmail,
   tryStorePasswordCredential,
   writeSaveProfilePromptDismissed,
   writeSavedLoginProfile,
@@ -180,11 +181,67 @@ export default function WelcomePage() {
     setError("");
   }
 
-  function handlePlateContinue() {
+  async function runPostSignInSuccess(
+    result: Awaited<ReturnType<typeof signIn>>,
+    emailUsed: string,
+    nicknameHint: string,
+  ) {
+    if (result.requiresEmailVerification) {
+      setViewState("verify");
+      return;
+    }
+    authNextPathRef.current = result.nextPath;
+    const remoteState = await refreshAppState();
+    await migrateLegacyData(remoteState);
+    const u = remoteState?.user;
+    const snapshot = u
+      ? {
+          email: (u.email ?? emailUsed).trim(),
+          displayName: (u.nickname || nicknameHint || "Student").trim() || "Student",
+        }
+      : {
+          email: emailUsed.trim(),
+          displayName: nicknameHint.trim() || emailUsed.split("@")[0] || "Student",
+        };
+    setPostLoginSnapshot(snapshot);
+    if (readSaveProfilePromptDismissed()) {
+      await finishLoginAndRedirect(false, snapshot);
+      return;
+    }
+    setNeverAskSaveProfile(false);
+    setViewState("success");
+    setSaveProfileModalOpen(true);
+  }
+
+  async function handlePlateContinue() {
     if (!savedPlate) return;
-    setEmail(savedPlate.email);
+    const plateEmail = savedPlate.email;
+    const displayHint = savedPlate.displayName;
+
+    setEmail(plateEmail);
     setMode("login");
     setError("");
+
+    const fromVault = await tryGetPasswordCredentialForEmail(plateEmail);
+    if (fromVault) {
+      setPassword(fromVault.password);
+      setPendingAction("login");
+      setViewState("loading");
+      try {
+        const result = await signIn({ email: fromVault.email, password: fromVault.password });
+        await runPostSignInSuccess(result, fromVault.email, displayHint);
+      } catch (submitError) {
+        setError(
+          getFriendlyAuthError(
+            submitError instanceof Error ? submitError.message : "Unable to continue.",
+          ),
+        );
+        setViewState("form");
+        setPassword("");
+      }
+      return;
+    }
+
     queueMicrotask(() => passwordInputRef.current?.focus());
   }
 
@@ -233,31 +290,39 @@ export default function WelcomePage() {
     setPendingAction(mode);
     setViewState("loading");
     try {
-      const result = mode === "register"
-        ? await signUp({ nickname: nickname.trim(), email: email.trim(), password })
-        : await signIn({ email: email.trim(), password });
-      if (result.requiresEmailVerification) { setViewState("verify"); return; }
-      authNextPathRef.current = result.nextPath;
-      const remoteState = await refreshAppState();
-      await migrateLegacyData(remoteState);
-      const u = remoteState?.user;
-      const snapshot = u
-        ? {
-            email: (u.email ?? email.trim()).trim(),
-            displayName: (u.nickname || nickname.trim() || "Student").trim() || "Student",
-          }
-        : {
-            email: email.trim(),
-            displayName: nickname.trim() || email.trim().split("@")[0] || "Student",
-          };
-      setPostLoginSnapshot(snapshot);
-      if (readSaveProfilePromptDismissed()) {
-        await finishLoginAndRedirect(false, snapshot);
+      const result =
+        mode === "register"
+          ? await signUp({ nickname: nickname.trim(), email: email.trim(), password })
+          : await signIn({ email: email.trim(), password });
+      if (result.requiresEmailVerification) {
+        setViewState("verify");
         return;
       }
-      setNeverAskSaveProfile(false);
-      setViewState("success");
-      setSaveProfileModalOpen(true);
+      if (mode === "register") {
+        authNextPathRef.current = result.nextPath;
+        const remoteState = await refreshAppState();
+        await migrateLegacyData(remoteState);
+        const u = remoteState?.user;
+        const snapshot = u
+          ? {
+              email: (u.email ?? email.trim()).trim(),
+              displayName: (u.nickname || nickname.trim() || "Student").trim() || "Student",
+            }
+          : {
+              email: email.trim(),
+              displayName: nickname.trim() || email.trim().split("@")[0] || "Student",
+            };
+        setPostLoginSnapshot(snapshot);
+        if (readSaveProfilePromptDismissed()) {
+          await finishLoginAndRedirect(false, snapshot);
+          return;
+        }
+        setNeverAskSaveProfile(false);
+        setViewState("success");
+        setSaveProfileModalOpen(true);
+      } else {
+        await runPostSignInSuccess(result, email.trim(), nickname.trim());
+      }
     } catch (submitError) {
       setError(getFriendlyAuthError(submitError instanceof Error ? submitError.message : "Unable to continue."));
       setViewState("form");

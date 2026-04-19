@@ -1,3 +1,10 @@
+/**
+ * Marked papers are stored in `localStorage` (this device only). Temporary rows use
+ * `expiresAtMs` and are removed inside `pruneMarkedPapersMutating()` whenever the list
+ * is read — no separate server cron is required for TTL. To move TTL enforcement to a
+ * backend, persist payloads in Supabase (or similar) and delete with `expires_at < now()`
+ * from a scheduled job or on each read.
+ */
 import type { ExamConditionsReview, ExamConditionsSessionResult } from "@/lib/exam-conditions";
 import { getTopicById } from "@/lib/types";
 
@@ -7,6 +14,11 @@ const MAX_PAPERS = 30;
 const TOPIC_FLASHCARDS_STORAGE_KEY = "wf-topic-flashcards-decks-v1";
 const MAX_CARDS_PER_TOPIC = 220;
 
+/** Auto-saved drafts expire after this window unless promoted to permanent. */
+export const MARKED_PAPER_TEMP_TTL_MS = 3 * 24 * 60 * 60 * 1000;
+
+export type MarkedPaperPersistence = "temporary" | "permanent";
+
 export interface StoredMarkedPaperV1 {
   id: string;
   savedAt: number;
@@ -14,6 +26,10 @@ export interface StoredMarkedPaperV1 {
   topicLabel: string;
   topicIcon?: string;
   results: ExamConditionsSessionResult;
+  /** Omitted or `"permanent"` = kept until the student deletes it. */
+  persistence?: MarkedPaperPersistence;
+  /** When `persistence` is `"temporary"`, row is removed after this instant (device clock). */
+  expiresAtMs?: number | null;
 }
 
 function safeParse(raw: string | null): StoredMarkedPaperV1[] {
@@ -37,8 +53,42 @@ function safeParse(raw: string | null): StoredMarkedPaperV1[] {
   }
 }
 
+function pruneMarkedPapersMutating(): void {
+  if (typeof window === "undefined") return;
+  const rows = safeParse(window.localStorage.getItem(STORAGE_KEY));
+  const kept = rows.filter((p) => {
+    if (p.persistence !== "temporary") return true;
+    if (p.expiresAtMs == null || typeof p.expiresAtMs !== "number") return true;
+    return p.expiresAtMs > Date.now();
+  });
+  if (kept.length !== rows.length) {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(kept));
+  }
+}
+
+export function isMarkedPaperTemporary(p: StoredMarkedPaperV1): boolean {
+  return (
+    p.persistence === "temporary" &&
+    typeof p.expiresAtMs === "number" &&
+    p.expiresAtMs > Date.now()
+  );
+}
+
+/** Human-readable time until `expiresAtMs` (for UI countdown). */
+export function formatMarkedPaperTimeRemaining(expiresAtMs: number, nowMs = Date.now()): string {
+  const left = Math.max(0, expiresAtMs - nowMs);
+  if (left <= 0) return "Expired";
+  const d = Math.floor(left / (24 * 60 * 60 * 1000));
+  const h = Math.floor((left % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const m = Math.floor((left % (60 * 60 * 1000)) / (60 * 1000));
+  if (d >= 1) return `${d}d ${h}h`;
+  if (h >= 1) return `${h}h ${m}m`;
+  return `${Math.max(1, m)}m`;
+}
+
 export function listMarkedPapers(): StoredMarkedPaperV1[] {
   if (typeof window === "undefined") return [];
+  pruneMarkedPapersMutating();
   return safeParse(window.localStorage.getItem(STORAGE_KEY)).sort((a, b) => b.savedAt - a.savedAt);
 }
 
@@ -48,10 +98,95 @@ export function getMarkedPaper(id: string): StoredMarkedPaperV1 | null {
 
 export type SaveMarkedPaperResult = StoredMarkedPaperV1 & { affectedTopicIds: string[] };
 
+/**
+ * Device-local draft: no flashcard merge (that runs when the student taps **Save paper**).
+ * Reuses the same `id` for the marking session so refreshes do not create duplicates.
+ */
+export function upsertTemporaryMarkedPaper(
+  entry: Pick<StoredMarkedPaperV1, "id" | "topicId" | "topicLabel" | "topicIcon" | "results">,
+): { expiresAtMs: number } {
+  if (typeof window === "undefined") {
+    return { expiresAtMs: Date.now() + MARKED_PAPER_TEMP_TTL_MS };
+  }
+  pruneMarkedPapersMutating();
+  const rows = safeParse(window.localStorage.getItem(STORAGE_KEY));
+  const now = Date.now();
+  const idx = rows.findIndex((p) => p.id === entry.id);
+  let expiresAtMs: number;
+  let savedAt: number;
+
+  if (idx >= 0) {
+    const prev = rows[idx]!;
+    if (prev.persistence === "permanent") {
+      return { expiresAtMs: now + MARKED_PAPER_TEMP_TTL_MS };
+    }
+    if (prev.persistence === "temporary" && typeof prev.expiresAtMs === "number" && prev.expiresAtMs > now) {
+      expiresAtMs = prev.expiresAtMs;
+      savedAt = prev.savedAt;
+    } else {
+      expiresAtMs = now + MARKED_PAPER_TEMP_TTL_MS;
+      savedAt = now;
+    }
+    rows[idx] = {
+      ...entry,
+      savedAt,
+      persistence: "temporary",
+      expiresAtMs,
+    };
+  } else {
+    expiresAtMs = now + MARKED_PAPER_TEMP_TTL_MS;
+    savedAt = now;
+    rows.unshift({
+      ...entry,
+      savedAt,
+      persistence: "temporary",
+      expiresAtMs,
+    });
+  }
+
+  const next = rows.sort((a, b) => b.savedAt - a.savedAt).slice(0, MAX_PAPERS);
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  return { expiresAtMs };
+}
+
+/** Promote an auto-saved draft to a permanent paper and merge topic flashcards once. */
+export function promoteMarkedPaperToPermanent(id: string): SaveMarkedPaperResult | null {
+  if (typeof window === "undefined") return null;
+  pruneMarkedPapersMutating();
+  const rows = safeParse(window.localStorage.getItem(STORAGE_KEY));
+  const row = rows.find((p) => p.id === id);
+  if (!row) return null;
+
+  const nextRow: StoredMarkedPaperV1 = {
+    ...row,
+    savedAt: Date.now(),
+    persistence: "permanent",
+    expiresAtMs: null,
+  };
+  const prev = rows.filter((p) => p.id !== id);
+  const next = [nextRow, ...prev].slice(0, MAX_PAPERS);
+  window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  const affectedTopicIds = mergeTopicFlashcardsFromSavedPaper(nextRow);
+  return { ...nextRow, affectedTopicIds };
+}
+
 export function saveMarkedPaper(
-  entry: Omit<StoredMarkedPaperV1, "id" | "savedAt"> & { id?: string }
+  entry: Omit<StoredMarkedPaperV1, "id" | "savedAt"> & {
+    id?: string;
+    persistence?: MarkedPaperPersistence;
+    expiresAtMs?: number | null;
+    /** Default true. Set false for silent temp drafts (use `upsertTemporaryMarkedPaper` instead). */
+    mergeFlashcards?: boolean;
+  },
 ): SaveMarkedPaperResult {
-  const id = entry.id ?? (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `mp-${Date.now()}`);
+  const id =
+    entry.id ?? (typeof crypto !== "undefined" && crypto.randomUUID ? crypto.randomUUID() : `mp-${Date.now()}`);
+  const persistence = entry.persistence ?? "permanent";
+  const expiresAtMs =
+    persistence === "temporary"
+      ? (entry.expiresAtMs ?? Date.now() + MARKED_PAPER_TEMP_TTL_MS)
+      : null;
+
   const row: StoredMarkedPaperV1 = {
     id,
     savedAt: Date.now(),
@@ -59,19 +194,24 @@ export function saveMarkedPaper(
     topicLabel: entry.topicLabel,
     topicIcon: entry.topicIcon,
     results: entry.results,
+    persistence: persistence === "temporary" ? "temporary" : "permanent",
+    expiresAtMs,
   };
   if (typeof window === "undefined") {
     return { ...row, affectedTopicIds: [] };
   }
+  pruneMarkedPapersMutating();
   const prev = safeParse(window.localStorage.getItem(STORAGE_KEY)).filter((p) => p.id !== id);
   const next = [row, ...prev].slice(0, MAX_PAPERS);
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
-  const affectedTopicIds = mergeTopicFlashcardsFromSavedPaper(row);
+  const affectedTopicIds =
+    entry.mergeFlashcards === false ? [] : mergeTopicFlashcardsFromSavedPaper(row);
   return { ...row, affectedTopicIds };
 }
 
 export function deleteMarkedPaper(id: string): void {
   if (typeof window === "undefined") return;
+  pruneMarkedPapersMutating();
   const next = safeParse(window.localStorage.getItem(STORAGE_KEY)).filter((p) => p.id !== id);
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
 }
