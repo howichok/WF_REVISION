@@ -14,7 +14,7 @@ import { getTopicById } from "@/lib/types";
 
 const ExamConditionsWorkspace = dynamic(
   () =>
-    import("@/components/revision/exam-conditions-workspace").then((m) => ({
+    import("@/components/features/revision/exam-conditions-workspace").then((m) => ({
       default: m.ExamConditionsWorkspace,
     })),
   {

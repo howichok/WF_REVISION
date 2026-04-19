@@ -4,8 +4,15 @@ import {
   isSiteGateEnabled,
   siteGateTokenFromParts,
 } from "@/lib/site-gate";
+import { applyRateLimit, jsonRateLimitResponse } from "@/lib/api-helpers";
 
 export async function POST(request: Request) {
+  // Brute-force protection: 5 attempts per minute per IP.
+  const rl = applyRateLimit(request, "site-gate", 5, 60_000);
+  if (!rl.ok) {
+    return jsonRateLimitResponse(rl.retryAfterSec);
+  }
+
   if (!isSiteGateEnabled()) {
     return NextResponse.json({ ok: true, disabled: true });
   }

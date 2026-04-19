@@ -172,6 +172,42 @@ export interface AnswerHighlightQuotes {
   i?: string[];
 }
 
+/** Per-fragment feedback from AI marking (preferred over raw hl/hlq for accuracy). */
+export interface ExamAnnotation {
+  quote: string;
+  kind: "c" | "i";
+  why: string;
+}
+
+export function annotationsToHlQuotes(annotations: ExamAnnotation[]): AnswerHighlightQuotes {
+  const c: string[] = [];
+  const i: string[] = [];
+  for (const a of annotations) {
+    const q = a.quote.replace(/\s+/g, " ").trim().slice(0, 120);
+    if (q.length < 4) {
+      continue;
+    }
+    if (a.kind === "c") {
+      c.push(q);
+    } else {
+      i.push(q);
+    }
+  }
+  return { ...(c.length ? { c } : {}), ...(i.length ? { i } : {}) };
+}
+
+function mergeAnswerHighlightQuotes(
+  a?: AnswerHighlightQuotes,
+  b?: AnswerHighlightQuotes
+): AnswerHighlightQuotes | undefined {
+  if (!a && !b) {
+    return undefined;
+  }
+  const c = [...(a?.c ?? []), ...(b?.c ?? [])];
+  const i = [...(a?.i ?? []), ...(b?.i ?? [])];
+  return { ...(c.length ? { c } : {}), ...(i.length ? { i } : {}) };
+}
+
 function highlightSpansCoherent(text: string, hl: AnswerHighlightSpans): boolean {
   const n = text.length;
   const checkPairs = (pairs?: [number, number][]) => {
@@ -268,20 +304,28 @@ function highlightSpansFromQuotes(text: string, q: AnswerHighlightQuotes): Answe
 }
 
 /**
- * Prefer coherent `hl` spans, merged with quote-derived spans so partial model
- * ranges do not hide extra credit/improve coverage from verbatim quotes.
+ * Verbatim quotes (annotations + hlq) are merged first; integer `hl` spans are unioned in
+ * so model offsets add coverage without overriding quote anchors.
  */
 export function mergeHlQuotesIntoHighlightSpans(
   answerTrimmed: string,
   hl?: AnswerHighlightSpans,
-  hlQuotes?: AnswerHighlightQuotes
+  hlQuotes?: AnswerHighlightQuotes,
+  annotations?: ExamAnnotation[]
 ): AnswerHighlightSpans | undefined {
-  const quoteHl = hlQuotes ? highlightSpansFromQuotes(answerTrimmed, hlQuotes) : undefined;
+  const annoQuotes = annotations?.length ? annotationsToHlQuotes(annotations) : undefined;
+  const mergedQuotes = mergeAnswerHighlightQuotes(annoQuotes, hlQuotes);
+  const quoteHl = mergedQuotes ? highlightSpansFromQuotes(answerTrimmed, mergedQuotes) : undefined;
+
+  const hasQuoteSpans =
+    (quoteHl?.c?.length ?? 0) > 0 || (quoteHl?.i?.length ?? 0) > 0;
 
   if (hl && highlightSpansCoherent(answerTrimmed, hl)) {
-    const hasC = (hl.c?.length ?? 0) > 0;
-    const hasI = (hl.i?.length ?? 0) > 0;
-    if (!hasC && !hasI) {
+    const hasHl = (hl.c?.length ?? 0) > 0 || (hl.i?.length ?? 0) > 0;
+    if (!hasHl && !hasQuoteSpans) {
+      return quoteHl ?? hl;
+    }
+    if (!hasHl) {
       return quoteHl ?? hl;
     }
     const cOut = unionSpanArrays(hl.c, quoteHl?.c) ?? hl.c;
@@ -295,10 +339,10 @@ export function mergeHlQuotesIntoHighlightSpans(
     }
     return Object.keys(merged).length > 0 ? merged : hl;
   }
-  if (!hlQuotes) {
+  if (!mergedQuotes && !hlQuotes && !annotations?.length) {
     return hl;
   }
-  return highlightSpansFromQuotes(answerTrimmed, hlQuotes) ?? hl;
+  return quoteHl ?? hl;
 }
 
 /** One step of the examiner “walking through” the paper (same order as questions). */
@@ -312,6 +356,8 @@ export interface ExaminerWalkthroughBeat {
   hl?: AnswerHighlightSpans;
   /** Optional verbatim quotes from the candidate answer (paired with hl when spans are unreliable). */
   hlQuotes?: AnswerHighlightQuotes;
+  /** Per-fragment credit/improve with short rationale (preferred for UI + highlighting). */
+  annotations?: ExamAnnotation[];
   /**
    * Legacy: verbatim snippets (older cached marks). UI falls back when `hl` is absent.
    * @deprecated Prefer {@link hl}
@@ -1529,13 +1575,14 @@ export function mergeGeminiExamMarking(
     const rev = reviews.find((r) => r.question.id === q.id);
     if (w) {
       const answerTrimmed = (answers[q.id] ?? "").trim();
-      const hl = mergeHlQuotesIntoHighlightSpans(answerTrimmed, w.hl, w.hlQuotes);
+      const hl = mergeHlQuotesIntoHighlightSpans(answerTrimmed, w.hl, w.hlQuotes, w.annotations);
       return {
         id: q.id,
         line: w.line.replace(/\s+/g, " ").trim().slice(0, 220),
         note: w.note.replace(/\s+/g, " ").trim().slice(0, 560),
         hl,
         hlQuotes: w.hlQuotes,
+        annotations: w.annotations,
         credit: w.credit,
         improve: w.improve,
       };

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useMemo } from "react";
 import { ArrowLeft } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
-import { MarkedPaperFlashcards } from "@/components/revision/marked-paper-flashcards";
+import { MarkedPaperFlashcards } from "@/components/features/revision/marked-paper-flashcards";
 import { getTopicFlashcardDeck } from "@/lib/marked-papers-storage";
 import { getTopicById } from "@/lib/types";
 
@@ -46,7 +46,7 @@ export default function TopicFlashcardsStudyPage() {
           <h1 className="text-2xl font-bold tracking-tight text-foreground">{label}</h1>
           <p className="mt-1 text-sm text-muted-foreground">From your saved papers · {cards.length} cards</p>
         </div>
-        <MarkedPaperFlashcards cards={cards} title={label} />
+        <MarkedPaperFlashcards cards={cards} title={label} deckId={`topic-${topicId}`} />
       </div>
     </PageContainer>
   );

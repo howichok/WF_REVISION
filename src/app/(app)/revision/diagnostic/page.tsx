@@ -2,13 +2,13 @@
 
 import dynamic from "next/dynamic";
 import { PageContainer } from "@/components/layout/page-container";
-import { RevisionSubnav } from "@/components/revision/revision-subnav";
+import { RevisionSubnav } from "@/components/features/revision/revision-subnav";
 import { useAppData } from "@/components/providers/app-data-provider";
 import type { DiagnosticResult } from "@/lib/types";
 
 const DiagnosticWorkspace = dynamic(
   () =>
-    import("@/components/revision/diagnostic-workspace").then((m) => ({
+    import("@/components/features/revision/diagnostic-workspace").then((m) => ({
       default: m.DiagnosticWorkspace,
     })),
   {

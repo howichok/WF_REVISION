@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui";
-import { TopicIntelligenceAssistant } from "@/components/revision/topic-intelligence-assistant";
-import { TopicRouteShell } from "@/components/revision/topic-route-shell";
+import { TopicIntelligenceAssistant } from "@/components/features/revision/topic-intelligence-assistant";
+import { TopicRouteShell } from "@/components/features/revision/topic-route-shell";
 import { getTopicById, getTopicTree } from "@/lib/types";
 
 export default async function TopicAskPage({

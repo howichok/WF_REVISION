@@ -4,11 +4,11 @@ import dynamic from "next/dynamic";
 import { Suspense, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageContainer } from "@/components/layout/page-container";
-import { RevisionFocusNav } from "@/components/revision/revision-focus-nav";
-import type { QuickQuizStage } from "@/components/revision/quick-quiz";
+import { RevisionFocusNav } from "@/components/features/revision/revision-focus-nav";
+import type { QuickQuizStage } from "@/components/features/revision/quick-quiz";
 
 const QuickQuiz = dynamic(
-  () => import("@/components/revision/quick-quiz").then((m) => ({ default: m.QuickQuiz })),
+  () => import("@/components/features/revision/quick-quiz").then((m) => ({ default: m.QuickQuiz })),
   {
     loading: () => (
       <div

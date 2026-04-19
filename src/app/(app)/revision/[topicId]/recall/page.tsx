@@ -1,9 +1,9 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { TopicRouteShell } from "@/components/revision/topic-route-shell";
+import { TopicRouteShell } from "@/components/features/revision/topic-route-shell";
 import { useAppData } from "@/components/providers/app-data-provider";
-import { RecallPanel } from "@/components/revision/topic-learning-modes";
+import { RecallPanel } from "@/components/features/revision/topic-learning-modes";
 import { getPracticeSetId, getTopicPracticeBundle } from "@/lib/practice";
 import { getPracticeSetProgress } from "@/lib/progress";
 import { getTopicById } from "@/lib/types";

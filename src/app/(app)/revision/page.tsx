@@ -1,7 +1,7 @@
 "use client";
 
 import { PageContainer } from "@/components/layout/page-container";
-import { PracticeHub } from "@/components/revision/practice-hub";
+import { PracticeHub } from "@/components/features/revision/practice-hub";
 
 export default function RevisionPage() {
   return (

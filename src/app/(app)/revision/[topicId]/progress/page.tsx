@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui";
-import { TopicRouteShell } from "@/components/revision/topic-route-shell";
-import { TopicProgressPanel } from "@/components/revision/topic-content-panels";
+import { TopicRouteShell } from "@/components/features/revision/topic-route-shell";
+import { TopicProgressPanel } from "@/components/features/revision/topic-content-panels";
 import { getTopicById, getTopicTree } from "@/lib/types";
 
 export default async function TopicProgressPage({

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { ArrowRight, BarChart3, Clock, Target, TrendingUp } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
-import { RevisionSubnav } from "@/components/revision/revision-subnav";
+import { RevisionSubnav } from "@/components/features/revision/revision-subnav";
 import { useAppData } from "@/components/providers/app-data-provider";
 import { Badge, Card, ProgressBar } from "@/components/ui";
 import {

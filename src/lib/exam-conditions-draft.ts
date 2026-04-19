@@ -15,6 +15,15 @@ export type ExamConditionsDraftV1 = {
   currentIndex: number;
   startedAt: number;
   totalSeconds: number;
+  /**
+   * When set, the exam was explicitly paused. This is the number of seconds
+   * remaining at the moment of pause. On restore, startedAt is recalculated
+   * as `Date.now() - (totalSeconds - pausedSecondsLeft)` so the timer resumes
+   * from exactly the right point regardless of how long the user was away.
+   */
+  pausedSecondsLeft?: number;
+  /** Human-readable label for the resume banner (e.g. "Paper 1 · 10 q"). */
+  label?: string;
 };
 
 export function examAllocSignature(

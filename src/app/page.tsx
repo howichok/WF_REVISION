@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, startTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowLeft,
@@ -67,7 +67,7 @@ function getFriendlyAuthError(error: string) {
 
 export default function WelcomePage() {
   const router = useRouter();
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = false;
   const md = (seconds: number) => (reduceMotion ? Math.min(seconds, 0.06) : seconds);
 
   const [showAuth, setShowAuth] = useState(false);

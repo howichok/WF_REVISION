@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 import { Inter } from "next/font/google";
 import { ThemeProvider } from "@/components/providers/theme-provider";
+import { MotionGlobalConfig } from "@/components/providers/motion-global-config";
 import "./globals.css";
 import AppBootstrap from "./app-bootstrap";
 import { AppBootstrapFallback } from "./app-bootstrap-fallback";
@@ -58,11 +59,13 @@ export default function RootLayout({
           <div className="absolute inset-x-0 top-0 h-48 bg-gradient-to-b from-white/35 to-transparent dark:from-white/4" />
         </div>
         <div className="relative z-10 flex min-h-screen flex-col">
-          <ThemeProvider>
-            <Suspense fallback={<AppBootstrapFallback />}>
-              <AppBootstrap>{children}</AppBootstrap>
-            </Suspense>
-          </ThemeProvider>
+          <MotionGlobalConfig>
+            <ThemeProvider>
+              <Suspense fallback={<AppBootstrapFallback />}>
+                <AppBootstrap>{children}</AppBootstrap>
+              </Suspense>
+            </ThemeProvider>
+          </MotionGlobalConfig>
         </div>
       </body>
     </html>

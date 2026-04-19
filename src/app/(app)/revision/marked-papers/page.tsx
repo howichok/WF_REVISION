@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { ArrowLeft, FileStack, Trash2 } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
-import { RevisionSubnav } from "@/components/revision/revision-subnav";
+import { RevisionSubnav } from "@/components/features/revision/revision-subnav";
 import { deleteMarkedPaper, listMarkedPapers, type StoredMarkedPaperV1 } from "@/lib/marked-papers-storage";
 import { cn } from "@/lib/utils";
 

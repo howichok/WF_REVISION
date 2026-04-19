@@ -1,14 +1,19 @@
 import { NextResponse } from "next/server";
 import { generateGroundedResearchAnswer } from "@/lib/research/google-grounding";
 import { recordRevisionRouteMetric } from "@/lib/revision-runtime";
+import {
+  applyRateLimit,
+  bodyTooLarge,
+  getApiUser,
+  jsonError,
+  jsonRateLimitResponse,
+} from "@/lib/api-helpers";
 import type { GroundedResearchRequest } from "@/lib/research/types";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status });
-}
+const MAX_BODY_BYTES = 32_000;
 
 function validateRequest(value: unknown): GroundedResearchRequest | { error: string; status?: number } {
   if (!value || typeof value !== "object") {
@@ -28,11 +33,28 @@ function validateRequest(value: unknown): GroundedResearchRequest | { error: str
 
   return {
     topicId: payload.topicId.trim(),
-    query,
+    query: query.slice(0, 500),
   };
 }
 
 export async function POST(request: Request) {
+  const rl = applyRateLimit(request, "grounded-answer", 12);
+  if (!rl.ok) {
+    return jsonRateLimitResponse(rl.retryAfterSec);
+  }
+
+  const user = await getApiUser(request);
+  if (!user) {
+    const hasConfig = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    if (hasConfig) {
+      return jsonError("Authentication required.", 401);
+    }
+  }
+
+  if (bodyTooLarge(request, MAX_BODY_BYTES)) {
+    return jsonError("Payload too large.", 413);
+  }
+
   const startedAt = Date.now();
   let body: unknown;
 

@@ -13,19 +13,18 @@ import type {
   RevisionAnswerEvaluation,
   RevisionEvaluationRequest,
 } from "@/lib/intelligence/types";
+import {
+  applyRateLimit,
+  bodyTooLarge,
+  getApiUser,
+  sseError,
+  sseRateLimitResponse,
+} from "@/lib/api-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function streamError(message: string, status = 400) {
-  return new Response(toSseEvent("error", { message }), {
-    status,
-    headers: {
-      "Content-Type": "text/event-stream; charset=utf-8",
-      "Cache-Control": "no-cache, no-transform",
-    },
-  });
-}
+const MAX_BODY_BYTES = 64_000;
 
 function validateRequest(
   value: unknown
@@ -55,18 +54,35 @@ function validateRequest(
 }
 
 export async function POST(request: Request) {
+  const rl = applyRateLimit(request, "evaluate-stream", 20);
+  if (!rl.ok) {
+    return sseRateLimitResponse(rl.retryAfterSec);
+  }
+
+  const user = await getApiUser(request);
+  if (!user) {
+    const hasConfig = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    if (hasConfig) {
+      return sseError("Authentication required.", 401);
+    }
+  }
+
+  if (bodyTooLarge(request, MAX_BODY_BYTES)) {
+    return sseError("Payload too large.", 413);
+  }
+
   const startedAt = Date.now();
   let body: unknown;
 
   try {
     body = await request.json();
   } catch {
-    return streamError("Request body must be valid JSON.");
+    return sseError("Request body must be valid JSON.");
   }
 
   const validated = validateRequest(body);
   if ("error" in validated) {
-    return streamError(validated.error, validated.status ?? 400);
+    return sseError(validated.error, validated.status ?? 400);
   }
 
   const encoder = new TextEncoder();

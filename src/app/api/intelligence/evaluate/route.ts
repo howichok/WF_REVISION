@@ -1,5 +1,12 @@
 import { NextResponse } from "next/server";
 import { evaluateIntelligenceRequest } from "@/lib/intelligence";
+import {
+  applyRateLimit,
+  bodyTooLarge,
+  getApiUser,
+  jsonError,
+  jsonRateLimitResponse,
+} from "@/lib/api-helpers";
 import type {
   CommunityEvaluationRequest,
   IntelligenceEvaluationRequest,
@@ -8,9 +15,7 @@ import type {
 
 export const runtime = "nodejs";
 
-function jsonError(message: string, status = 400) {
-  return NextResponse.json({ error: message }, { status });
-}
+const MAX_BODY_BYTES = 64_000;
 
 function isRevisionRequest(value: unknown): value is RevisionEvaluationRequest {
   if (!value || typeof value !== "object") {
@@ -75,6 +80,23 @@ function validateRequest(
 }
 
 export async function POST(request: Request) {
+  const rl = applyRateLimit(request, "evaluate", 20);
+  if (!rl.ok) {
+    return jsonRateLimitResponse(rl.retryAfterSec);
+  }
+
+  const user = await getApiUser(request);
+  if (!user) {
+    const hasConfig = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    if (hasConfig) {
+      return jsonError("Authentication required.", 401);
+    }
+  }
+
+  if (bodyTooLarge(request, MAX_BODY_BYTES)) {
+    return jsonError("Payload too large.", 413);
+  }
+
   let body: unknown;
 
   try {

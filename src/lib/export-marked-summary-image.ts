@@ -1,5 +1,19 @@
 import { toPng } from "html-to-image";
 
+/** Convert a base64 data URL to a Blob without using fetch() (avoids browser security blocks on data: URLs). */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(",");
+  const meta = dataUrl.slice(0, comma);
+  const mime = meta.match(/:(.*?);/)?.[1] ?? "image/png";
+  const b64 = dataUrl.slice(comma + 1);
+  const bytes = atob(b64);
+  const buf = new Uint8Array(bytes.length);
+  for (let i = 0; i < bytes.length; i++) {
+    buf[i] = bytes.charCodeAt(i);
+  }
+  return new Blob([buf], { type: mime });
+}
+
 export async function captureElementToPngBlob(
   element: HTMLElement,
   options?: { backgroundColor?: string }
@@ -9,8 +23,7 @@ export async function captureElementToPngBlob(
     cacheBust: true,
     backgroundColor: options?.backgroundColor ?? "#fafaf9",
   });
-  const response = await fetch(dataUrl);
-  return response.blob();
+  return dataUrlToBlob(dataUrl);
 }
 
 export async function downloadPng(

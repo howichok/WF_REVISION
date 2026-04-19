@@ -58,7 +58,6 @@ test("ensureCompleteGeminiItems preserves first row per id and fills gaps", () =
   const gemini: GeminiExamMarkResponse = {
     band: "Pass",
     oneLiner: "ok",
-    examinerNote: "",
     whatWentWell: "ok",
     targetsToImprove: "ok",
     items: [
@@ -101,7 +100,6 @@ test("ensureCompleteGeminiItems keeps first duplicate id only", () => {
   const gemini: GeminiExamMarkResponse = {
     band: "Pass",
     oneLiner: "ok",
-    examinerNote: "",
     whatWentWell: "x",
     targetsToImprove: "y",
     items: [
@@ -123,7 +121,6 @@ test("mergeGeminiExamMarking clamps marks and can override overall band", () => 
   const gemini: GeminiExamMarkResponse = {
     band: "Pass",
     oneLiner: "Summary",
-    examinerNote: "AI note",
     whatWentWell: "Clear points on q1.",
     targetsToImprove: "Extend evaluation depth.",
     items: [
@@ -144,9 +141,38 @@ test("mergeGeminiExamMarking clamps marks and can override overall band", () => 
   assert.equal(result.reviews[0].score, 4);
   assert.equal(result.bandOverriddenToMatchMarks, true);
   assert.ok(result.overallBand.includes("Strong"));
-  assert.ok(result.examinerNote);
   assert.ok(result.reviews[0].geminiMarking?.why);
   assert.equal(result.reviews[0].geminiMarking?.evidence[0], "quoted");
   assert.ok(result.sessionClosingFeedback?.whatWentWell);
   assert.ok(result.sessionClosingFeedback?.targetsToImprove);
+});
+
+test("mergeGeminiExamMarking preserves annotations on walkthrough beat", () => {
+  const questions = [minimalQuestion("q1", 3)];
+  const gemini: GeminiExamMarkResponse = {
+    band: "Merit",
+    oneLiner: "Good attempt.",
+    whatWentWell: "Solid structure.",
+    targetsToImprove: "Needs more detail.",
+    items: [{ id: "q1", m: 2, why: "ok", evidence: [], hit: [], miss: [], fb: "f", level: "clear" }],
+    walkthrough: [
+      {
+        id: "q1",
+        line: "Good use of encryption.",
+        note: "Add an example for full marks.",
+        annotations: [
+          { quote: "encryption", kind: "c", why: "Key term correctly applied" },
+          { quote: "full marks", kind: "i", why: "Missing example" },
+        ],
+      },
+    ],
+  };
+
+  const result = mergeGeminiExamMarking(questions, { q1: "You should use encryption to protect data, but full marks require examples." }, gemini);
+  const beat = result.examinerWalkthrough?.[0];
+  assert.ok(beat, "walkthrough beat should exist");
+  assert.equal(beat?.annotations?.length, 2);
+  assert.equal(beat?.annotations?.[0]?.kind, "c");
+  assert.equal(beat?.annotations?.[1]?.kind, "i");
+  assert.ok(beat?.annotations?.[0]?.quote.length ?? 0 > 0);
 });

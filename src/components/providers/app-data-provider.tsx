@@ -392,7 +392,7 @@ export function AppDataProvider({
 
     const {
       data: { subscription },
-    } = supabaseRef.current.auth.onAuthStateChange((_event, session) => {
+    } = supabaseRef.current.auth.onAuthStateChange((event, session) => {
       if (!session?.user) {
         hydrateRequestRef.current += 1;
         setState((current) => ({
@@ -405,6 +405,27 @@ export function AppDataProvider({
         topicCoachingUserIdRef.current = null;
         setConfigError(null);
         setIsHydrating(false);
+
+        // When the refresh token is invalid/expired Supabase fires SIGNED_OUT.
+        // Call signOut() to clear the stale cookie so the SDK stops retrying,
+        // then redirect to /auth if we are on a page that requires authentication.
+        if (event === "SIGNED_OUT" && supabaseRef.current) {
+          void supabaseRef.current.auth.signOut({ scope: "local" }).catch(() => undefined);
+
+          const { pathname } = window.location;
+          const isProtected =
+            pathname.startsWith("/home") ||
+            pathname.startsWith("/library") ||
+            pathname.startsWith("/revision") ||
+            pathname.startsWith("/settings") ||
+            pathname.startsWith("/planner") ||
+            pathname.startsWith("/onboarding");
+
+          if (isProtected) {
+            const next = encodeURIComponent(pathname);
+            window.location.href = `/auth?next=${next}`;
+          }
+        }
         return;
       }
 

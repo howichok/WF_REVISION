@@ -2,11 +2,11 @@
 
 import dynamic from "next/dynamic";
 import { useParams } from "next/navigation";
-import { TopicRouteShell } from "@/components/revision/topic-route-shell";
+import { TopicRouteShell } from "@/components/features/revision/topic-route-shell";
 import { getTopicById } from "@/lib/types";
 
 const QuickQuiz = dynamic(
-  () => import("@/components/revision/quick-quiz").then((m) => ({ default: m.QuickQuiz })),
+  () => import("@/components/features/revision/quick-quiz").then((m) => ({ default: m.QuickQuiz })),
   {
     loading: () => (
       <div className="min-h-[280px] rounded-2xl border border-border bg-card/50 animate-pulse" aria-hidden />

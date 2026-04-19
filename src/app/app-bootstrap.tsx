@@ -1,4 +1,4 @@
-import { SiteFooter } from "@/components/layout/site-footer";
+import { CollapsibleSiteFooter } from "@/components/layout/collapsible-site-footer";
 import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter";
 import { AppDataProvider } from "@/components/providers/app-data-provider";
 import { AiOverlayProvider } from "@/components/providers/ai-overlay-provider";
@@ -9,6 +9,7 @@ import { getSupabaseConfig } from "@/lib/supabase/config";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { AppBootstrapState } from "@/lib/types";
 
+/** Loads Supabase session (httpOnly cookies via SSR client) and hydrates {@link AppDataProvider}. */
 export default async function AppBootstrap({ children }: { children: React.ReactNode }) {
   let initialState: AppBootstrapState = {
     user: null,
@@ -57,7 +58,7 @@ export default async function AppBootstrap({ children }: { children: React.React
       <AiOverlayProvider>
         <WebVitalsReporter />
         <div className="flex min-h-0 flex-1 flex-col">{children}</div>
-        <SiteFooter />
+        <CollapsibleSiteFooter />
       </AiOverlayProvider>
     </AppDataProvider>
   );

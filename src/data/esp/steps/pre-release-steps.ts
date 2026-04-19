@@ -1,0 +1,83 @@
+import type { EspGenericLessonStep } from "@/data/esp/steps/types";
+import { BRIEF_TRIAGE_BEATS } from "@/components/features/revision/esp/scene-engine/scenes/brief-triage-scene";
+import { DELIVERABLES_PIPELINE_BEATS } from "@/components/features/revision/esp/scene-engine/scenes/deliverables-pipeline-scene";
+import { PRACTICE_UPLOAD_BEATS } from "@/components/features/revision/esp/scene-engine/scenes/practice-upload-scene";
+
+export const PRE_RELEASE_STEPS: EspGenericLessonStep[] = [
+  {
+    id: "intro",
+    number: 1,
+    label: "Brief triage",
+    emoji: "🧭",
+    duration: "2 min",
+    durationMs: 120_000,
+    headline: "Separate facts from ideas before you plan.",
+    lead: "The pre-release stage is where you prove you read the brief. Examiners want tagged evidence: client aim, constraints, files, risks — not a solution sketch yet.",
+    keyPoints: [
+      "Read once for the client outcome, again for constraints and assets.",
+      "Highlight risks that affect testing windows or data quality.",
+      "List deliverables you can actually evidence later.",
+    ],
+    takeaway: "If you cannot point to a sentence in the brief for a decision, you are guessing.",
+    scene: { id: "brief-triage", data: { wide: true } },
+    beats: BRIEF_TRIAGE_BEATS,
+  },
+  {
+    id: "triage",
+    number: 2,
+    label: "Triage pattern",
+    emoji: "🏷️",
+    duration: "3 min",
+    durationMs: 150_000,
+    headline: "Tag every paragraph with the right lens.",
+    lead: "Strong students colour-code or tag text: aim vs constraint vs file vs risk. Weak students mix everything into one paragraph.",
+    keyPoints: [
+      "Aim sentences usually mention the client or service outcome.",
+      "Constraints mention must / must not, deadlines, formats.",
+      "Risks mention what could fail even if the team works hard.",
+    ],
+    weak: { label: "Vague", example: "We need to build a good system for the client." },
+    strong: { label: "Tagged", example: "Aim: reduce missed appointments (brief §1). Constraint: six-week go-live (brief §3)." },
+    takeaway: "Tags prove you read; opinions without tags are discounted.",
+    scene: { id: "brief-triage", data: { wide: true } },
+    beats: BRIEF_TRIAGE_BEATS,
+  },
+  {
+    id: "deliverables",
+    number: 3,
+    label: "Deliverables",
+    emoji: "📦",
+    duration: "2 min",
+    durationMs: 120_000,
+    headline: "Turn the brief into a checklist you can mark.",
+    lead: "ESP is evidence-led. If a deliverable cannot be shown to a marker, rewrite it until it can.",
+    keyPoints: [
+      "Plan → spreadsheet + rationale",
+      "Defect fix → code + tests",
+      "Design → IPO / flow evidence",
+      "Build → working output + logs",
+      "Evaluate → requirement-by-requirement commentary",
+    ],
+    takeaway: "Each deliverable should have a file name or artefact type.",
+    scene: { id: "deliverables-pipeline" },
+    beats: DELIVERABLES_PIPELINE_BEATS,
+  },
+  {
+    id: "practice",
+    number: 4,
+    label: "Your turn",
+    emoji: "🎯",
+    duration: "Your time",
+    durationMs: 60_000,
+    headline: "Download the notes template and upload your triage.",
+    lead: "Work in real Word. Capture aims, constraints, files, risks, and open questions. Submit for instant checklist feedback.",
+    keyPoints: [
+      "Download the .docx template for this scenario.",
+      "Fill every heading — short bullets are fine.",
+      "Upload .docx (add screenshots if your centre allows).",
+    ],
+    takeaway: "Treat it like exam stationery: neat tags, quoted brief facts.",
+    scene: { id: "practice-upload", data: { taskId: "pre_release" } },
+    beats: PRACTICE_UPLOAD_BEATS,
+  },
+];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 
 interface AnswerRippleProps {
   /** null = hidden, "correct" = green, "incorrect" = red */
@@ -23,7 +23,7 @@ const ring = {
 const DURATION_MS = 780;
 
 export function AnswerRipple({ state, onComplete }: AnswerRippleProps) {
-  const reduceMotion = useReducedMotion();
+  const reduceMotion = false;
 
   useEffect(() => {
     if (!state) return;

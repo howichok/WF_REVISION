@@ -16,9 +16,17 @@ import {
   streamGeminiCoachResponse,
 } from "@/lib/research/gemini-coach";
 import { recordRevisionRouteMetric } from "@/lib/revision-runtime";
+import {
+  applyRateLimit,
+  bodyTooLarge,
+  getApiUser,
+  sseError,
+  sseRateLimitResponse,
+} from "@/lib/api-helpers";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
 const ALLOWED_INTENTS: TopicIntelligenceIntent[] = [
   "hint",
@@ -191,33 +199,35 @@ function sendSectionGroup(
 }
 
 export async function POST(request: Request) {
+  const rl = applyRateLimit(request, "topic-assistant-stream", 15);
+  if (!rl.ok) {
+    return sseRateLimitResponse(rl.retryAfterSec);
+  }
+
+  const user = await getApiUser(request);
+  if (!user) {
+    const hasConfig = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL);
+    if (hasConfig) {
+      return sseError("Authentication required.", 401);
+    }
+  }
+
+  if (bodyTooLarge(request, 64_000)) {
+    return sseError("Payload too large.", 413);
+  }
+
   const startedAt = Date.now();
   let body: unknown;
 
   try {
     body = await request.json();
   } catch {
-    return new Response(
-      toSseEvent("error", { message: "Request body must be valid JSON." }),
-      {
-        status: 400,
-        headers: {
-          "Content-Type": "text/event-stream; charset=utf-8",
-          "Cache-Control": "no-cache, no-transform",
-        },
-      }
-    );
+    return sseError("Request body must be valid JSON.");
   }
 
   const validated = validateRequest(body);
   if ("error" in validated) {
-    return new Response(toSseEvent("error", { message: validated.error }), {
-      status: validated.status ?? 400,
-      headers: {
-        "Content-Type": "text/event-stream; charset=utf-8",
-        "Cache-Control": "no-cache, no-transform",
-      },
-    });
+    return sseError(validated.error, validated.status ?? 400);
   }
 
   const encoder = new TextEncoder();

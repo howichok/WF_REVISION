@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type {
   AnswerHighlightQuotes,
   AnswerHighlightSpans,
+  ExamAnnotation,
   ExaminerWalkthroughBeat,
   GeminiExamMarkItem,
   GeminiExamMarkResponse,
@@ -36,7 +37,7 @@ const GEMINI_EXAM_MARK_FALLBACK_MODEL =
  * - GEMINI_EXAM_MARK_EXPLICIT_CACHE_AUTO=1 + GEMINI_EXAM_MARK_EXPLICIT_CACHE_MIN_CHARS (default 4096) + GEMINI_EXAM_MARK_EXPLICIT_CACHE_TTL_SECONDS (default 3600)
  */
 /** Bumps when prompt/schema shape changes — avoids stale in-memory cache hits. */
-const EXAM_SESSION_MARK_CACHE_VERSION = "v6";
+const EXAM_SESSION_MARK_CACHE_VERSION = "v7";
 
 export interface GenerateExamSessionGeminiMarksResult {
   response: GeminiExamMarkResponse;
@@ -240,7 +241,7 @@ const RESPONSE_SCHEMA = {
           mk: {
             type: "array",
             items: { type: "string" },
-            maxItems: 3,
+            maxItems: 2,
           },
         },
         required: ["id", "m", "rc", "mk"],
@@ -261,7 +262,7 @@ const RESPONSE_SCHEMA = {
             properties: {
               c: {
                 type: "array",
-                maxItems: 4,
+                maxItems: 6,
                 items: {
                   type: "array",
                   minItems: 2,
@@ -271,7 +272,7 @@ const RESPONSE_SCHEMA = {
               },
               i: {
                 type: "array",
-                maxItems: 4,
+                maxItems: 6,
                 items: {
                   type: "array",
                   minItems: 2,
@@ -285,10 +286,24 @@ const RESPONSE_SCHEMA = {
           hlq: {
             type: "object",
             properties: {
-              c: { type: "array", maxItems: 4, items: { type: "string" } },
-              i: { type: "array", maxItems: 4, items: { type: "string" } },
+              c: { type: "array", maxItems: 6, items: { type: "string" } },
+              i: { type: "array", maxItems: 6, items: { type: "string" } },
             },
             additionalProperties: false,
+          },
+          annotations: {
+            type: "array",
+            maxItems: 6,
+            items: {
+              type: "object",
+              properties: {
+                quote: { type: "string" },
+                kind: { type: "string", enum: ["c", "i"] },
+                why: { type: "string" },
+              },
+              required: ["quote", "kind", "why"],
+              additionalProperties: false,
+            },
           },
         },
         required: ["id", "line", "note"],
@@ -297,7 +312,6 @@ const RESPONSE_SCHEMA = {
     },
     band: { type: "string" },
     oneLiner: { type: "string" },
-    examinerNote: { type: "string" },
     whatWentWell: { type: "string" },
     targetsToImprove: { type: "string" },
   },
@@ -307,7 +321,6 @@ const RESPONSE_SCHEMA = {
     "walkthrough",
     "band",
     "oneLiner",
-    "examinerNote",
     "whatWentWell",
     "targetsToImprove",
   ],
@@ -317,23 +330,24 @@ const RESPONSE_SCHEMA = {
 /** Subject-agnostic rubric tail (stable prefix for implicit cache + optional explicit context cache). */
 const EXAM_MARK_RUBRIC_TAIL =
   "Output JSON only, no markdown. " +
-  "Tone: calm, professional, second person; you are going through their script question by question, not giving a vague summary only. " +
-  "The last user message JSON has keys in order: n, questionOrderIds, items. Subject and GCSE paper framing are in the system instruction. " +
+  "Tone: calm, professional, second person; walk through their script question by question. " +
+  "The last user message JSON has keys in order: n, questionOrderIds, items. Subject and exam paper framing are in the system instruction. " +
   "Field `items`: for each compact row use student answer `a` and scheme `s`,`e`,`q`,`cw`. Integer `m` from 0 to `x` inclusive. " +
-  "`rc`: correct|partial|incorrect|off_topic. `mk`: max 3 short missing keywords (empty array if none). " +
-  "Field `opening`: 1–2 sentences as if you have just finished reading the whole paper before you comment per question. " +
+  "`rc`: correct|partial|incorrect|off_topic. `mk`: max 2 short missing keywords (empty array if none). " +
+  "Field `opening`: exactly one sentence after reading the whole paper. " +
   "Field `walkthrough`: one object per question in the SAME ORDER as `items`; `id` must equal that row's `i`. " +
-  "`line` is a short lead-in (e.g. 'On this one you…'); `note` is 2–3 sentences on that answer and the marks. " +
-  "For each walkthrough row set optional `hl` ONLY (no long quoted answer text): object with `c` and/or `i`, each an array of up to 4 spans. " +
-  "Each span is two integers [start,end) giving UTF-16 code-unit offsets into that row's answer string `a` exactly as provided in the payload (trimmed ends only; same as JavaScript string indexing on that string; end exclusive). " +
-  "`hl.c` = ranges that earned credit; `hl.i` = ranges that need tightening vs the scheme. Omit `hl` or use empty arrays if none. Keep spans ordered, non-overlapping, within 0..len(a). " +
-  "Optional `hlq`: same shape as `hl` but with verbatim substrings from `a` (max ~120 chars each quote) when spans are uncertain; use single quotes inside strings if the answer contains double quotes. " +
-  "When `m` equals full marks (`m` == `x`), keep `note` to one short positive sentence, omit `hl` unless it genuinely helps revision, and use empty `mk`. " +
+  "`line` is a short lead-in (e.g. 'On this one you…'); `note` is up to 2 sentences on that answer and the marks (target ≤220 chars). " +
+  "PRIMARY feedback anchors: field `annotations` on each walkthrough row — array of up to 6 objects. " +
+  "Each has `quote` (exact verbatim substring from that row's `a`, min 4 chars, max ~120), `kind` `c` (earned credit) or `i` (needs improving), and `why` (≤80 chars: what was strong or what to fix). " +
+  "Omit `annotations` or use [] if the answer is empty. Prefer `annotations` over integer spans. " +
+  "Optional `hl`: UTF-16 [start,end) spans into `a` (max 6 per kind); additive only. `hl.c` credit, `hl.i` improve. " +
+  "Optional `hlq`: verbatim quotes from `a` (max 6 per kind) if you also output spans — usually unnecessary when `annotations` is filled. " +
+  "When `m` == `x`, keep `note` brief and positive; `annotations` may be empty or one short credit. " +
   "Cover every question; if an answer is empty, say so briefly. " +
   "Field `band`: one of Below | Pass | Merit | Strong (approximate). " +
-  "`oneLiner`: one sentence overall judgement. `examinerNote`: one short caveat about AI marking limits (max ~200 chars). " +
-  "`whatWentWell` and `targetsToImprove`: whole-paper strengths and next steps (not repeating the walkthrough verbatim). " +
-  "Keep each `line` under ~100 chars and each `note` under ~280 chars where possible to save tokens.";
+  "`oneLiner`: one sentence overall judgement. " +
+  "`whatWentWell` and `targetsToImprove`: whole-paper strengths and next steps (not repeating the walkthrough). " +
+  "Keep each `line` under ~100 chars to save tokens.";
 
 function buildExamMarkSubjectOpener(subjectLabel: string): string {
   const subject = subjectLabel.replace(/\s+/g, " ").trim().slice(0, 96) || "Digital Services & Data";
@@ -379,7 +393,7 @@ function expandMicroItem(
   const m = Math.max(0, Math.min(max, Math.round(mRaw)));
   const rc = String(row.rc ?? "incorrect").toLowerCase().trim();
   const mk = Array.isArray(row.mk)
-    ? row.mk.map((s) => String(s).replace(/\s+/g, " ").trim().slice(0, 72)).filter(Boolean).slice(0, 3)
+    ? row.mk.map((s) => String(s).replace(/\s+/g, " ").trim().slice(0, 72)).filter(Boolean).slice(0, 2)
     : [];
 
   const ratio = max > 0 ? m / max : 0;
@@ -453,8 +467,8 @@ function normaliseHighlightSpans(raw: unknown): AnswerHighlightSpans | undefined
     return undefined;
   }
   const o = raw as { c?: unknown; i?: unknown };
-  const c = normaliseSpanPairs(o.c, 4);
-  const i = normaliseSpanPairs(o.i, 4);
+  const c = normaliseSpanPairs(o.c, 6);
+  const i = normaliseSpanPairs(o.i, 6);
   if (!c && !i) {
     return undefined;
   }
@@ -471,7 +485,7 @@ function normaliseHlQuotes(raw: unknown): AnswerHighlightQuotes | undefined {
       ? v
           .map((x) => String(x ?? "").replace(/\s+/g, " ").trim().slice(0, 120))
           .filter((s) => s.length >= 2)
-          .slice(0, 4)
+          .slice(0, 6)
       : [];
   const c = norm(o.c);
   const i = norm(o.i);
@@ -479,6 +493,30 @@ function normaliseHlQuotes(raw: unknown): AnswerHighlightQuotes | undefined {
     return undefined;
   }
   return { ...(c.length ? { c } : {}), ...(i.length ? { i } : {}) };
+}
+
+function normaliseAnnotations(raw: unknown): ExamAnnotation[] | undefined {
+  if (!Array.isArray(raw)) {
+    return undefined;
+  }
+  const out: ExamAnnotation[] = [];
+  for (const row of raw) {
+    if (!row || typeof row !== "object") {
+      continue;
+    }
+    const o = row as { quote?: unknown; kind?: unknown; why?: unknown };
+    const quote = String(o.quote ?? "").replace(/\s+/g, " ").trim().slice(0, 120);
+    const kind = o.kind === "c" || o.kind === "i" ? o.kind : null;
+    const why = String(o.why ?? "").replace(/\s+/g, " ").trim().slice(0, 80);
+    if (quote.length < 4 || !kind || why.length < 1) {
+      continue;
+    }
+    out.push({ quote, kind, why });
+    if (out.length >= 6) {
+      break;
+    }
+  }
+  return out.length > 0 ? out : undefined;
 }
 
 function normaliseWalkthrough(
@@ -504,6 +542,7 @@ function normaliseWalkthrough(
       note?: string;
       hl?: unknown;
       hlq?: unknown;
+      annotations?: unknown;
       credit?: unknown;
       improve?: unknown;
     };
@@ -513,12 +552,14 @@ function normaliseWalkthrough(
     }
     const hl = normaliseHighlightSpans(o.hl);
     const hlQuotes = normaliseHlQuotes(o.hlq);
+    const annotations = normaliseAnnotations(o.annotations);
     byId.set(id, {
       id,
       line: String(o.line ?? "").replace(/\s+/g, " ").trim(),
       note: String(o.note ?? "").replace(/\s+/g, " ").trim(),
       hl,
       hlQuotes,
+      annotations,
       credit: normaliseWalkthroughPhraseList(o.credit, 4, 200),
       improve: normaliseWalkthroughPhraseList(o.improve, 4, 200),
     });

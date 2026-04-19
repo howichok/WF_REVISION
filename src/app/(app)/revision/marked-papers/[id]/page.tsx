@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ArrowLeft, Layers } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
-import { MarkedExamAnswerInline } from "@/components/revision/exam-marked-answer";
+import { AnnotatedAnswerView } from "@/components/features/revision/annotated-answer-view";
 import { getMarkedPaper, type StoredMarkedPaperV1 } from "@/lib/marked-papers-storage";
 
 export default function MarkedPaperDetailPage() {
@@ -85,10 +85,11 @@ export default function MarkedPaperDetailPage() {
               <p className="mt-3 text-sm leading-relaxed text-muted-foreground">{r.question.prompt}</p>
               <div className="mt-4">
                 <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Your answer</p>
-                <MarkedExamAnswerInline
+                <AnnotatedAnswerView
                   answerText={r.answer}
                   walkthroughBeat={walk[idx] ?? null}
-                  hideLegend={false}
+                  fallbackFeedback={r.evaluation.feedback}
+                  density="compact"
                   className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2"
                 />
               </div>

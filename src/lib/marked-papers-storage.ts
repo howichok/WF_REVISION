@@ -122,6 +122,13 @@ function flashcardDedupeKey(front: string, back: string): string {
   return `${front.trim().toLowerCase()}||${back.trim().toLowerCase()}`;
 }
 
+/** Fuzzy dedupe: similar stems + similar backs collapse (not only exact match). */
+function nearDedupeKey(front: string, back: string): string {
+  const f = front.slice(0, 88).replace(/\s+/g, " ").toLowerCase();
+  const b = back.slice(0, 72).replace(/\s+/g, " ").toLowerCase();
+  return `${f}::${b}`;
+}
+
 /** Topic ids for every marked question in the paper (falls back to the paper’s route topic). */
 export function collectDistinctQuestionTopicIds(paper: StoredMarkedPaperV1): string[] {
   const ids = new Set<string>();
@@ -193,12 +200,22 @@ type AddCardFn = (front: string, back: string) => void;
 
 function makeFlashcardCollector() {
   const cards: MarkedPaperFlashcard[] = [];
+  const seenExact = new Set<string>();
+  const seenNear = new Set<string>();
   let i = 0;
   const add: AddCardFn = (front, back) => {
     const f = front.trim();
     const b = back.trim();
     if (f.length < 6 || b.length < 6) return;
-    cards.push({ id: `c-${i++}`, front: f.slice(0, 260), back: b.slice(0, 720) });
+    // Skip near-duplicate of question on back (common generation glitch)
+    if (b.length >= 24 && f.toLowerCase().includes(b.slice(0, Math.min(36, b.length)).toLowerCase())) return;
+    const ek = flashcardDedupeKey(f, b);
+    if (seenExact.has(ek)) return;
+    seenExact.add(ek);
+    const nk = nearDedupeKey(f, b);
+    if (seenNear.has(nk)) return;
+    seenNear.add(nk);
+    cards.push({ id: `c-${i++}`, front: f.slice(0, 280), back: b.slice(0, 900) });
   };
   return { cards, add };
 }
@@ -250,7 +267,7 @@ function addReviewFlashcards(add: AddCardFn, r: ExamConditionsReview, qn: number
     if (s.length < 4) continue;
     add(
       `Q${qn} · Push this further\n${cue}`,
-      `${s}\n\nFeedback:\n${feedback.slice(0, 480)}`,
+      `Focus:\n${s}\n\nNext step: tie this to a concrete point in your answer (quote or paraphrase the stem).\n\nMarker feedback:\n${feedback.slice(0, 520)}`,
     );
   }
 

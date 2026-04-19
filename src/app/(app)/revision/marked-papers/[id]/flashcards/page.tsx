@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { ArrowLeft } from "lucide-react";
 import { PageContainer } from "@/components/layout/page-container";
-import { MarkedPaperFlashcards } from "@/components/revision/marked-paper-flashcards";
+import { MarkedPaperFlashcards } from "@/components/features/revision/marked-paper-flashcards";
 import { buildFlashcardsFromMarkedPaper, getMarkedPaper, type StoredMarkedPaperV1 } from "@/lib/marked-papers-storage";
 
 export default function MarkedPaperFlashcardsPage() {
@@ -55,7 +55,7 @@ export default function MarkedPaperFlashcardsPage() {
             {paper.topicLabel} · built from this paper&apos;s feedback
           </p>
         </div>
-        <MarkedPaperFlashcards cards={cards} title={paper.topicLabel} />
+        <MarkedPaperFlashcards cards={cards} title={paper.topicLabel} deckId={paper.id} />
       </div>
     </PageContainer>
   );

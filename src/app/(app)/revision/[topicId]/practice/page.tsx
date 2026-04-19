@@ -1,6 +1,6 @@
 import { Card } from "@/components/ui";
-import { TopicRouteShell } from "@/components/revision/topic-route-shell";
-import { TopicPracticeStudio } from "@/components/revision/topic-practice-studio";
+import { TopicRouteShell } from "@/components/features/revision/topic-route-shell";
+import { TopicPracticeStudio } from "@/components/features/revision/topic-practice-studio";
 import { getTopicById, getTopicTree } from "@/lib/types";
 
 export default async function TopicPracticePage({

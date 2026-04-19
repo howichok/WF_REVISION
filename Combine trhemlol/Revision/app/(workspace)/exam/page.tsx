@@ -4,8 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { AlarmClock, Timer } from "lucide-react";
 import { toast } from "sonner";
 import { useAppState } from "@/components/app-state-provider";
-import { AnswerCheckHistory } from "@/components/revision/answer-check-history";
-import { AnswerCheckReportView } from "@/components/revision/answer-check-report";
+import { AnswerCheckHistory } from "@/components/features/revision/answer-check-history";
+import { AnswerCheckReportView } from "@/components/features/revision/answer-check-report";
 import { SharePanel } from "@/components/shared/share-panel";
 import {
   EXAM_DURATION_MINUTES,
