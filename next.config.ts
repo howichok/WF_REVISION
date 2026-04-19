@@ -61,11 +61,29 @@ const noindexHeaders =
 
 const nextConfig: NextConfig = {
   compress: true,
+
+  // DO NOT add exceljs / docx / mammoth to serverExternalPackages.
+  // That config makes Next.js create .next/node_modules/ junctions pointing at the
+  // full raw package dirs (20.8 + 5.8 + 2.2 MB). Netlify follows those symlinks
+  // and copies every byte into the Lambda zip, pushing it over the 50 MB limit.
+  // Instead let webpack bundle + minify them (≈ 11 MB combined → Lambda stays ~46 MB).
+
+  // Keep archived duplicate apps and local curriculum blobs out of the serverless
+  // trace. ESP board PDFs/ZIPs are served from `public/esp-official-task/` instead
+  // of `readFile()` so they never land in the Netlify handler bundle.
+  outputFileTracingExcludes: {
+    "*": [
+      "./Combine trhemlol/**",
+      "**/Combine trhemlol/**",
+      "./sources/**",
+    ],
+  },
+
   experimental: {
-    // lucide: safe to optimize. Do NOT list framer-motion here — Next can split the
-    // package across chunks so MotionConfig / layout context no longer matches motion
-    // components, which makes animations appear "dead" in the browser.
-    optimizePackageImports: ["lucide-react"],
+    // Both safe to barrel-optimize; framer-motion is back because we've hardcoded
+    // reduceMotion=false in all components, so the MotionConfig context issue is gone,
+    // and proper tree-shaking keeps the client bundle lean.
+    optimizePackageImports: ["lucide-react", "framer-motion"],
   },
   async headers() {
     return [

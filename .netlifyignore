@@ -1,0 +1,3 @@
+# Archived nested app — not part of the production Next build; ignoring keeps deploy
+# uploads smaller when Netlify walks the repo tree.
+Combine trhemlol/

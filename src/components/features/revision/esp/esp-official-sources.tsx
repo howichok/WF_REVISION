@@ -3,6 +3,7 @@
 import { FileArchive, FileText, Download } from "lucide-react";
 import {
   ESP_OFFICIAL_SOURCE_ASSETS,
+  espSourcePublicHref,
   type EspBoardTaskGroup,
 } from "@/data/esp/official-task-sources";
 import { cn } from "@/lib/utils";
@@ -18,8 +19,8 @@ const GROUP_TITLE: Record<EspBoardTaskGroup, string> = {
   "task-4b": "Task 4b — Evaluation",
 };
 
-function assetHref(id: string) {
-  return `/api/esp/source-asset?id=${encodeURIComponent(id)}`;
+function assetHref(relativePath: string) {
+  return espSourcePublicHref(relativePath);
 }
 
 export function EspOfficialSources() {
@@ -33,10 +34,10 @@ export function EspOfficialSources() {
       <p className="text-xs font-semibold uppercase tracking-wider text-accent">Board materials</p>
       <h2 className="mt-1 text-xl font-bold text-foreground sm:text-2xl">Official ESP papers (from your course pack)</h2>
       <p className="mt-2 max-w-3xl text-sm leading-relaxed text-muted-foreground">
-        These files live in the project under{" "}
-        <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">sources/myexperience/Task</code>.
-        Use the buttons to download the same PDFs/ZIPs for the real task wording. If a download fails on a deployed site,
-        the folder may not be on the server — open them from your local clone instead.
+        These files are shipped as static downloads under{" "}
+        <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">/esp-official-task/</code>
+        (from <code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">public/esp-official-task</code>
+        in the repo). Use the buttons for the same PDFs/ZIPs as the live task wording.
       </p>
 
       <div className="mt-5 space-y-6">
@@ -63,7 +64,7 @@ export function EspOfficialSources() {
                       </div>
                     </div>
                     <a
-                      href={assetHref(a.id)}
+                      href={assetHref(a.relativePath)}
                       className={cn(
                         "inline-flex shrink-0 items-center gap-1.5 rounded-md border border-border/60 bg-card px-3 py-1.5 text-xs font-semibold text-foreground transition-colors",
                         "hover:border-accent/40 hover:bg-accent/10"

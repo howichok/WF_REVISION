@@ -1,4 +1,8 @@
 # Netlify file-based config — https://docs.netlify.com/build/configure-builds/file-based-configuration/
+#
+# Next.js: do not set "Publish directory" to `.next` alone in the Netlify UI.
+# Leave it unset (or follow current @netlify/plugin-nextjs docs) so the runtime
+# can wire static assets and the server handler correctly.
 
 # Deploy Preview URLs (PR previews) should not be indexed by search engines.
 [context.deploy-preview.environment]

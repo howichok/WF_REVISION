@@ -1,13 +1,13 @@
 /**
- * Pearson / NCFE-style ESP materials bundled in the repo under
- * `sources/myexperience/Task/`. Used for hub copy and secure download links.
+ * Pearson / NCFE-style ESP materials served as static files from
+ * `public/esp-official-task/` (mirrors the former `sources/myexperience/Task/` layout).
  */
 export type EspBoardTaskGroup = "overview" | "task-1" | "task-2" | "task-3" | "task-4a" | "task-4b";
 
 export interface EspSourceAsset {
   /** Stable id for ?id= in /api/esp/source-asset */
   id: string;
-  /** Path segments under `sources/myexperience/Task/` */
+  /** Path segments under `public/esp-official-task/` */
   relativePath: string;
   /** Short label for UI */
   title: string;
@@ -91,4 +91,13 @@ export function getEspSourceAssetById(id: string): EspSourceAsset | undefined {
   return BY_ID[id];
 }
 
-export const ESP_SOURCE_TASK_ROOT = "sources/myexperience/Task";
+export const ESP_SOURCE_PUBLIC_BASE = "/esp-official-task";
+
+/** URL path for a file under `public/esp-official-task/`. */
+export function espSourcePublicHref(relativePath: string): string {
+  const encoded = relativePath
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+  return `${ESP_SOURCE_PUBLIC_BASE}/${encoded}`;
+}
